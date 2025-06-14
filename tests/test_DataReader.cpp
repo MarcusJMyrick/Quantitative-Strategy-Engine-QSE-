@@ -4,13 +4,17 @@
 #include <vector>
 #include <chrono>
 
+// This macro is provided by CMake to locate the test data directory
+#ifndef TEST_DATA_DIR
+#define TEST_DATA_DIR "."
+#endif
+
 // Test fixture to ensure the test data file exists
 class DataReaderTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // This assumes the test parquet file is in a `test_data` directory
-        // relative to where the tests are run (usually the build directory).
-        file_path = "../../test_data/test_bars.parquet"; 
+        // Construct an absolute path to the test parquet file
+        file_path = std::string(TEST_DATA_DIR) + "/test_bars.parquet";
     }
 
     std::string file_path;

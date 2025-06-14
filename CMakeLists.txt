@@ -56,14 +56,13 @@ FetchContent_Declare(
 )
 
 # For macOS/Linux, to avoid re-downloading every time:
-FetchContent_GetProperties(googletest)
-if(NOT googletest_POPULATED)
-    FetchContent_Populate(googletest)
-    add_subdirectory(${googletest_SOURCE_DIR} ${googletest_BINARY_DIR})
-endif()
+FetchContent_MakeAvailable(googletest)
 
 # Define your test executable
 add_executable(run_tests tests/test_DataReader.cpp)
+
+# Provide absolute path to the test data directory
+target_compile_definitions(run_tests PRIVATE "TEST_DATA_DIR=\"${CMAKE_SOURCE_DIR}/test_data\"")
 
 # Link your main library and Google Test to the test executable
 target_link_libraries(run_tests 

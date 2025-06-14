@@ -1,9 +1,10 @@
 import os
+from unittest.mock import patch
+
 import pandas as pd
 import pytest
 from scripts.download_data import fetch_crypto_data
 from scripts.process_data import process_raw_data
-from unittest.mock import patch
 
 def create_mock_data():
     """Create mock market data for testing."""
@@ -60,9 +61,10 @@ def test_data_pipeline(mock_get):
     os.remove(raw_file)
     os.remove(processed_file)
 
-def test_download_data_error_handling():
+@patch('scripts.download_data.requests.get')
+def test_download_data_error_handling(mock_get):
     """Test error handling in data download."""
-    # Test with invalid symbol
+    mock_get.side_effect = Exception("API error")
     result = fetch_crypto_data(symbol='INVALID_PAIR', interval='60min', limit=100)
     assert result is None
 
@@ -70,4 +72,4 @@ def test_process_data_error_handling():
     """Test error handling in data processing."""
     # Test with non-existent file
     result = process_raw_data(symbol='NONEXISTENT')
-    assert result is None 
+    assert result is None

@@ -16,11 +16,24 @@ def create_mock_data():
         'close': [100.5 + i for i in range(100)],
         'volume': [1000.0 + i * 10 for i in range(100)]
     }
-    return pd.DataFrame(data, index=dates)
+    df = pd.DataFrame(data, index=dates)
+    
+    # Convert to the format expected by the API
+    time_series = {
+        dt.strftime('%Y-%m-%d %H:%M:%S'): {
+            'open': str(row['open']),
+            'high': str(row['high']),
+            'low': str(row['low']),
+            'close': str(row['close']),
+            'volume': str(row['volume'])
+        }
+        for dt, row in df.iterrows()
+    }
+    return {'Time Series Crypto': time_series}
 
 class MockResponse:
     def json(self):
-        return {'Time Series (60min)': create_mock_data().to_dict()}
+        return create_mock_data()
     def raise_for_status(self):
         pass
 

@@ -1,0 +1,51 @@
+import os
+import pandas as pd
+import pytest
+from src.download_data import fetch_crypto_data
+from src.process_data import process_raw_data
+
+def test_data_pipeline():
+    """Test the complete data pipeline from download to processing."""
+    # 1. Test download
+    symbol = 'BTCUSD'
+    raw_file = fetch_crypto_data(symbol=symbol, interval='60min', limit=100)
+    assert raw_file is not None
+    assert os.path.exists(raw_file)
+    
+    # Verify raw data format
+    raw_df = pd.read_csv(raw_file, index_col=0, parse_dates=True)
+    expected_columns = ['open', 'high', 'low', 'close', 'volume']
+    assert list(raw_df.columns) == expected_columns
+    assert isinstance(raw_df.index, pd.DatetimeIndex)
+    
+    # 2. Test processing
+    processed_file = process_raw_data(symbol=symbol)
+    assert processed_file is not None
+    assert os.path.exists(processed_file)
+    
+    # 3. Validate processed data
+    df = pd.read_parquet(processed_file)
+    assert not df.isnull().values.any()  # Check for NaNs
+    assert df.index.is_monotonic_increasing  # Check for correct sorting
+    assert list(df.columns) == ['open', 'high', 'low', 'close', 'volume']
+    
+    # Verify data types
+    assert isinstance(df.index, pd.DatetimeIndex)
+    for col in ['open', 'high', 'low', 'close', 'volume']:
+        assert pd.api.types.is_numeric_dtype(df[col])
+    
+    # Clean up created files
+    os.remove(raw_file)
+    os.remove(processed_file)
+
+def test_download_data_error_handling():
+    """Test error handling in data download."""
+    # Test with invalid symbol
+    result = fetch_crypto_data(symbol='INVALID_PAIR', interval='60min', limit=100)
+    assert result is None
+
+def test_process_data_error_handling():
+    """Test error handling in data processing."""
+    # Test with non-existent file
+    result = process_raw_data(symbol='NONEXISTENT')
+    assert result is None 

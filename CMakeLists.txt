@@ -1,78 +1,68 @@
-cmake_minimum_required(VERSION 3.10)
-project(QSE VERSION 1.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.14)
+project(QSE VERSION 0.1.0 LANGUAGES CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find required packages
+# Enable testing
+enable_testing()
+
+# Set test data directory
+set(TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test_data" CACHE PATH "Directory containing test data files")
+
+# Find Arrow and Parquet
 find_package(Arrow REQUIRED)
 find_package(Parquet REQUIRED)
 
-# Add source files
-set(SOURCES
-    src/DataReader.cpp
-)
-
-# Add header files
-set(HEADERS
-    src/Data.h
-    src/DataReader.h
-)
-
-# Create library
-add_library(qse SHARED ${SOURCES} ${HEADERS})
-
-# Link libraries
-target_link_libraries(qse
-    PRIVATE
-    Arrow::arrow_shared
-    Parquet::parquet_shared
-)
-
-# Include directories
-target_include_directories(qse
-    PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-)
-
-# Install rules
-install(TARGETS qse
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-)
-install(FILES ${HEADERS} DESTINATION include/qse)
-
-# ===================================================================
-# Testing Setup (Google Test)
-# ===================================================================
-enable_testing()
-
+# Fetch and configure Google Test
 include(FetchContent)
 FetchContent_Declare(
     googletest
-    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG release-1.12.1
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
-
-# For macOS/Linux, to avoid re-downloading every time:
 FetchContent_MakeAvailable(googletest)
 
-# Define your test executable
+# Main library
+add_library(qse SHARED
+    src/DataReader.cpp
+    # Add other source files here
+)
+
+# Link Arrow and Parquet to main library
+target_link_libraries(qse PRIVATE 
+    Arrow::arrow_shared 
+    Parquet::parquet_shared
+)
+
+# Test executable
 add_executable(run_tests tests/test_DataReader.cpp)
 
-# Provide absolute path to the test data directory
-target_compile_definitions(run_tests PRIVATE "TEST_DATA_DIR=\"${CMAKE_SOURCE_DIR}/test_data\"")
-
-# Link your main library and Google Test to the test executable
-target_link_libraries(run_tests 
-    PRIVATE 
+# Link libraries to test executable
+target_link_libraries(run_tests PRIVATE 
     qse 
-    Arrow::arrow_shared
-    Parquet::parquet_shared
+    Arrow::arrow_shared 
+    Parquet::parquet_shared 
+    gtest 
     gtest_main
 )
 
-# Add the test to CTest so it can be run with `ctest`
+# Add compile definition for test data directory
+target_compile_definitions(run_tests PRIVATE 
+    TEST_DATA_DIR="${TEST_DATA_DIR}"
+)
+
+# Add include directories for the run_tests target
+target_include_directories(run_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+
+# Register tests
 include(GoogleTest)
-gtest_discover_tests(run_tests) 
+gtest_discover_tests(run_tests)
+
+# Set CMAKE_PREFIX_PATH to include Homebrew directories
+set(CMAKE_PREFIX_PATH "/opt/homebrew" ${CMAKE_PREFIX_PATH})
+
+# Include directories
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src) 

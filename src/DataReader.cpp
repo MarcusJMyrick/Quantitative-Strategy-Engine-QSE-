@@ -1,41 +1,42 @@
+// src/DataReader.cpp
+
 #include "DataReader.h"
 #include <arrow/io/file.h>
 #include <parquet/arrow/reader.h>
-#include <parquet/exception.h>
 #include <stdexcept>
 #include <arrow/table.h>
 #include <arrow/array.h>
+#include <iostream> // For debugging
 
 namespace qse {
 
-DataReader::DataReader(const std::string& file_path)
-    : file_path_(file_path) {
-    if (!initialize_reader()) {
-        throw std::runtime_error("Failed to initialize Parquet reader");
+// The constructor correctly loads the entire table into the `table_` member.
+DataReader::DataReader(const std::string& file_path) {
+    std::shared_ptr<arrow::io::ReadableFile> infile;
+    auto result = arrow::io::ReadableFile::Open(file_path);
+    if (!result.ok()) {
+        throw std::runtime_error("Failed to open Parquet file: " + result.status().ToString());
     }
-}
+    infile = *result;
 
-bool DataReader::initialize_reader() {
-    try {
-        // Open the Parquet file
-        std::shared_ptr<arrow::io::ReadableFile> infile;
-        PARQUET_THROW_NOT_OK(
-            arrow::io::ReadableFile::Open(file_path_).Value(&infile));
+    std::unique_ptr<parquet::arrow::FileReader> reader;
+    auto reader_status = parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader);
+    if (!reader_status.ok()) {
+        throw std::runtime_error("Failed to create Parquet file reader: " + reader_status.ToString());
+    }
 
-        // Create Parquet Arrow FileReader
-        std::unique_ptr<parquet::arrow::FileReader> file_reader;
-        PARQUET_THROW_NOT_OK(
-            parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &file_reader));
+    auto table_status = reader->ReadTable(&table_);
+    if (!table_status.ok()) {
+        throw std::runtime_error("Failed to read Parquet table: " + table_status.ToString());
+    }
 
-        // Read the table
-        std::shared_ptr<arrow::Table> table;
-        PARQUET_THROW_NOT_OK(file_reader->ReadTable(&table));
-        table_ = table;
+    // Debug output
+    std::cout << "Successfully read table with " << table_->num_rows() << " rows and " 
+              << table_->num_columns() << " columns" << std::endl;
 
-        return true;
-    } catch (const std::exception& e) {
-        // Log error and return false
-        return false;
+    // Verify we have the expected columns
+    if (table_->num_columns() != 6) {
+        throw std::runtime_error("Unexpected number of columns in Parquet file");
     }
 }
 
@@ -45,34 +46,45 @@ std::vector<Bar> DataReader::read_all_bars() {
         return bars;
     }
 
-    // Get the number of rows
-    int64_t num_rows = table_->num_rows();
+    // Get direct pointers to the specific array types for each column
+    auto timestamp_col = std::static_pointer_cast<arrow::TimestampArray>(table_->column(0)->chunk(0));
+    auto open_col      = std::static_pointer_cast<arrow::DoubleArray>(table_->column(1)->chunk(0));
+    auto high_col      = std::static_pointer_cast<arrow::DoubleArray>(table_->column(2)->chunk(0));
+    auto low_col       = std::static_pointer_cast<arrow::DoubleArray>(table_->column(3)->chunk(0));
+    auto close_col     = std::static_pointer_cast<arrow::DoubleArray>(table_->column(4)->chunk(0));
+    auto volume_col    = std::static_pointer_cast<arrow::Int64Array>(table_->column(5)->chunk(0));
+
+    size_t num_rows = table_->num_rows();
     bars.reserve(num_rows);
 
-    // Convert each row to a Bar
-    for (int64_t i = 0; i < num_rows; ++i) {
-        bars.push_back(convert_row_to_bar(i));
+    // Debug output for first row
+    if (num_rows > 0) {
+        std::cout << "First row values:" << std::endl;
+        std::cout << "Timestamp: " << timestamp_col->Value(0) << std::endl;
+        std::cout << "Open: " << open_col->Value(0) << std::endl;
+        std::cout << "High: " << high_col->Value(0) << std::endl;
+        std::cout << "Low: " << low_col->Value(0) << std::endl;
+        std::cout << "Close: " << close_col->Value(0) << std::endl;
+        std::cout << "Volume: " << volume_col->Value(0) << std::endl;
     }
 
-    return bars;
-}
-
-std::vector<Bar> DataReader::read_bars_in_range(Timestamp start_time, Timestamp end_time) {
-    std::vector<Bar> bars;
-    if (!table_) {
-        return bars;
-    }
-
-    // Get the number of rows
-    int64_t num_rows = table_->num_rows();
-    bars.reserve(num_rows);
-
-    // Convert rows within the time range to Bars
     for (int64_t i = 0; i < num_rows; ++i) {
-        Bar bar = convert_row_to_bar(i);
-        if (bar.timestamp >= start_time && bar.timestamp <= end_time) {
-            bars.push_back(bar);
-        }
+        Bar bar;
+        
+        // Convert timestamp from nanoseconds to system_clock time_point
+        auto timestamp_ns = std::chrono::nanoseconds(timestamp_col->Value(i));
+        bar.timestamp = std::chrono::system_clock::time_point(
+            std::chrono::duration_cast<std::chrono::system_clock::duration>(timestamp_ns)
+        );
+        
+        // Read numeric values
+        bar.open   = open_col->Value(i);
+        bar.high   = high_col->Value(i);
+        bar.low    = low_col->Value(i);
+        bar.close  = close_col->Value(i);
+        bar.volume = static_cast<double>(volume_col->Value(i));
+
+        bars.push_back(bar);
     }
 
     return bars;
@@ -82,33 +94,4 @@ size_t DataReader::get_bar_count() const {
     return table_ ? static_cast<size_t>(table_->num_rows()) : 0;
 }
 
-Bar DataReader::convert_row_to_bar(int64_t row_index) const {
-    if (!table_) {
-        return Bar();
-    }
-
-    // Get the columns
-    auto timestamp_col = std::static_pointer_cast<arrow::TimestampArray>(table_->column(0)->chunk(0));
-    auto open_col = std::static_pointer_cast<arrow::DoubleArray>(table_->column(1)->chunk(0));
-    auto high_col = std::static_pointer_cast<arrow::DoubleArray>(table_->column(2)->chunk(0));
-    auto low_col = std::static_pointer_cast<arrow::DoubleArray>(table_->column(3)->chunk(0));
-    auto close_col = std::static_pointer_cast<arrow::DoubleArray>(table_->column(4)->chunk(0));
-    auto volume_col = std::static_pointer_cast<arrow::DoubleArray>(table_->column(5)->chunk(0));
-
-    // Convert timestamp to system_clock::time_point
-    auto timestamp = std::chrono::system_clock::from_time_t(
-        timestamp_col->Value(row_index) / 1000000000  // Convert nanoseconds to seconds
-    );
-
-    // Create and return the Bar
-    return Bar(
-        timestamp,
-        open_col->Value(row_index),
-        high_col->Value(row_index),
-        low_col->Value(row_index),
-        close_col->Value(row_index),
-        static_cast<Volume>(volume_col->Value(row_index))
-    );
-}
-
-} // namespace qse 
+} // namespace qse

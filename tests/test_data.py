@@ -1,11 +1,33 @@
 import os
 import pandas as pd
 import pytest
-from src.download_data import fetch_crypto_data
-from src.process_data import process_raw_data
+from scripts.download_data import fetch_crypto_data
+from scripts.process_data import process_raw_data
+from unittest.mock import patch
 
-def test_data_pipeline():
+def create_mock_data():
+    """Create mock market data for testing."""
+    dates = pd.date_range(start='2024-01-01', periods=100, freq='h')
+    data = {
+        'open': [100.0 + i for i in range(100)],
+        'high': [101.0 + i for i in range(100)],
+        'low': [99.0 + i for i in range(100)],
+        'close': [100.5 + i for i in range(100)],
+        'volume': [1000.0 + i * 10 for i in range(100)]
+    }
+    return pd.DataFrame(data, index=dates)
+
+class MockResponse:
+    def json(self):
+        return {'Time Series (60min)': create_mock_data().to_dict()}
+    def raise_for_status(self):
+        pass
+
+@patch('scripts.download_data.requests.get')
+def test_data_pipeline(mock_get):
     """Test the complete data pipeline from download to processing."""
+    mock_get.return_value = MockResponse()
+
     # 1. Test download
     symbol = 'BTCUSD'
     raw_file = fetch_crypto_data(symbol=symbol, interval='60min', limit=100)

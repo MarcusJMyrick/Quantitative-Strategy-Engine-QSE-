@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import numpy as np
 from datetime import datetime, timedelta
 
 def generate_test_parquet():
@@ -10,15 +11,33 @@ def generate_test_parquet():
     start_time = datetime(2024, 1, 1)
     timestamps = [start_time + timedelta(hours=i) for i in range(100)]
     
+    # Create a more realistic price series with trends and reversals
+    np.random.seed(42)  # For reproducibility
+    base_price = 100.0
+    prices = [base_price]
+    
+    # Generate prices with random walk and trends
+    for i in range(1, 100):
+        # Add some trend and random movement
+        change = np.random.normal(0.2, 0.5)  # Mean 0.2 (upward bias), std 0.5
+        # Add some periodic behavior
+        change += 0.3 * np.sin(i / 10)  # Periodic component
+        new_price = prices[-1] + change
+        prices.append(new_price)
+    
     # Create a DataFrame with OHLCV data
     df = pd.DataFrame({
         'timestamp': timestamps,
-        'open': [100.0 + i * 0.1 for i in range(100)],
-        'high': [102.0 + i * 0.1 for i in range(100)],
-        'low': [98.0 + i * 0.1 for i in range(100)],
-        'close': [101.0 + i * 0.1 for i in range(100)],
-        'volume': [1000 + i * 10 for i in range(100)]
+        'open': prices,
+        'high': [p + abs(np.random.normal(0, 0.5)) for p in prices],
+        'low': [p - abs(np.random.normal(0, 0.5)) for p in prices],
+        'close': [p + np.random.normal(0, 0.2) for p in prices],
+        'volume': [1000 + int(np.random.normal(0, 100)) for _ in range(100)]
     })
+    
+    # Ensure high is highest and low is lowest
+    df['high'] = df[['open', 'high', 'close']].max(axis=1)
+    df['low'] = df[['open', 'low', 'close']].min(axis=1)
     
     # Convert timestamp to nanoseconds since epoch
     df['timestamp'] = pd.to_datetime(df['timestamp']).astype('int64')

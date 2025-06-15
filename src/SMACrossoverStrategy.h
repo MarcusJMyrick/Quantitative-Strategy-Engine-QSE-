@@ -1,7 +1,7 @@
 #pragma once
 
 #include "IStrategy.h"
-#include "OrderManager.h"
+#include "IOrderManager.h"
 #include <vector>
 #include <deque>
 
@@ -9,14 +9,14 @@ namespace qse {
 
 class SMACrossoverStrategy : public IStrategy {
 public:
-    SMACrossoverStrategy(OrderManager* order_manager, size_t short_window, size_t long_window);
+    SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window);
 
     void on_bar(const Bar& bar) override;
 
 private:
     double calculate_sma(const std::deque<double>& data);
 
-    OrderManager* order_manager_;
+    IOrderManager* order_manager_;
     const size_t short_window_;
     const size_t long_window_;
 

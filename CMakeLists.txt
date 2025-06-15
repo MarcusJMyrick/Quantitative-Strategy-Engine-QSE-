@@ -30,6 +30,7 @@ add_library(qse SHARED
     src/DataReader.cpp
     src/OrderManager.cpp
     src/Backtester.cpp
+    src/SMACrossoverStrategy.cpp
     # Add other source files here
 )
 
@@ -44,6 +45,7 @@ add_executable(run_tests
     tests/test_DataReader.cpp
     tests/test_OrderManager.cpp
     tests/test_Backtester.cpp
+    tests/test_Strategy.cpp
 )
 
 # Link libraries to test executable
@@ -51,8 +53,7 @@ target_link_libraries(run_tests PRIVATE
     qse 
     Arrow::arrow_shared 
     Parquet::parquet_shared 
-    gtest 
-    gtest_main
+    gmock_main
 )
 
 # Add compile definition for test data directory

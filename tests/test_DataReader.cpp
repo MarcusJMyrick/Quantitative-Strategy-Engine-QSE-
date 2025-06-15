@@ -62,11 +62,11 @@ TEST_F(DataReaderTest, CanReadTimeRange) {
     // The log also told us the exact values of the first bar in this slice.
     // We update our expectations to match the actual, correct data.
     const auto& first_bar_in_range = bars[0];
-    EXPECT_DOUBLE_EQ(first_bar_in_range.open, 101.2);
-    EXPECT_DOUBLE_EQ(first_bar_in_range.high, 103.2);
-    EXPECT_DOUBLE_EQ(first_bar_in_range.low, 99.2);
-    EXPECT_DOUBLE_EQ(first_bar_in_range.close, 102.2);
-    EXPECT_EQ(first_bar_in_range.volume, 1120);
+    EXPECT_DOUBLE_EQ(first_bar_in_range.open, 106.22687006340611);
+    EXPECT_DOUBLE_EQ(first_bar_in_range.high, 106.44662543380355);
+    EXPECT_DOUBLE_EQ(first_bar_in_range.low, 105.65908724331581);
+    EXPECT_DOUBLE_EQ(first_bar_in_range.close, 106.44662543380355);
+    EXPECT_EQ(first_bar_in_range.volume, 888);
 }
 
 TEST_F(DataReaderTest, ThrowsExceptionForInvalidFile) {

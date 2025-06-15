@@ -1,6 +1,6 @@
 #include "DataReader.h"
 #include "OrderManager.h"
-#include "SimpleStrategy.h"
+#include "SMACrossoverStrategy.h"
 #include "Backtester.h"
 #include <iostream>
 #include <memory>
@@ -11,8 +11,8 @@ int main() {
         auto data_reader = std::make_unique<qse::DataReader>("./test_data/test_bars.parquet");
         auto order_manager = std::make_unique<qse::OrderManager>();
         
-        // The strategy needs a pointer to the order manager to place trades
-        auto strategy = std::make_unique<qse::SimpleStrategy>(order_manager.get());
+        // Use the new SMACrossoverStrategy with a 10-bar short window and 30-bar long window
+        auto strategy = std::make_unique<qse::SMACrossoverStrategy>(order_manager.get(), 10, 30);
 
         // 2. Create the backtester with the components
         qse::Backtester backtester(

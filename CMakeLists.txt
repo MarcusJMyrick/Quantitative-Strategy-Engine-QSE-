@@ -28,9 +28,11 @@ FetchContent_MakeAvailable(googletest)
 # Main library
 add_library(qse SHARED
     src/DataReader.cpp
+    src/CSVDataReader.cpp
     src/OrderManager.cpp
     src/Backtester.cpp
     src/SMACrossoverStrategy.cpp
+    src/MovingAverage.cpp
     # Add other source files here
 )
 

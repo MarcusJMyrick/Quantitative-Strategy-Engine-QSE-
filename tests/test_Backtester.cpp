@@ -28,6 +28,16 @@ public:
     std::vector<Bar> read_bars_in_range(Timestamp start_time, Timestamp end_time) override {
         return {};
     }
+
+    Bar get_bar(size_t index) const override {
+        Bar bar;
+        bar.open = 100;
+        bar.high = 105;
+        bar.low = 95;
+        bar.close = 102;
+        bar.volume = 1000;
+        return bar;
+    }
 };
 
 // Simple mock strategy that just counts bars
@@ -40,7 +50,7 @@ public:
 // Simple mock order manager
 class MockOrderManager : public OrderManager {
 public:
-    MockOrderManager() : OrderManager() {}
+    MockOrderManager() : OrderManager(100000.0, 1.0, 0.01) {}
 };
 
 TEST(BacktesterTest, CanConstructAndRun) {
@@ -51,7 +61,7 @@ TEST(BacktesterTest, CanConstructAndRun) {
     qse::Backtester backtester(
         std::move(data_reader),
         std::move(strategy),
-        std::move(order_manager)
+        std::unique_ptr<IOrderManager>(std::move(order_manager))
     );
 
     // Should run without throwing

@@ -13,6 +13,7 @@ public:
     virtual std::vector<Bar> read_all_bars() = 0;
     virtual size_t get_bar_count() const = 0;
     virtual std::vector<Bar> read_bars_in_range(Timestamp start_time, Timestamp end_time) = 0;
+    virtual Bar get_bar(size_t index) const = 0;
 };
 
 } // namespace qse 

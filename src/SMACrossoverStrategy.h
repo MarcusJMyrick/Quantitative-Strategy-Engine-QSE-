@@ -2,6 +2,7 @@
 
 #include "IStrategy.h"
 #include "IOrderManager.h"
+#include "MovingAverage.h"
 #include <vector>
 #include <deque>
 
@@ -11,14 +12,16 @@ class SMACrossoverStrategy : public IStrategy {
 public:
     SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window);
 
-    void on_bar(const Bar& bar) override;
+    void on_bar(const qse::Bar& bar) override;
 
 private:
     double calculate_sma(const std::deque<double>& data);
 
     IOrderManager* order_manager_;
-    const size_t short_window_;
-    const size_t long_window_;
+    
+    // The strategy now just holds two MovingAverage objects
+    MovingAverage short_ma_;
+    MovingAverage long_ma_;
 
     std::deque<double> prices_;
     

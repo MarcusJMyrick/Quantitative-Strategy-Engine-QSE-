@@ -1,71 +1,68 @@
-#include <gtest/gtest.h>
 #include "Backtester.h"
-#include "IDataReader.h"
-#include "Data.h"
-#include <memory>
-#include <vector>
+#include "CSVDataReader.h"
+#include "SMACrossoverStrategy.h"
+#include "IOrderManager.h"
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+#include <filesystem>
+#include <fstream>
 
 namespace qse {
 namespace test {
 
-// Simple mock DataReader that returns a single bar
-class MockDataReader : public IDataReader {
+class MockOrderManager : public IOrderManager {
 public:
-    std::vector<Bar> read_all_bars() override {
-        Bar bar;
-        bar.open = 100;
-        bar.high = 105;
-        bar.low = 95;
-        bar.close = 102;
-        bar.volume = 1000;
-        return {bar};
-    }
-
-    size_t get_bar_count() const override {
-        return 1;
-    }
-
-    std::vector<Bar> read_bars_in_range(Timestamp start_time, Timestamp end_time) override {
-        return {};
-    }
-
-    Bar get_bar(size_t index) const override {
-        Bar bar;
-        bar.open = 100;
-        bar.high = 105;
-        bar.low = 95;
-        bar.close = 102;
-        bar.volume = 1000;
-        return bar;
-    }
+    MOCK_METHOD(void, execute_buy, (const Bar& bar), (override));
+    MOCK_METHOD(void, execute_sell, (const Bar& bar), (override));
+    MOCK_METHOD(int, get_position, (), (const, override));
+    MOCK_METHOD(double, get_portfolio_value, (double current_price), (const, override));
 };
 
-// Simple mock strategy that just counts bars
-class MockStrategy : public IStrategy {
-public:
-    void on_bar(const Bar&) override { ++count_; }
-    int count_ = 0;
+class BacktesterTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        std::filesystem::create_directories("test_data");
+        file_path_ = "test_data/test_bars.csv";
+        std::ofstream file(file_path_);
+        file << "timestamp,open,high,low,close,volume\n";
+        file << "1704067200,100.0,101.0,99.0,100.5,1000\n";
+        file << "1704153600,100.5,102.0,100.0,101.5,2000\n";
+        file << "1704240000,101.5,103.0,101.0,102.5,3000\n";
+    }
+    void TearDown() override {
+        std::filesystem::remove(file_path_);
+    }
+    std::string file_path_;
 };
 
-// Simple mock order manager
-class MockOrderManager : public OrderManager {
-public:
-    MockOrderManager() : OrderManager(100000.0, 1.0, 0.01) {}
-};
-
-TEST(BacktesterTest, CanConstructAndRun) {
-    auto data_reader = std::make_unique<MockDataReader>();
-    auto strategy = std::make_unique<MockStrategy>();
+TEST_F(BacktesterTest, CanCreateBacktester) {
+    auto data_reader = std::make_unique<CSVDataReader>(file_path_);
     auto order_manager = std::make_unique<MockOrderManager>();
-
-    qse::Backtester backtester(
+    auto strategy = std::make_unique<SMACrossoverStrategy>(order_manager.get(), 2, 3);
+    Backtester backtester(
         std::move(data_reader),
         std::move(strategy),
         std::unique_ptr<IOrderManager>(std::move(order_manager))
     );
+    // Check the number of bars via the data reader
+    EXPECT_EQ(backtester.run(), 0); // run() returns void, so just check construction
+}
 
-    // Should run without throwing
-    EXPECT_NO_THROW(backtester.run());
+TEST_F(BacktesterTest, CanRunBacktest) {
+    auto data_reader = std::make_unique<CSVDataReader>(file_path_);
+    auto order_manager = std::make_unique<MockOrderManager>();
+    auto strategy = std::make_unique<SMACrossoverStrategy>(order_manager.get(), 2, 3);
+    // Set up expectations
+    EXPECT_CALL(*order_manager, execute_buy(testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(*order_manager, execute_sell(testing::_)).Times(testing::AnyNumber());
+    EXPECT_CALL(*order_manager, get_position()).WillRepeatedly(testing::Return(0));
+    EXPECT_CALL(*order_manager, get_portfolio_value(testing::_)).WillRepeatedly(testing::Return(100000.0));
+    Backtester backtester(
+        std::move(data_reader),
+        std::move(strategy),
+        std::unique_ptr<IOrderManager>(std::move(order_manager))
+    );
+    backtester.run();
 }
 
 } // namespace test

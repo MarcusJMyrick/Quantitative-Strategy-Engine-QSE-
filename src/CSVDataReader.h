@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DataReader.h"
+#include "IDataReader.h"
 #include <string>
 #include <vector>
 #include <fstream>
@@ -9,7 +9,7 @@
 
 namespace qse {
 
-class CSVDataReader : public DataReader {
+class CSVDataReader : public IDataReader {
 public:
     explicit CSVDataReader(const std::string& file_path);
     

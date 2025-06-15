@@ -44,7 +44,10 @@ TEST_F(DataReaderTest, CanReadCSVFile) {
 
 TEST_F(DataReaderTest, CanReadTimeRange) {
     CSVDataReader reader(file_path_);
-    auto bars = reader.read_bars_in_range(1704067200, 1704153600);
+    using namespace std::chrono;
+    auto start_time = system_clock::time_point{seconds(1704067200)};
+    auto end_time = system_clock::time_point{seconds(1704153600)};
+    auto bars = reader.read_bars_in_range(start_time, end_time);
     EXPECT_EQ(bars.size(), 2);
 }
 

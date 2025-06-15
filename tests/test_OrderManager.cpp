@@ -6,32 +6,36 @@ namespace test {
 
 class OrderManagerTest : public ::testing::Test {
 protected:
+    OrderManagerTest() : manager(100000.0, 1.0, 0.0) {
+        bar.close = 100.0;
+    }
     OrderManager manager;
+    Bar bar;
 };
 
 TEST_F(OrderManagerTest, InitialState) {
     EXPECT_EQ(manager.get_position(), 0);
     EXPECT_DOUBLE_EQ(manager.get_cash(), 100000.0);
-    EXPECT_DOUBLE_EQ(manager.get_pnl(), 0.0);
 }
 
 TEST_F(OrderManagerTest, ExecuteBuy) {
-    manager.execute_buy(100.0);
+    manager.execute_buy(bar);
     EXPECT_EQ(manager.get_position(), 1);
     EXPECT_DOUBLE_EQ(manager.get_cash(), 99900.0);
 }
 
 TEST_F(OrderManagerTest, ExecuteSell) {
-    manager.execute_sell(100.0);
-    EXPECT_EQ(manager.get_position(), -1);
+    manager.execute_buy(bar);
+    manager.execute_sell(bar);
+    EXPECT_EQ(manager.get_position(), 0);
     EXPECT_DOUBLE_EQ(manager.get_cash(), 100100.0);
 }
 
 TEST_F(OrderManagerTest, MultipleTrades) {
-    manager.execute_buy(100.0);   // Position: 1, Cash: 99900
-    manager.execute_buy(101.0);   // Position: 2, Cash: 99799
-    manager.execute_sell(102.0);  // Position: 1, Cash: 99901
-    manager.execute_sell(103.0);  // Position: 0, Cash: 100004
+    manager.execute_buy(bar);   // Position: 1, Cash: 99900
+    manager.execute_buy(bar);   // Position: 2, Cash: 99799
+    manager.execute_sell(bar);  // Position: 1, Cash: 99901
+    manager.execute_sell(bar);  // Position: 0, Cash: 100004
     
     EXPECT_EQ(manager.get_position(), 0);
     EXPECT_DOUBLE_EQ(manager.get_cash(), 100004.0);

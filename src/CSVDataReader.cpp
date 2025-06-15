@@ -9,7 +9,7 @@
 namespace qse {
 
 CSVDataReader::CSVDataReader(const std::string& file_path)
-    : DataReader(), file_path_(file_path) {
+    : file_path_(file_path) {
     if (!std::filesystem::exists(file_path)) {
         throw std::runtime_error("File not found: " + file_path);
     }

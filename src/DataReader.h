@@ -2,10 +2,11 @@
 
 #pragma once
 
-#include "Data.h"
+#include "IDataReader.h"
 #include <memory>
 #include <string>
 #include <vector>
+#include <arrow/table.h>
 
 // Forward-declare the arrow::Table class to keep headers clean
 namespace arrow {
@@ -14,7 +15,7 @@ class Table;
 
 namespace qse {
 
-class DataReader {
+class DataReader : public IDataReader {
 public:
     /**
      * @brief Constructor that opens and reads the Parquet file immediately.
@@ -27,13 +28,13 @@ public:
      * @brief Read all bars from the loaded data.
      * @return Vector of all Bar objects.
      */
-    std::vector<Bar> read_all_bars();
+    std::vector<Bar> read_all_bars() override;
 
     /**
      * @brief Get the total number of bars in the file.
      * @return Number of bars.
      */
-    size_t get_bar_count() const;
+    size_t get_bar_count() const override;
 
 private:
     std::shared_ptr<arrow::Table> table_;

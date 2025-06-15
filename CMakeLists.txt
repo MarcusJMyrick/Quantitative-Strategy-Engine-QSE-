@@ -28,6 +28,8 @@ FetchContent_MakeAvailable(googletest)
 # Main library
 add_library(qse SHARED
     src/DataReader.cpp
+    src/OrderManager.cpp
+    src/Backtester.cpp
     # Add other source files here
 )
 
@@ -38,7 +40,11 @@ target_link_libraries(qse PRIVATE
 )
 
 # Test executable
-add_executable(run_tests tests/test_DataReader.cpp)
+add_executable(run_tests
+    tests/test_DataReader.cpp
+    tests/test_OrderManager.cpp
+    tests/test_Backtester.cpp
+)
 
 # Link libraries to test executable
 target_link_libraries(run_tests PRIVATE 
@@ -65,4 +71,8 @@ gtest_discover_tests(run_tests)
 set(CMAKE_PREFIX_PATH "/opt/homebrew" ${CMAKE_PREFIX_PATH})
 
 # Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src) 
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Create the main application executable
+add_executable(qse_app src/main.cpp)
+target_link_libraries(qse_app PRIVATE qse Arrow::arrow_shared Parquet::parquet_shared) 

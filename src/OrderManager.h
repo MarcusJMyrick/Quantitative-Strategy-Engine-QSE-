@@ -1,15 +1,34 @@
 #pragma once
-#include "Data.h"
-#include <vector>
-#include <queue>
+#include <iostream>
+
+namespace qse {
 
 class OrderManager {
 public:
-    void placeOrder(const Order& order);
-    void processOrders(const MarketData& current_data);
-    std::vector<Order> getFilledOrders() const;
-    
+    OrderManager() : position_(0), cash_(100000.0), pnl_(0.0) {}
+
+    void execute_buy(double price) {
+        // Simple logic: go long one unit
+        position_ += 1;
+        cash_ -= price;
+        std::cout << "Executed BUY at " << price << std::endl;
+    }
+
+    void execute_sell(double price) {
+        // Simple logic: go short one unit
+        position_ -= 1;
+        cash_ += price;
+        std::cout << "Executed SELL at " << price << std::endl;
+    }
+
+    int get_position() const { return position_; }
+    double get_cash() const { return cash_; }
+    double get_pnl() const { return pnl_; }
+
 private:
-    std::queue<Order> pending_orders_;
-    std::vector<Order> filled_orders_;
-}; 
+    int position_;
+    double cash_;
+    double pnl_; // To be implemented later
+};
+
+} // namespace qse 

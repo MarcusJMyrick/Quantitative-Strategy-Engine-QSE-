@@ -24,6 +24,10 @@ public:
     size_t get_bar_count() const override {
         return 1;
     }
+
+    std::vector<Bar> read_bars_in_range(Timestamp start_time, Timestamp end_time) override {
+        return {};
+    }
 };
 
 // Simple mock strategy that just counts bars

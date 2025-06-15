@@ -83,7 +83,7 @@ Bar DataReader::convert_row_to_bar(int64_t row_index) const {
     auto high_col      = std::static_pointer_cast<arrow::DoubleArray>(table_->column(2)->chunk(0));
     auto low_col       = std::static_pointer_cast<arrow::DoubleArray>(table_->column(3)->chunk(0));
     auto close_col     = std::static_pointer_cast<arrow::DoubleArray>(table_->column(4)->chunk(0));
-    auto volume_col    = std::static_pointer_cast<arrow::DoubleArray>(table_->column(5)->chunk(0));
+    auto volume_col    = std::static_pointer_cast<arrow::Int64Array>(table_->column(5)->chunk(0));
 
     auto timestamp_ns = std::chrono::nanoseconds(timestamp_col->Value(row_index));
 
@@ -95,7 +95,7 @@ Bar DataReader::convert_row_to_bar(int64_t row_index) const {
     bar.high   = high_col->Value(row_index);
     bar.low    = low_col->Value(row_index);
     bar.close  = close_col->Value(row_index);
-    bar.volume = volume_col->Value(row_index);
+    bar.volume = static_cast<double>(volume_col->Value(row_index));
 
     return bar;
 }

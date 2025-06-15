@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <arrow/table.h>
+#include <parquet/arrow/reader.h>
 
 // Forward-declare the arrow::Table class to keep headers clean
 namespace arrow {
@@ -36,14 +37,19 @@ public:
      */
     size_t get_bar_count() const override;
 
+    /**
+     * @brief Read bars in a specified range.
+     * @param start_time Start time of the range.
+     * @param end_time End time of the range.
+     * @return Vector of Bar objects in the specified range.
+     */
+    std::vector<Bar> read_bars_in_range(Timestamp start_time, Timestamp end_time) override;
+
 private:
+    std::unique_ptr<parquet::arrow::FileReader> file_reader_;
     std::shared_ptr<arrow::Table> table_;
 
-    /**
-     * @brief Helper to convert a single row from the Arrow Table to a Bar.
-     * @param row_index The index of the row to convert.
-     * @return A populated Bar object.
-     */
+    // This is the private helper function we will implement
     Bar convert_row_to_bar(int64_t row_index) const;
 };
 

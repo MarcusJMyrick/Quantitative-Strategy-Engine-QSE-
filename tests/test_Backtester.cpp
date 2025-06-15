@@ -44,8 +44,9 @@ TEST_F(BacktesterTest, CanCreateBacktester) {
         std::move(strategy),
         std::unique_ptr<IOrderManager>(std::move(order_manager))
     );
-    // Check the number of bars via the data reader
-    EXPECT_EQ(backtester.run(), 0); // run() returns void, so just check construction
+    // This asserts that the code inside the parentheses runs to completion
+    // without throwing a C++ exception.
+    EXPECT_NO_THROW(backtester.run());
 }
 
 TEST_F(BacktesterTest, CanRunBacktest) {

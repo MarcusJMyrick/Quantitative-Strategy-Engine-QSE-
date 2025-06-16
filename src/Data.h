@@ -94,4 +94,22 @@ struct Order {
           quantity(q), status(st), timestamp(ts) {}
 };
 
-} // namespace qse 
+// --- ADDON: Data structures for logging trades ---
+
+/**
+ * @brief Represents the type of a trade execution
+ */
+enum class TradeType { BUY, SELL };
+
+/**
+ * @brief Represents a single executed trade with its associated costs
+ */
+struct Trade {
+    Timestamp timestamp;   // Time of execution
+    Price price;           // Execution price (including slippage)
+    int quantity;          // Quantity traded (+ for buy, - for sell)
+    TradeType type;        // Type of trade
+    Price commission;      // Commission paid for this trade
+};
+
+} // namespace qse

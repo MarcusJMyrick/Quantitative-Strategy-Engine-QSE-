@@ -17,6 +17,7 @@ public:
     // You must also mock the other pure virtual functions from the interface
     MOCK_METHOD(int, get_position, (), (const, override));
     MOCK_METHOD(double, get_portfolio_value, (double current_price), (const, override));
+    MOCK_METHOD(const std::vector<qse::Trade>&, get_trade_log, (), (const, override));
 };
 
 // Test fixture to hold our mock object

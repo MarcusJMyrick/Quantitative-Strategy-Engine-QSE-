@@ -1,4 +1,5 @@
 #include "OrderManager.h"
+#include "Data.h" // Required for the Trade struct
 
 namespace qse {
 
@@ -17,6 +18,9 @@ void OrderManager::execute_buy(const qse::Bar& bar) {
     std::cout << "Executed BUY at " << execution_price 
               << " (Close: " << bar.close << ", Costs: " 
               << slippage_per_trade_ + commission_per_trade_ << ")" << std::endl;
+
+    // --- ADDON: Log the executed trade ---
+    trade_log_.push_back({bar.timestamp, execution_price, 1, TradeType::BUY, commission_per_trade_});
 }
 
 void OrderManager::execute_sell(const qse::Bar& bar) {
@@ -28,6 +32,9 @@ void OrderManager::execute_sell(const qse::Bar& bar) {
     std::cout << "Executed SELL at " << execution_price 
               << " (Close: " << bar.close << ", Costs: " 
               << slippage_per_trade_ + commission_per_trade_ << ")" << std::endl;
+
+    // --- ADDON: Log the executed trade ---
+    trade_log_.push_back({bar.timestamp, execution_price, -1, TradeType::SELL, commission_per_trade_});
 }
 
 int OrderManager::get_position() const {
@@ -42,4 +49,9 @@ double OrderManager::get_cash() const {
     return cash_;
 }
 
-} // namespace qse 
+// --- ADDON: Implementation for the new getter function ---
+const std::vector<Trade>& OrderManager::get_trade_log() const {
+    return trade_log_;
+}
+
+} // namespace qse

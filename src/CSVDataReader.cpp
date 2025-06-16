@@ -85,4 +85,4 @@ std::vector<Bar> CSVDataReader::read_bars_in_range(Timestamp start_time, Timesta
     return result;
 }
 
-} // namespace qse 
+} // namespace qse

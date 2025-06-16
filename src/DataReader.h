@@ -45,12 +45,19 @@ public:
      */
     std::vector<Bar> read_bars_in_range(Timestamp start_time, Timestamp end_time) override;
 
+    /**
+     * @brief Get a specific bar from the loaded data.
+     * @param index Index of the bar to retrieve.
+     * @return The retrieved Bar object.
+     */
+    Bar get_bar(size_t index) const override;
+
 private:
     std::unique_ptr<parquet::arrow::FileReader> file_reader_;
     std::shared_ptr<arrow::Table> table_;
 
     // This is the private helper function we will implement
-    Bar convert_row_to_bar(int64_t row_index) const;
+    Bar convert_row_to_bar(size_t row_index) const;
 };
 
 } // namespace qse

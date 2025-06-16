@@ -36,3 +36,6 @@ Thumbs.db
 *.parquet
 raw_*_data.csv
 processed_*_data.parquet 
+
+# Ignore environment variables
+.env

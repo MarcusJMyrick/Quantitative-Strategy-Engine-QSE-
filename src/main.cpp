@@ -1,111 +1,92 @@
-#include "CSVDataReader.h"
-#include "OrderManager.h"
-#include "Backtester.h"
-#include "SMACrossoverStrategy.h"
-#include "ThreadPool.h"
 #include <iostream>
+#include <memory>
 #include <vector>
 #include <string>
 #include <future>
 #include <filesystem>
+#include <stdexcept>
+#include <chrono>
 
-namespace fs = std::filesystem;
+#include "ThreadPool.h"
+#include "CSVDataReader.h"
+#include "SMACrossoverStrategy.h"
+#include "OrderManager.h"
+#include "Backtester.h"
 
-// Configuration for a single backtest
 struct BacktestConfig {
     std::string symbol;
+    std::string data_path;
     double initial_capital;
     int short_window;
     int long_window;
-    double transaction_cost;
+    double commission;
+    double slippage;
 };
 
-// Function to run a single backtest
 void run_backtest(const BacktestConfig& config) {
     try {
-        // Create data reader
-        std::string data_path = "data/raw_" + config.symbol + ".csv";
-        qse::CSVDataReader reader(data_path);
-        
-        // Create order manager
+        auto data_reader = std::make_unique<qse::CSVDataReader>(config.data_path);
         auto order_manager = std::make_unique<qse::OrderManager>(
-            config.initial_capital,
-            config.transaction_cost,
-            0.0  // slippage
+            config.initial_capital, config.commission, config.slippage
         );
-        
-        // Create strategy
         auto strategy = std::make_unique<qse::SMACrossoverStrategy>(
-            order_manager.get(),
-            config.short_window,
-            config.long_window
+            order_manager.get(), config.short_window, config.long_window
         );
-        
-        // Create backtester
+
+        // --- FIX: Pass the symbol from the config into the Backtester constructor ---
         qse::Backtester backtester(
-            std::make_unique<qse::CSVDataReader>(data_path),
+            config.symbol, // <-- The missing argument
+            std::move(data_reader),
             std::move(strategy),
             std::move(order_manager)
         );
-        
-        // Run backtest
-        std::cout << "Running backtest for " << config.symbol << "..." << std::endl;
+
         backtester.run();
         
-        // Get the last bar's close price for portfolio value calculation
-        auto bars = reader.read_bars_in_range(
-            std::chrono::system_clock::time_point::min(),
-            std::chrono::system_clock::time_point::max()
-        );
-        double last_price = bars.empty() ? 0.0 : bars.back().close;
-        
-        // Print results
-        std::cout << "Results for " << config.symbol << ":" << std::endl;
-        std::cout << "Final Position: " << order_manager->get_position() << std::endl;
-        std::cout << "Final Portfolio Value: " << order_manager->get_portfolio_value(last_price) << std::endl;
-        std::cout << "------------------------" << std::endl;
-        
     } catch (const std::exception& e) {
-        std::cerr << "Error in backtest for " << config.symbol << ": " << e.what() << std::endl;
+        std::cerr << "!!! Error in backtest for " << config.symbol << ": " << e.what() << std::endl;
     }
 }
 
 int main() {
     try {
-        // Create data directory if it doesn't exist
-        fs::create_directories("data");
+        auto start_time = std::chrono::high_resolution_clock::now();
+        std::filesystem::create_directories("data");
         
-        // Define backtest configurations
         std::vector<BacktestConfig> configs = {
-            {"SPY", 100000.0, 20, 50, 0.001},
-            {"AAPL", 100000.0, 20, 50, 0.001},
-            {"GOOG", 100000.0, 20, 50, 0.001}
+            {"SPY",  "data/raw_SPY.csv",  100000.0, 20, 50, 1.0, 0.01},
+            {"AAPL", "data/raw_AAPL.csv", 100000.0, 15, 45, 1.0, 0.01},
+            {"GOOG", "data/raw_GOOG.csv", 100000.0, 50, 200, 1.0, 0.01},
+            {"MSFT", "data/raw_MSFT.csv", 250000.0, 10, 30, 1.0, 0.01}
         };
         
-        // Create thread pool with number of threads equal to number of configs
         qse::ThreadPool pool(configs.size());
+        std::cout << "ThreadPool created with " << configs.size() << " threads." << std::endl;
         
-        // Vector to store futures
         std::vector<std::future<void>> futures;
         
-        // Enqueue backtests
         for (const auto& config : configs) {
-            futures.push_back(
-                pool.enqueue([config]() {
-                    run_backtest(config);
-                })
-            );
+            futures.emplace_back(pool.enqueue([config] { run_backtest(config); }));
         }
         
-        // Wait for all backtests to complete
+        std::cout << "\nAll backtests enqueued. Waiting for completion..." << std::endl;
         for (auto& future : futures) {
-            future.wait();
+            future.get();
         }
         
+        std::cout << "\nAll backtests have completed successfully." << std::endl;
+        
+        auto end_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;
+        
+        std::cout << "----------------------------------------" << std::endl;
+        std::cout << "Total execution time for all backtests: " << elapsed_time.count() << " ms" << std::endl;
+        std::cout << "----------------------------------------" << std::endl;
+
         return 0;
         
     } catch (const std::exception& e) {
-        std::cerr << "An error occurred: " << e.what() << std::endl;
+        std::cerr << "An unhandled error occurred in main: " << e.what() << std::endl;
         return 1;
     }
 }

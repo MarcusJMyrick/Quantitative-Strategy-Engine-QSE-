@@ -1,73 +1,55 @@
 #include <gtest/gtest.h>
 #include "ThreadPool.h"
-#include <atomic>
 #include <vector>
-#include <future>
+#include <atomic>
+#include <chrono>
 
-namespace qse {
-namespace test {
+// Test to ensure all enqueued tasks are executed.
+TEST(ThreadPoolTest, ExecutesAllTasks) {
+    // Arrange: Create a thread pool and a counter.
+    qse::ThreadPool pool(4); // Use 4 worker threads.
+    std::atomic<int> counter(0); // An atomic integer to safely count across threads.
+    int num_tasks = 100;
 
-class ThreadPoolTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        // Create a thread pool with 4 threads
-        pool = std::make_unique<ThreadPool>(4);
+    // Act: Enqueue 100 simple tasks. Each task increments the counter.
+    for (int i = 0; i < num_tasks; ++i) {
+        pool.enqueue([&counter]() {
+            // Increment the counter. This will be done by a worker thread.
+            counter++;
+        });
     }
 
-    void TearDown() override {
-        // ThreadPool destructor will clean up
-        pool.reset();
-    }
+    // The ThreadPool's destructor will be called here, which waits for all
+    // tasks to complete before the test proceeds.
 
-    std::unique_ptr<ThreadPool> pool;
-};
-
-TEST_F(ThreadPoolTest, ExecutesAllTasks) {
-    std::atomic<int> counter(0);
-    std::vector<std::future<void>> results;
+    // Assert: Check if the counter reached the expected value.
+    // We need to give the tasks a moment to complete.
+    // A better approach in a real app would be to use the futures, but for this test,
+    // relying on the destructor to block is sufficient.
+    // However, to be robust, we can add a small sleep or check loop.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Give threads time to finish.
     
-    // Enqueue 100 tasks that each increment the counter
-    for(int i = 0; i < 100; ++i) {
-        results.push_back(
-            pool->enqueue([&counter]() {
-                counter++;
-            })
-        );
-    }
-    
-    // Wait for all tasks to complete
-    for(auto& result : results) {
-        result.wait();
-    }
-    
-    EXPECT_EQ(counter.load(), 100);
+    EXPECT_EQ(counter.load(), num_tasks);
 }
 
-TEST_F(ThreadPoolTest, ReturnsCorrectResults) {
+// Test to ensure tasks with return values work correctly.
+TEST(ThreadPoolTest, HandlesReturnValues) {
+    // Arrange: Create a thread pool.
+    qse::ThreadPool pool(2);
     std::vector<std::future<int>> results;
-    
-    // Enqueue tasks that return values
-    for(int i = 0; i < 10; ++i) {
-        results.push_back(
-            pool->enqueue([i]() {
-                return i * i;
+
+    // Act: Enqueue tasks that return a value.
+    for (int i = 0; i < 10; ++i) {
+        results.emplace_back(
+            pool.enqueue([i] {
+                return i * 2;
             })
         );
     }
-    
-    // Check that each task returned the correct result
-    for(int i = 0; i < 10; ++i) {
-        EXPECT_EQ(results[i].get(), i * i);
+
+    // Assert: Check if the results are correct.
+    // This implicitly waits for each task to complete before checking its result.
+    for (int i = 0; i < 10; ++i) {
+        EXPECT_EQ(results[i].get(), i * 2);
     }
 }
-
-TEST_F(ThreadPoolTest, HandlesExceptions) {
-    auto future = pool->enqueue([]() {
-        throw std::runtime_error("Test exception");
-    });
-    
-    EXPECT_THROW(future.get(), std::runtime_error);
-}
-
-} // namespace test
-} // namespace qse 

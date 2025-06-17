@@ -2,51 +2,58 @@
 
 namespace qse {
 
-ThreadPool::ThreadPool(size_t num_threads) : stop(false) {
+// The constructor creates the worker threads.
+ThreadPool::ThreadPool(size_t num_threads) {
     for(size_t i = 0; i < num_threads; ++i) {
-        workers.emplace_back([this] {
-            while(true) {
+        workers_.emplace_back([this] {
+            // This is the main loop for each worker thread.
+            for(;;) {
                 std::function<void()> task;
+
                 {
-                    std::unique_lock<std::mutex> lock(this->queue_mutex);
-                    
-                    // Wait until there is a task or the pool is stopped
-                    this->condition.wait(lock, [this] {
-                        return this->stop || !this->tasks.empty();
+                    // Acquire a unique lock on the queue mutex.
+                    // The lock is released automatically when it goes out of scope.
+                    std::unique_lock<std::mutex> lock(this->queue_mutex_);
+
+                    // Wait on the condition variable. The thread will sleep until:
+                    // 1. The pool is stopped.
+                    // 2. The tasks queue is not empty.
+                    this->condition_.wait(lock, [this] {
+                        return this->stop_ || !this->tasks_.empty();
                     });
-                    
-                    // If stopped and no tasks, exit
-                    if(this->stop && this->tasks.empty()) {
+
+                    // If the pool is stopped AND the queue is empty, the thread can exit.
+                    if(this->stop_ && this->tasks_.empty()) {
                         return;
                     }
-                    
-                    // Get the next task
-                    task = std::move(this->tasks.front());
-                    this->tasks.pop();
-                }
-                
-                // Execute the task
+
+                    // Pop the next task from the queue.
+                    task = std::move(this->tasks_.front());
+                    this->tasks_.pop();
+                } // The lock is released here.
+
+                // Execute the task outside of the lock.
                 task();
             }
         });
     }
 }
 
+// The destructor makes sure all threads are properly shut down.
 ThreadPool::~ThreadPool() {
     {
-        std::unique_lock<std::mutex> lock(queue_mutex);
-        stop = true;
+        // Acquire lock to safely modify the stop flag.
+        std::unique_lock<std::mutex> lock(queue_mutex_);
+        stop_ = true;
     }
-    
-    // Notify all threads to wake up and check the stop condition
-    condition.notify_all();
-    
-    // Join all threads
-    for(std::thread &worker: workers) {
-        if(worker.joinable()) {
-            worker.join();
-        }
+
+    // Wake up all waiting threads so they can check the stop flag and exit.
+    condition_.notify_all();
+
+    // Wait for each worker thread to complete its execution.
+    for(std::thread &worker: workers_) {
+        worker.join();
     }
 }
 
-} // namespace qse 
+} // namespace qse

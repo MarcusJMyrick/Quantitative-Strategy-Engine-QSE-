@@ -7,65 +7,73 @@
 #include <condition_variable>
 #include <functional>
 #include <future>
-#include <memory>
+#include <type_traits> // For std::invoke_result_t, the modern replacement for std::result_of
 
 namespace qse {
 
 class ThreadPool {
 public:
-    // Constructor creates the thread pool with specified number of threads
-    explicit ThreadPool(size_t num_threads);
-    
-    // Destructor ensures all threads are joined
+    // The constructor launches the worker threads.
+    ThreadPool(size_t num_threads);
+
+    // The destructor stops and joins all threads.
     ~ThreadPool();
-    
-    // Prevent copying of the thread pool
-    ThreadPool(const ThreadPool&) = delete;
-    ThreadPool& operator=(const ThreadPool&) = delete;
-    
-    // Enqueue a task and return a future for its result
+
+    // Enqueues a task (function) to be executed by a worker thread.
+    // It returns a std::future, which allows the caller to wait for the task's result.
     template<class F, class... Args>
-    auto enqueue(F&& f, Args&&... args) 
-        -> std::future<typename std::result_of<F(Args...)>::type>;
+    auto enqueue(F&& f, Args&&... args)
+        -> std::future<std::invoke_result_t<F, Args...>>;
 
 private:
-    // Vector of worker threads
-    std::vector<std::thread> workers;
-    
-    // Queue of tasks
-    std::queue<std::function<void()>> tasks;
-    
-    // Synchronization
-    std::mutex queue_mutex;
-    std::condition_variable condition;
-    
-    // Flag to stop the thread pool
-    bool stop;
+    // A vector to hold the worker threads.
+    std::vector<std::thread> workers_;
+
+    // The queue of tasks to be executed.
+    std::queue<std::function<void()>> tasks_;
+
+    // Synchronization primitives to ensure thread safety.
+    std::mutex queue_mutex_;
+    std::condition_variable condition_;
+    bool stop_ = false; // Flag to signal threads to stop.
 };
 
-// Template implementation of enqueue
-template<class F, class... Args>
-auto ThreadPool::enqueue(F&& f, Args&&... args) 
-    -> std::future<typename std::result_of<F(Args...)>::type> {
-    using return_type = typename std::result_of<F(Args...)>::type;
+// --- Template Implementation ---
+// Template member function definitions must be in the header file
+// so the compiler can see them when they are instantiated in other files.
 
+template<class F, class... Args>
+auto ThreadPool::enqueue(F&& f, Args&&... args)
+    -> std::future<std::invoke_result_t<F, Args...>> {
+
+    // Use std::invoke_result_t to determine the function's return type.
+    using return_type = std::invoke_result_t<F, Args...>;
+
+    // A packaged_task wraps the function and its return value into a future.
     auto task = std::make_shared<std::packaged_task<return_type()>>(
         std::bind(std::forward<F>(f), std::forward<Args>(args)...)
     );
 
+    // Get the future from the packaged_task before moving it.
     std::future<return_type> res = task->get_future();
+
     {
-        std::unique_lock<std::mutex> lock(queue_mutex);
-        
-        // Don't allow enqueueing after stopping the pool
-        if(stop) {
+        // Lock the queue to safely add the new task.
+        std::unique_lock<std::mutex> lock(queue_mutex_);
+
+        // Don't allow enqueueing new tasks after the pool has been stopped.
+        if(stop_) {
             throw std::runtime_error("enqueue on stopped ThreadPool");
         }
-        
-        tasks.emplace([task](){ (*task)(); });
+
+        // Add the task to the queue.
+        // We wrap it in a lambda to erase its specific type, storing it as a std::function<void()>.
+        tasks_.emplace([task](){ (*task)(); });
     }
-    condition.notify_one();
+
+    // Notify one waiting worker thread that a new task is available.
+    condition_.notify_one();
     return res;
 }
 
-} // namespace qse 
+} // namespace qse

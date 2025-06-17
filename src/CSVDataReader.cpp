@@ -1,88 +1,83 @@
 #include "CSVDataReader.h"
 #include <fstream>
 #include <sstream>
-#include <stdexcept>
 #include <iostream>
-#include <filesystem>
-#include <chrono>
+#include <stdexcept>
 
 namespace qse {
 
-CSVDataReader::CSVDataReader(const std::string& file_path)
-    : file_path_(file_path) {
-    if (!std::filesystem::exists(file_path)) {
-        throw std::runtime_error("File not found: " + file_path);
-    }
-    load_bars();
+CSVDataReader::CSVDataReader(const std::string& file_path) : file_path_(file_path) {
+    load_data();
 }
 
-void CSVDataReader::load_bars() {
+// The main loading function now determines whether to load ticks or bars
+// based on the file content. This is a simple approach for now.
+void CSVDataReader::load_data() {
     std::ifstream file(file_path_);
-    if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + file_path_);
-    }
-
     std::string line;
-    // Skip header
+    if (!file.is_open()) {
+        throw std::runtime_error("File not found: " + file_path_);
+    }
+
+    // Read header to determine file type
     std::getline(file, line);
+    std::stringstream header_ss(line);
+    std::string first_col;
+    std::getline(header_ss, first_col, ',');
 
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string value;
-        Bar bar;
+    // Reset file to the beginning to re-read header in the loop
+    file.clear();
+    file.seekg(0, std::ios::beg);
+    std::getline(file, line); // Skip header again
 
-        // Parse timestamp
-        std::getline(ss, value, ',');
-        using namespace std::chrono;
-        bar.timestamp = system_clock::time_point{seconds(std::stoll(value))};
-
-        // Parse open
-        std::getline(ss, value, ',');
-        bar.open = std::stod(value);
-
-        // Parse high
-        std::getline(ss, value, ',');
-        bar.high = std::stod(value);
-
-        // Parse low
-        std::getline(ss, value, ',');
-        bar.low = std::stod(value);
-
-        // Parse close
-        std::getline(ss, value, ',');
-        bar.close = std::stod(value);
-
-        // Parse volume
-        std::getline(ss, value, ',');
-        bar.volume = std::stoull(value);
-
-        bars_.push_back(bar);
-    }
-}
-
-std::vector<Bar> CSVDataReader::read_all_bars() {
-    return bars_;
-}
-
-size_t CSVDataReader::get_bar_count() const {
-    return bars_.size();
-}
-
-Bar CSVDataReader::get_bar(size_t index) const {
-    if (index >= bars_.size()) {
-        throw std::out_of_range("Index out of range");
-    }
-    return bars_[index];
-}
-
-std::vector<Bar> CSVDataReader::read_bars_in_range(Timestamp start_time, Timestamp end_time) {
-    std::vector<Bar> result;
-    for (const auto& bar : bars_) {
-        if (bar.timestamp >= start_time && bar.timestamp <= end_time) {
-            result.push_back(bar);
+    // Simple check: if the first column is "timestamp", assume it's a bar file.
+    // Otherwise, assume it's a tick file (e.g., from a different source).
+    // A more robust implementation would have explicit readers for each format.
+    if (first_col == "timestamp") { // Assuming this is our bar file format
+         while (std::getline(file, line)) {
+            std::stringstream ss(line);
+            std::string item;
+            std::vector<std::string> tokens;
+            while(std::getline(ss, item, ',')) {
+                tokens.push_back(item);
+            }
+            if(tokens.size() >= 6) {
+                Bar bar;
+                bar.timestamp = Timestamp(std::chrono::seconds(std::stoll(tokens[0])));
+                bar.open = std::stod(tokens[1]);
+                bar.high = std::stod(tokens[2]);
+                bar.low = std::stod(tokens[3]);
+                bar.close = std::stod(tokens[4]);
+                bar.volume = std::stoll(tokens[5]);
+                bars_.push_back(bar);
+            }
+        }
+    } else { // Assume it's a tick file with format: timestamp,price,volume
+        while (std::getline(file, line)) {
+            std::stringstream ss(line);
+            std::string item;
+            std::vector<std::string> tokens;
+             while(std::getline(ss, item, ',')) {
+                tokens.push_back(item);
+            }
+            if(tokens.size() >= 3) {
+                Tick tick;
+                tick.timestamp = Timestamp(std::chrono::seconds(std::stoll(tokens[0])));
+                tick.price = std::stod(tokens[1]);
+                tick.volume = std::stoll(tokens[2]);
+                ticks_.push_back(tick);
+            }
         }
     }
-    return result;
+}
+
+const std::vector<qse::Tick>& CSVDataReader::read_all_ticks() {
+    return ticks_;
+}
+
+const std::vector<qse::Bar>& CSVDataReader::read_all_bars() {
+    // This is now less used, but we keep it for backward compatibility and testing.
+    return bars_;
 }
 
 } // namespace qse

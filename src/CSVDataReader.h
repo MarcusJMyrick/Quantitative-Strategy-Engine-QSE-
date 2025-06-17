@@ -1,27 +1,28 @@
 #pragma once
-
 #include "IDataReader.h"
-#include <string>
 #include <vector>
-#include <fstream>
-#include <sstream>
-#include <stdexcept>
+#include <string>
+#include "Data.h"
 
 namespace qse {
 
 class CSVDataReader : public IDataReader {
 public:
-    explicit CSVDataReader(const std::string& file_path);
+    CSVDataReader(const std::string& file_path);
     
-    std::vector<Bar> read_all_bars() override;
-    size_t get_bar_count() const override;
-    std::vector<Bar> read_bars_in_range(Timestamp start_time, Timestamp end_time) override;
-    Bar get_bar(size_t index) const override;
+    // Implement the new tick reading method.
+    const std::vector<Tick>& read_all_ticks() override;
+    
+    // We still need to implement the bar reading method from the interface.
+    const std::vector<Bar>& read_all_bars() override;
 
 private:
+    void load_data(); // Renamed to be more generic
     std::string file_path_;
+    
+    // The reader now stores both ticks and bars.
     std::vector<Bar> bars_;
-    void load_bars();
+    std::vector<Tick> ticks_; 
 };
 
-} // namespace qse 
+} // namespace qse

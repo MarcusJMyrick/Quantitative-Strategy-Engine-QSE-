@@ -2,7 +2,9 @@
 
 #include "IStrategy.h"
 #include "IOrderManager.h"
-#include "MovingAverage.h" // The helper class does all the work
+#include "MovingAverage.h"
+#include "BarBuilder.h" // <-- Include the new BarBuilder
+#include <memory>
 
 namespace qse {
 
@@ -10,15 +12,20 @@ class SMACrossoverStrategy : public IStrategy {
 public:
     SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window);
 
+    // Implement the new on_tick method from the interface.
+    void on_tick(const qse::Tick& tick) override;
+
+    // The on_bar method remains, but its role changes slightly.
     void on_bar(const qse::Bar& bar) override;
 
 private:
     IOrderManager* order_manager_;
-    
-    // The strategy now ONLY holds two MovingAverage objects.
-    // They manage all the state (prices, sums, etc.) internally.
     MovingAverage short_ma_;
     MovingAverage long_ma_;
+    
+    // --- NEW: The strategy now owns a BarBuilder ---
+    // It will use this to construct bars from the incoming tick stream.
+    BarBuilder bar_builder_;
 };
 
 } // namespace qse

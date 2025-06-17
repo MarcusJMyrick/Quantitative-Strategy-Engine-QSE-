@@ -8,7 +8,7 @@
 
 namespace qse {
 
-// The constructor now accepts the symbol to ensure results are saved uniquely.
+// Constructor remains the same
 Backtester::Backtester(
     const std::string& symbol,
     std::unique_ptr<IDataReader> data_reader,
@@ -21,63 +21,42 @@ Backtester::Backtester(
 {}
 
 void Backtester::run() {
-    std::cout << "--- Starting Backtest for " << symbol_ << " ---" << std::endl;
+    std::cout << "--- Starting Tick-Driven Backtest for " << symbol_ << " ---" << std::endl;
     
-    // OPTIMIZATION 1: Get data by const reference to avoid a massive copy.
-    const std::vector<Bar>& all_data = data_reader_->read_all_bars();
+    // --- CHANGE: Read all TICKS instead of bars ---
+    const std::vector<Tick>& all_ticks = data_reader_->read_all_ticks();
     
-    std::cout << "Processing " << all_data.size() << " bars for " << symbol_ << "..." << std::endl;
-    if (all_data.empty()) {
-        std::cout << "No data to process for " << symbol_ << ". Exiting." << std::endl;
+    std::cout << "Processing " << all_ticks.size() << " ticks for " << symbol_ << "..." << std::endl;
+    if (all_ticks.empty()) {
+        std::cout << "No tick data to process for " << symbol_ << ". Exiting." << std::endl;
         return;
     }
 
-    std::vector<std::pair<Timestamp, double>> equity_curve;
-
-    // OPTIMIZATION 2: Pre-allocate all needed memory for the vector at once.
-    // This prevents many slow memory re-allocations inside the hot loop.
-    equity_curve.reserve(all_data.size());
-
-    for (const auto& bar : all_data) {
-        strategy_->on_bar(bar);
-        double current_value = order_manager_->get_portfolio_value(bar.close);
-        equity_curve.emplace_back(bar.timestamp, current_value);
+    // --- The main loop now iterates over TICKS ---
+    for (const auto& tick : all_ticks) {
+        // Feed each tick to the strategy.
+        strategy_->on_tick(tick);
+          
+        // The equity curve logic would need to be updated to record value more frequently.
+        // For now, we'll omit it to simplify the transition to a tick-based system.
     }
-    
+      
     std::filesystem::create_directories("results");
-
-    // Use the symbol to create unique filenames, preventing race conditions.
+    
+    // --- The results generation would also need to be updated ---
+    // For now, we comment this part out as the equity curve is not being built
+    // and the order manager is not being called in the same way.
+    /*
     std::string equity_filename = "results/equity_" + symbol_ + ".csv";
-    std::ofstream equity_file(equity_filename);
-    equity_file << "timestamp,portfolio_value\n";
-    for (const auto& record : equity_curve) {
-        auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(record.first);
-        equity_file << seconds.time_since_epoch().count() << "," << record.second << "\n";
-    }
-    equity_file.close();
-    std::cout << "Equity curve for " << symbol_ << " saved to " << equity_filename << std::endl;
-
+    ...
     std::string tradelog_filename = "results/tradelog_" + symbol_ + ".csv";
-    std::stringstream trade_log_ss;
-    trade_log_ss << "timestamp,type,price,quantity,commission\n";
-    const auto& trade_log = order_manager_->get_trade_log();
-    for (const auto& trade : trade_log) {
-        auto seconds = std::chrono::time_point_cast<std::chrono::seconds>(trade.timestamp);
-        trade_log_ss << seconds.time_since_epoch().count() << ","
-                     << (trade.type == TradeType::BUY ? "BUY" : "SELL") << ","
-                     << trade.price << "," << trade.quantity << ","
-                     << trade.commission << "\n";
-    }
-    std::ofstream trade_log_file(tradelog_filename);
-    trade_log_file << trade_log_ss.str();
-    trade_log_file.close();
-    std::cout << "Trade log for " << symbol_ << " saved to " << tradelog_filename << std::endl;
+    ...
+    */
 
     std::cout << "--- Backtest Finished for " << symbol_ << " ---" << std::endl;
-    std::cout << "Final Position: " << order_manager_->get_position() << std::endl;
-    if (!all_data.empty()) {
-        std::cout << "Final Portfolio Value: " << order_manager_->get_portfolio_value(all_data.back().close) << std::endl;
-    }
+    
+    // Reporting final value is more complex without a simple "last bar".
+    // We will revisit more advanced reporting in a later phase.
 }
 
 } // namespace qse

@@ -3,43 +3,51 @@
 
 namespace qse {
 
+// The constructor now also initializes the BarBuilder.
+// For this example, we'll build 1-day bars.
 SMACrossoverStrategy::SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window)
     : order_manager_(order_manager),
       short_ma_(short_window),
-      long_ma_(long_window)
-{
-    if (short_window >= long_window) {
-        throw std::invalid_argument("Short window must be smaller than long window.");
+      long_ma_(long_window),
+      bar_builder_(std::chrono::hours(24)) // Build daily bars from ticks
+{}
+
+// This is now the primary entry point for new data.
+// It receives every single tick from the backtester.
+void SMACrossoverStrategy::on_tick(const qse::Tick& tick) {
+    // We pass every tick to our BarBuilder.
+    auto completed_bar = bar_builder_.add_tick(tick);
+
+    // The BarBuilder will return a bar if one has just been completed.
+    if (completed_bar.has_value()) {
+        // ...then we call our existing on_bar logic with the newly created bar.
+        on_bar(*completed_bar);
     }
 }
 
+// This function contains the original crossover logic. It's now called by on_tick
+// only when a full bar has been constructed.
 void SMACrossoverStrategy::on_bar(const qse::Bar& bar) {
-    // First, get the value of the moving averages BEFORE the new bar.
     double prev_short_val = short_ma_.get_value();
     double prev_long_val = long_ma_.get_value();
 
-    // Now, update both moving averages with the new closing price.
     short_ma_.update(bar.close);
     long_ma_.update(bar.close);
 
-    // Wait until the long window (the larger one) is ready.
     if (!long_ma_.is_ready()) {
         return;
     }
     
-    // Get the new, updated values.
     double current_short_val = short_ma_.get_value();
     double current_long_val = long_ma_.get_value();
 
-    // --- Crossover Logic ---
-    // A crossover only happens if the previous values were not yet calculated (i.e., were 0)
-    // or if the relationship between them has flipped.
     if (prev_long_val > 0) { // Guard against trading on the very first calculation
-        // Golden Cross (Buy Signal): was below, is now above.
+        // Golden Cross (Buy Signal)
         if (prev_short_val < prev_long_val && current_short_val > current_long_val) {
+            // Now that we have a full Bar object, we can execute trades as before.
             order_manager_->execute_buy(bar);
         }
-        // Death Cross (Sell Signal): was above, is now below.
+        // Death Cross (Sell Signal)
         else if (prev_short_val > prev_long_val && current_short_val < current_long_val) {
             order_manager_->execute_sell(bar);
         }

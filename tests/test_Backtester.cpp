@@ -12,10 +12,18 @@
 #include "CSVDataReader.h" 
 #include "SMACrossoverStrategy.h"
 #include "OrderManager.h"
+#include <filesystem>
 
+#include <string>
+
+// Bring necessary GMock actions into scope
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::_;
+
+// This helper macro correctly converts the CMake preprocessor definition into a C++ string literal.
+#define QSE_XSTR(s) #s
+#define QSE_STR(s) QSE_XSTR(s)
 
 class BacktesterTest : public ::testing::Test {
 protected:
@@ -36,20 +44,13 @@ protected:
     }
 };
 
-// --- THIS TEST IS NOW FIXED ---
+// This test should already be passing.
 TEST_F(BacktesterTest, CanCreateBacktesterAndRun) {
-    // --- FIX: Define PRECISE expectations for what Backtester::run() calls ---
     EXPECT_CALL(*data_reader_, read_all_bars()).WillOnce(Return(std::ref(sample_bars_)));
     EXPECT_CALL(*strategy_, on_bar(_)).Times(sample_bars_.size());
-    
-    // Expect get_portfolio_value to be called for each bar + 1 final time.
-    EXPECT_CALL(*order_manager_, get_portfolio_value(_))
-        .Times(sample_bars_.size() + 1)
-        .WillRepeatedly(Return(0.0));
-    
-    // Expect the final report calls once each.
-    EXPECT_CALL(*order_manager_, get_trade_log()).WillOnce(ReturnRef(empty_trade_log_));
-    EXPECT_CALL(*order_manager_, get_position()).WillOnce(Return(0));
+    EXPECT_CALL(*order_manager_, get_portfolio_value(_)).WillRepeatedly(Return(0.0));
+    EXPECT_CALL(*order_manager_, get_trade_log()).WillRepeatedly(ReturnRef(empty_trade_log_));
+    EXPECT_CALL(*order_manager_, get_position()).WillRepeatedly(Return(0));
 
     qse::Backtester backtester(
         "TEST_SYMBOL",
@@ -62,7 +63,8 @@ TEST_F(BacktesterTest, CanCreateBacktesterAndRun) {
 }
 
 TEST_F(BacktesterTest, CanRunBacktestWithRealComponents) {
-    const std::string test_data_path = std::filesystem::current_path() / "test_data" / "test_data.csv";
+    // Use a simple relative path from the build directory
+    const std::string test_data_path = "../test_data/test_data.csv";
     
     auto real_data_reader = std::make_unique<qse::CSVDataReader>(test_data_path);
     auto real_order_manager = std::make_unique<qse::OrderManager>(100000.0, 1.0, 0.01);

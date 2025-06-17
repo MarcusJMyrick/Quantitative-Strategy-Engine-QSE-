@@ -38,6 +38,7 @@ add_library(qse SHARED
     src/Backtester.cpp
     src/SMACrossoverStrategy.cpp
     src/MovingAverage.cpp
+    src/ThreadPool.cpp
     # Add other source files here
 )
 
@@ -53,6 +54,7 @@ add_executable(run_tests
     tests/test_OrderManager.cpp
     tests/test_Backtester.cpp
     tests/test_Strategy.cpp
+    tests/test_ThreadPool.cpp
 )
 
 # Link libraries to test executable

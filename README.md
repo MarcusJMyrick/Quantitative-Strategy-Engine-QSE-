@@ -22,7 +22,7 @@ The system is built on two core principles:
 
 The engine can run backtests on multiple symbols in parallel. The `analyze.py` script then consolidates all the results into a single, comprehensive summary plot and a detailed performance report for each asset.
 
-![Multi-Asset Equity Curve Summary](docs/plots/equity_curves_summary.png)
+![Multi-Asset Equity Curve Summary](plots/equity_curves_summary.png)
 
 | Symbol | Total Return | Sharpe Ratio | Max Drawdown |
 | :----: | :----------: | :----------: | :----------: |

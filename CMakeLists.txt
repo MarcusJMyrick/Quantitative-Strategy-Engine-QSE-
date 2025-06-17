@@ -40,6 +40,7 @@ add_library(qse SHARED
     src/MovingAverage.cpp
     src/ThreadPool.cpp
     src/ParquetDataReader.cpp
+    src/BarBuilder.cpp
 )
 
 # Link libraries to qse
@@ -62,6 +63,7 @@ add_executable(run_tests
     tests/test_Backtester.cpp
     tests/test_Strategy.cpp
     tests/test_ThreadPool.cpp
+    tests/test_BarBuilder.cpp
 )
 
 # Link libraries to test executable (Preserving original structure)

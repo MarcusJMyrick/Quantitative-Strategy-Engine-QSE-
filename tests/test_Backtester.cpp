@@ -38,9 +38,36 @@ protected:
         strategy_ = new MockStrategy();
         order_manager_ = new MockOrderManager();
 
-        sample_bars_.push_back({{std::chrono::system_clock::now()}, 100.0, 101.0, 99.0, 100.5, 1000});
-        sample_bars_.push_back({{std::chrono::system_clock::now()}, 100.5, 102.0, 100.0, 101.5, 1200});
-        sample_bars_.push_back({{std::chrono::system_clock::now()}, 101.5, 103.0, 101.0, 102.5, 1100});
+        // Create sample bars with symbol field
+        qse::Bar bar1;
+        bar1.symbol = "TEST";
+        bar1.timestamp = std::chrono::system_clock::now();
+        bar1.open = 100.0;
+        bar1.high = 101.0;
+        bar1.low = 99.0;
+        bar1.close = 100.5;
+        bar1.volume = 1000;
+        sample_bars_.push_back(bar1);
+
+        qse::Bar bar2;
+        bar2.symbol = "TEST";
+        bar2.timestamp = std::chrono::system_clock::now();
+        bar2.open = 100.5;
+        bar2.high = 102.0;
+        bar2.low = 100.0;
+        bar2.close = 101.5;
+        bar2.volume = 1200;
+        sample_bars_.push_back(bar2);
+
+        qse::Bar bar3;
+        bar3.symbol = "TEST";
+        bar3.timestamp = std::chrono::system_clock::now();
+        bar3.open = 101.5;
+        bar3.high = 103.0;
+        bar3.low = 101.0;
+        bar3.close = 102.5;
+        bar3.volume = 1100;
+        sample_bars_.push_back(bar3);
     }
 };
 

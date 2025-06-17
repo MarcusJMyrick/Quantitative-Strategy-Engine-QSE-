@@ -7,109 +7,83 @@
 
 namespace qse {
 
-// Timestamp type using system_clock
+// Use type aliases for clarity and easy changes later.
 using Timestamp = std::chrono::system_clock::time_point;
-
-// Price type using double for precision
 using Price = double;
-
-// Volume type using uint64_t for large numbers
 using Volume = uint64_t;
 
 /**
- * @brief Represents a single price bar (OHLCV data)
+ * @brief Represents a single price bar (OHLCV data).
  */
 struct Bar {
-    Timestamp timestamp;  // Bar's timestamp
-    Price open;          // Opening price
-    Price high;          // Highest price
-    Price low;           // Lowest price
-    Price close;         // Closing price
-    Volume volume;       // Trading volume
+    std::string symbol;    // Symbol/identifier for the asset
+    Timestamp timestamp;   // Bar's start timestamp
+    Price open;           // Opening price
+    Price high;           // Highest price during the bar
+    Price low;            // Lowest price during the bar
+    Price close;          // Closing price
+    Volume volume;        // Total volume traded during the bar
 
-    // Default constructor
-    Bar() = default;
-
-    // Constructor with all fields
-    Bar(Timestamp ts, Price o, Price h, Price l, Price c, Volume vol)
-        : timestamp(ts), open(o), high(h), low(l), close(c), volume(vol) {}
+    Bar() = default; // Default constructor
 };
 
 /**
- * @brief Represents a single market tick
+ * @brief Represents a single market trade event (a tick).
  */
 struct Tick {
-    Timestamp timestamp;  // Tick's timestamp
-    Price price;         // Last traded price
-    Volume volume;       // Volume at this price
-    std::string symbol;  // Trading symbol
-
-    // Default constructor
-    Tick() = default;
-
-    // Constructor with all fields
-    Tick(Timestamp ts, Price p, Volume vol, const std::string& sym)
-        : timestamp(ts), price(p), volume(vol), symbol(sym) {}
+    Timestamp timestamp;  // Tick's exact timestamp
+    Price price;         // Price of the trade
+    Volume volume;       // Volume of the trade
+    
+    // Note: Symbol can be added if the data source provides it per-tick.
+    // For now, we assume the DataReader handles one symbol at a time.
+    
+    Tick() = default; // Default constructor
 };
 
 /**
- * @brief Represents an order in the system
+ * @brief Represents an order submitted to the market.
+ * This is a foundational struct for a future, more advanced OrderManager.
  */
 struct Order {
-    enum class Type {
-        MARKET,
-        LIMIT,
-        STOP,
-        STOP_LIMIT
-    };
+    enum class Type { MARKET, LIMIT, STOP, STOP_LIMIT };
+    enum class Side { BUY, SELL };
+    enum class Status { PENDING, FILLED, CANCELLED, REJECTED };
 
-    enum class Side {
-        BUY,
-        SELL
-    };
-
-    enum class Status {
-        PENDING,
-        FILLED,
-        CANCELLED,
-        REJECTED
-    };
-
-    std::string order_id;     // Unique order identifier
-    std::string symbol;       // Trading symbol
-    Type type;               // Order type
-    Side side;               // Order side
-    Price price;             // Order price
-    Volume quantity;         // Order quantity
-    Status status;           // Order status
-    Timestamp timestamp;     // Order timestamp
-
-    // Default constructor
-    Order() = default;
-
-    // Constructor with all fields
-    Order(const std::string& id, const std::string& sym, Type t, Side s,
-          Price p, Volume q, Status st, Timestamp ts)
-        : order_id(id), symbol(sym), type(t), side(s), price(p),
-          quantity(q), status(st), timestamp(ts) {}
+    std::string order_id;
+    std::string symbol;
+    Type type;
+    Side side;
+    Price price;
+    Volume quantity;
+    Status status;
+    Timestamp timestamp;
+    
+    Order() = default; // Default constructor
 };
 
-// --- ADDON: Data structures for logging trades ---
+// --- Data structures for logging trades ---
 
 /**
- * @brief Represents the type of a trade execution
+ * @brief Represents the direction of a trade execution.
  */
 enum class TradeType { BUY, SELL };
 
 /**
- * @brief Represents a single executed trade with its associated costs
+ * @brief Represents a single executed trade with its associated costs.
+ * This is used for generating the final performance and trade logs.
  */
 struct Trade {
-    Timestamp timestamp;   // Time of execution
-    Price price;           // Execution price (including slippage)
-    int quantity;          // Quantity traded (+ for buy, - for sell)
-    TradeType type;        // Type of trade
-    Price commission;      // Commission paid for this trade
+    Timestamp timestamp;
+    
+    // --- ADDITION: Added symbol to support multi-asset logging ---
+    // This is crucial for distinguishing trades when running parallel backtests.
+    std::string symbol;      
+
+    TradeType type;
+    Price price;
+    int quantity;
+    Price commission;
 };
 
 } // namespace qse

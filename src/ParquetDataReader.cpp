@@ -21,7 +21,9 @@ void ParquetDataReader::load_bars() {
 
         // Create a Parquet reader
         std::unique_ptr<parquet::arrow::FileReader> reader;
-        PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader));
+        auto result = parquet::arrow::OpenFile(infile, arrow::default_memory_pool());
+        PARQUET_THROW_NOT_OK(result.status());
+        reader = std::move(result).ValueOrDie();
 
         // Read the entire file into a Table
         std::shared_ptr<arrow::Table> table;
@@ -34,10 +36,12 @@ void ParquetDataReader::load_bars() {
         auto low_col = std::static_pointer_cast<arrow::DoubleArray>(table->GetColumnByName("low")->chunk(0));
         auto close_col = std::static_pointer_cast<arrow::DoubleArray>(table->GetColumnByName("close")->chunk(0));
         auto volume_col = std::static_pointer_cast<arrow::Int64Array>(table->GetColumnByName("volume")->chunk(0));
+        auto symbol_col = std::static_pointer_cast<arrow::StringArray>(table->GetColumnByName("symbol")->chunk(0));
 
         // Convert to our Bar format
         for (int64_t i = 0; i < table->num_rows(); ++i) {
             Bar bar;
+            bar.symbol = symbol_col->GetString(i);
             bar.timestamp = std::chrono::system_clock::time_point{std::chrono::seconds{timestamp_col->Value(i)}};
             bar.open = open_col->Value(i);
             bar.high = high_col->Value(i);

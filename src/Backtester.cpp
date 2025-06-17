@@ -4,7 +4,7 @@
 #include <vector>
 #include <utility>      // Required for std::pair
 #include <filesystem>   // Required for creating directories
-#include <sstream>      // <-- Added for optimized string building
+#include <sstream>      // For optimized string building
 
 namespace qse {
 
@@ -20,7 +20,8 @@ Backtester::Backtester(
 void Backtester::run() {
     std::cout << "--- Starting Backtest ---" << std::endl;
       
-    std::vector<Bar> all_data = data_reader_->read_all_bars();
+    // OPTIMIZATION 1: Get data by const reference to avoid a massive copy.
+    const std::vector<Bar>& all_data = data_reader_->read_all_bars();
     std::cout << "Processing " << all_data.size() << " bars..." << std::endl;
 
     if (all_data.empty()) {
@@ -30,6 +31,10 @@ void Backtester::run() {
 
     // A vector to store our equity history
     std::vector<std::pair<Timestamp, double>> equity_curve;
+
+    // OPTIMIZATION 2: Pre-allocate all needed memory for the vector at once.
+    // This prevents many slow memory re-allocations inside the hot loop.
+    equity_curve.reserve(all_data.size());
 
     for (const auto& bar : all_data) {
         strategy_->on_bar(bar);
@@ -75,7 +80,9 @@ void Backtester::run() {
     std::cout << "--- Backtest Finished ---" << std::endl;
     std::cout << "Final Position: " << order_manager_->get_position() << std::endl;
     // Correctly calculate final value using the last known price
-    std::cout << "Final Portfolio Value: " << order_manager_->get_portfolio_value(all_data.back().close) << std::endl;
+    if (!all_data.empty()) {
+        std::cout << "Final Portfolio Value: " << order_manager_->get_portfolio_value(all_data.back().close) << std::endl;
+    }
 }
 
 } // namespace qse

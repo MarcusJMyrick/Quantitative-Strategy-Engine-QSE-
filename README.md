@@ -129,5 +129,17 @@ When you are actively working on the C++ code, you don't need to re-download the
 ---
 ### License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Copyright (c) 2025 Marcus J. Myrick  
+All rights reserved.
+
+This source code is made publicly available for **viewing and educational purposes only**.
+
+❌ Reproduction  
+❌ Redistribution  
+❌ Modification  
+❌ Commercial or non-commercial use  
+
+...are strictly prohibited without **explicit written permission** from the author.
+
+Contact: marcusjmyrick@gmail.com
 

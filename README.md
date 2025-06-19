@@ -1,7 +1,7 @@
 # Quantitative Strategy Engine (QSE)
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com/MarcusJMyrick/Quantitative-Strategy-Engine-QSE-)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 
 A high-performance, multi-threaded, event-driven backtesting engine in C++ designed to develop, test, and analyze quantitative trading strategies across a universe of assets.
 

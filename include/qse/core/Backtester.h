@@ -3,9 +3,9 @@
 #include <memory>
 #include <string> // <-- Add for std::string
 
-#include "IDataReader.h"
-#include "IStrategy.h"
-#include "IOrderManager.h"
+#include "qse/data/IDataReader.h"
+#include "qse/strategy/IStrategy.h"
+#include "qse/order/IOrderManager.h"
 
 namespace qse {
 

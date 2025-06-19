@@ -1,5 +1,5 @@
-#include "OrderManager.h"
-#include "Data.h" // Required for the Trade struct
+#include "qse/order/OrderManager.h"
+#include "qse/data/Data.h" // Required for the Trade struct
 
 namespace qse {
 

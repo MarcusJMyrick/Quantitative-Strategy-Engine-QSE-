@@ -7,11 +7,11 @@
 #include <stdexcept>
 #include <chrono>
 
-#include "ThreadPool.h"
-#include "CSVDataReader.h"
-#include "SMACrossoverStrategy.h"
-#include "OrderManager.h"
-#include "Backtester.h"
+#include "qse/core/ThreadPool.h"
+#include "qse/data/CSVDataReader.h"
+#include "qse/strategy/SMACrossoverStrategy.h"
+#include "qse/order/OrderManager.h"
+#include "qse/core/Backtester.h"
 
 struct BacktestConfig {
     std::string symbol;

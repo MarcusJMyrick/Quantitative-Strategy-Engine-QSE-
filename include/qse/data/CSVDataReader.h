@@ -1,8 +1,8 @@
 #pragma once
-#include "IDataReader.h"
+#include "qse/data/IDataReader.h"
 #include <vector>
 #include <string>
-#include "Data.h"
+#include "qse/data/Data.h"
 
 namespace qse {
 

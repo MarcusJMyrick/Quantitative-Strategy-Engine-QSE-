@@ -1,9 +1,9 @@
 #pragma once
 
-#include "IStrategy.h"
-#include "IOrderManager.h"
-#include "MovingAverage.h"
-#include "BarBuilder.h" // <-- Include the new BarBuilder
+#include "qse/strategy/IStrategy.h"
+#include "qse/order/IOrderManager.h"
+#include "qse/strategy/MovingAverage.h"
+#include "qse/data/BarBuilder.h" // <-- Include the new BarBuilder
 #include <memory>
 
 namespace qse {

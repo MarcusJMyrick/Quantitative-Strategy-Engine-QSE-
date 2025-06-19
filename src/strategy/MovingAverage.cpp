@@ -1,4 +1,4 @@
-#include "MovingAverage.h"
+#include "qse/strategy/MovingAverage.h"
 
 namespace qse {
 

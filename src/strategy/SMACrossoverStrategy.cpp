@@ -1,4 +1,4 @@
-#include "SMACrossoverStrategy.h"
+#include "qse/strategy/SMACrossoverStrategy.h"
 #include <iostream>
 
 namespace qse {

@@ -31,16 +31,16 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 # --- Main library ---
-# Adding ThreadPool.cpp to the main qse library
+# Adding source files using their new paths
 add_library(qse SHARED
-    src/CSVDataReader.cpp
-    src/OrderManager.cpp
-    src/Backtester.cpp
-    src/SMACrossoverStrategy.cpp
-    src/MovingAverage.cpp
-    src/ThreadPool.cpp
-    src/ParquetDataReader.cpp
-    src/BarBuilder.cpp
+    src/core/Backtester.cpp
+    src/core/ThreadPool.cpp
+    src/data/BarBuilder.cpp
+    src/data/CSVDataReader.cpp
+    src/data/ParquetDataReader.cpp
+    src/order/OrderManager.cpp
+    src/strategy/MovingAverage.cpp
+    src/strategy/SMACrossoverStrategy.cpp
 )
 
 # Link libraries to qse
@@ -49,14 +49,13 @@ target_link_libraries(qse PRIVATE
     Parquet::parquet_shared
 )
 
-# Include directories for qse
+# Include directories for qse - updated to use new structure
 target_include_directories(qse PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 # --- Test executable ---
-# Adding test_ThreadPool.cpp to the test executable
+# Adding test files with updated paths
 add_executable(run_tests
     tests/test_DataReader.cpp
     tests/test_OrderManager.cpp
@@ -75,10 +74,9 @@ target_link_libraries(run_tests PRIVATE
     gmock_main
 )
 
-# Include directories for tests
+# Include directories for tests - updated to use new structure
 target_include_directories(run_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/tests
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/mocks
 )
@@ -100,31 +98,11 @@ gtest_discover_tests(run_tests)
 # Set CMAKE_PREFIX_PATH to include Homebrew directories
 set(CMAKE_PREFIX_PATH "/opt/homebrew" ${CMAKE_PREFIX_PATH})
 
-# Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
-
 # --- Create the main application executable ---
 add_executable(qse_app src/main.cpp)
 target_link_libraries(qse_app PRIVATE qse Arrow::arrow_shared Parquet::parquet_shared)
 
-set(SOURCES
-    src/main.cpp
-    src/Backtester.cpp
-    src/CSVDataReader.cpp
-    src/ParquetDataReader.cpp
-    src/OrderManager.cpp
-    src/SMACrossoverStrategy.cpp
-    src/ThreadPool.cpp
-)
-
-set(HEADERS
-    include/Backtester.h
-    include/IDataReader.h
-    include/IStrategy.h
-    include/IOrderManager.h
-    include/CSVDataReader.h
-    include/ParquetDataReader.h
-    include/OrderManager.h
-    include/SMACrossoverStrategy.h
-    include/ThreadPool.h
+# Include directories for main app
+target_include_directories(qse_app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
 )

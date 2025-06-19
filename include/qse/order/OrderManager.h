@@ -1,9 +1,9 @@
 #pragma once
 
-#include "IOrderManager.h"
+#include "qse/order/IOrderManager.h"
 #include <iostream>
 #include <vector> // <-- Make sure this is included
-#include "Data.h" // <-- Make sure this is included for the 'Trade' struct
+#include "qse/data/Data.h" // <-- Make sure this is included for the 'Trade' struct
 
 namespace qse {
 

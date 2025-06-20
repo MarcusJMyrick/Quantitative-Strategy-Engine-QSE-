@@ -6,15 +6,15 @@
 
 namespace qse {
 
-class CSVDataReader : public IDataReader {
+class CSVDataReader : public qse::IDataReader {
 public:
     CSVDataReader(const std::string& file_path);
     
     // Implement the new tick reading method.
-    const std::vector<Tick>& read_all_ticks() override;
+    const std::vector<Tick>& read_all_ticks() const override;
     
     // We still need to implement the bar reading method from the interface.
-    const std::vector<Bar>& read_all_bars() override;
+    const std::vector<Bar>& read_all_bars() const override;
 
 private:
     void load_data(); // Renamed to be more generic

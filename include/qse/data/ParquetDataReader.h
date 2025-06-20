@@ -11,18 +11,19 @@
 
 namespace qse {
 
-class ParquetDataReader : public IDataReader {
+class ParquetDataReader : public qse::IDataReader {
 public:
     explicit ParquetDataReader(const std::string& file_path);
-    std::vector<Bar> read_all_bars() override;
-    size_t get_bar_count() const override;
-    Bar get_bar(size_t index) const override;
-    std::vector<Bar> read_bars_in_range(Timestamp start_time, Timestamp end_time) override;
+    
+    // Implement the IDataReader interface
+    const std::vector<qse::Tick>& read_all_ticks() const override;
+    const std::vector<qse::Bar>& read_all_bars() const override;
 
 private:
-    void load_bars();
+    void load_data(); // Renamed from load_bars() to be more generic
     std::string file_path_;
-    std::vector<Bar> bars_;
+    std::vector<qse::Tick> ticks_; // Can be empty if Parquet only contains bars
+    std::vector<qse::Bar> bars_;
 };
 
 } // namespace qse 

@@ -2,9 +2,9 @@
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h> // The mocking library header
-#include "IOrderManager.h"
-#include "SMACrossoverStrategy.h"
-#include "Data.h"
+#include "qse/order/IOrderManager.h"
+#include "qse/strategy/SMACrossoverStrategy.h"
+#include "qse/data/Data.h"
 #include <vector>
 
 // This Mock Order Manager now perfectly matches the IOrderManager interface.

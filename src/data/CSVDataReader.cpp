@@ -44,6 +44,7 @@ void CSVDataReader::load_data() {
             if(tokens.size() >= 6) {
                 Bar bar;
                 // Note: Using qse::Timestamp for clarity
+                bar.symbol = "UNKNOWN"; // Default symbol for CSV files
                 bar.timestamp = qse::Timestamp(std::chrono::seconds(std::stoll(tokens[0])));
                 bar.open = std::stod(tokens[1]);
                 bar.high = std::stod(tokens[2]);

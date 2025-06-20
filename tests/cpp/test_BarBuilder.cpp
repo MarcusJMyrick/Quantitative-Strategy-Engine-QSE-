@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "BarBuilder.h"
-#include "Data.h" // For Tick and Bar structs
+#include "qse/data/BarBuilder.h"
+#include "qse/data/Data.h" // For Tick and Bar structs
 #include <vector>
 #include <chrono>
 #include <optional>

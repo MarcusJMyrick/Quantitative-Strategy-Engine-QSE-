@@ -1,5 +1,7 @@
 #pragma once
-#include "Data.h"
+#include "qse/data/Data.h"
+
+namespace qse {
 
 // The interface for all trading strategies.
 class IStrategy {
@@ -14,3 +16,5 @@ public:
     // This will now typically be called by the strategy's own BarBuilder.
     virtual void on_bar(const qse::Bar& bar) = 0;
 };
+
+} // namespace qse

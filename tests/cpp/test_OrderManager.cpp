@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "OrderManager.h"
-#include "Data.h"
+#include "qse/order/OrderManager.h"
+#include "qse/data/Data.h"
 #include <memory>
 
 // This is the standard, correct way to write a test fixture in Google Test.

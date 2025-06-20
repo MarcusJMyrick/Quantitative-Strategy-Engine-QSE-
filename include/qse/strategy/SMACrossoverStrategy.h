@@ -8,7 +8,7 @@
 
 namespace qse {
 
-class SMACrossoverStrategy : public IStrategy {
+class SMACrossoverStrategy : public qse::IStrategy {
 public:
     SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window);
 

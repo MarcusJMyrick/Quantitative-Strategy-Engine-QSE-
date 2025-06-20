@@ -57,12 +57,12 @@ target_include_directories(qse PUBLIC
 # --- Test executable ---
 # Adding test files with updated paths
 add_executable(run_tests
-    tests/test_DataReader.cpp
-    tests/test_OrderManager.cpp
-    tests/test_Backtester.cpp
-    tests/test_Strategy.cpp
-    tests/test_ThreadPool.cpp
-    tests/test_BarBuilder.cpp
+    tests/cpp/test_DataReader.cpp
+    tests/cpp/test_OrderManager.cpp
+    tests/cpp/test_Backtester.cpp
+    tests/cpp/test_Strategy.cpp
+    tests/cpp/test_ThreadPool.cpp
+    tests/cpp/test_BarBuilder.cpp
 )
 
 # Link libraries to test executable (Preserving original structure)
@@ -77,8 +77,8 @@ target_link_libraries(run_tests PRIVATE
 # Include directories for tests - updated to use new structure
 target_include_directories(run_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/mocks
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpp/mocks
 )
 
 # Add compile definition for test data directory

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <gmock/gmock.h>
-#include "IStrategy.h"
+#include "qse/data/Data.h"           // For qse::Tick and qse::Bar
+#include "qse/strategy/IStrategy.h"
 
-class MockStrategy : public IStrategy {
+class MockStrategy : public qse::IStrategy {
 public:
     // Add the new on_tick method to the mock
     MOCK_METHOD(void, on_tick, (const qse::Tick& tick), (override));

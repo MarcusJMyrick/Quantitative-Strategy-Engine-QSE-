@@ -1,17 +1,17 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include "Backtester.h"
+#include "qse/core/Backtester.h"
 
-#include "IDataReader.h"
-#include "IStrategy.h"
-#include "IOrderManager.h"
+#include "qse/data/IDataReader.h"
+#include "qse/strategy/IStrategy.h"
+#include "qse/order/IOrderManager.h"
 
 #include "mocks/MockDataReader.h"
 #include "mocks/MockStrategy.h"
 #include "mocks/MockOrderManager.h"
-#include "CSVDataReader.h" 
-#include "SMACrossoverStrategy.h"
-#include "OrderManager.h"
+#include "qse/data/CSVDataReader.h" 
+#include "qse/strategy/SMACrossoverStrategy.h"
+#include "qse/order/OrderManager.h"
 #include <filesystem>
 
 #include <string>
@@ -30,6 +30,7 @@ protected:
     MockDataReader* data_reader_;
     MockStrategy* strategy_;
     MockOrderManager* order_manager_;
+    std::vector<qse::Tick> sample_ticks_;
     std::vector<qse::Bar> sample_bars_;
     const std::vector<qse::Trade> empty_trade_log_{};
 
@@ -38,7 +39,26 @@ protected:
         strategy_ = new MockStrategy();
         order_manager_ = new MockOrderManager();
 
-        // Create sample bars with symbol field
+        // Create sample ticks for the primary test
+        qse::Tick tick1;
+        tick1.timestamp = std::chrono::system_clock::now();
+        tick1.price = 100.0;
+        tick1.volume = 1000;
+        sample_ticks_.push_back(tick1);
+
+        qse::Tick tick2;
+        tick2.timestamp = std::chrono::system_clock::now() + std::chrono::seconds(1);
+        tick2.price = 101.0;
+        tick2.volume = 1200;
+        sample_ticks_.push_back(tick2);
+
+        qse::Tick tick3;
+        tick3.timestamp = std::chrono::system_clock::now() + std::chrono::seconds(2);
+        tick3.price = 102.0;
+        tick3.volume = 1100;
+        sample_ticks_.push_back(tick3);
+
+        // Create sample bars for other tests if needed
         qse::Bar bar1;
         bar1.symbol = "TEST";
         bar1.timestamp = std::chrono::system_clock::now();
@@ -71,13 +91,16 @@ protected:
     }
 };
 
-// This test should already be passing.
+// Updated test for the new tick-driven workflow
 TEST_F(BacktesterTest, CanCreateBacktesterAndRun) {
-    EXPECT_CALL(*data_reader_, read_all_bars()).WillOnce(Return(std::ref(sample_bars_)));
-    EXPECT_CALL(*strategy_, on_bar(_)).Times(sample_bars_.size());
-    EXPECT_CALL(*order_manager_, get_portfolio_value(_)).WillRepeatedly(Return(0.0));
-    EXPECT_CALL(*order_manager_, get_trade_log()).WillRepeatedly(ReturnRef(empty_trade_log_));
-    EXPECT_CALL(*order_manager_, get_position()).WillRepeatedly(Return(0));
+    // Setup Expectations for a tick-driven workflow
+    // Expect read_all_ticks() to be called once and return our sample ticks.
+    EXPECT_CALL(*data_reader_, read_all_ticks()).WillOnce(ReturnRef(sample_ticks_));
+    
+    // Expect on_tick() to be called for each tick we provided.
+    EXPECT_CALL(*strategy_, on_tick(_)).Times(sample_ticks_.size());
+
+    // We no longer expect read_all_bars or on_bar to be called in this test.
 
     qse::Backtester backtester(
         "TEST_SYMBOL",

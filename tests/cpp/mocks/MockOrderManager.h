@@ -1,7 +1,8 @@
 #pragma once
 
 #include <gmock/gmock.h>
-#include "IOrderManager.h"
+#include "qse/data/Data.h"           // For qse::Trade
+#include "qse/order/IOrderManager.h"
 
 class MockOrderManager : public qse::IOrderManager {
 public:

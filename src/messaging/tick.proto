@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package qse.messaging;
+
+message Tick {
+  int64 timestamp_s = 1;  // Unix timestamp in seconds
+  double price = 2;
+  uint64 volume = 3;
+  string symbol = 4;      // Optional symbol identifier
+}
+
+message Bar {
+  int64 timestamp_s = 1;  // Unix timestamp in seconds
+  string symbol = 2;
+  double open = 3;
+  double high = 4;
+  double low = 5;
+  double close = 6;
+  uint64 volume = 7;
+}
+
+message Order {
+  enum Type {
+    MARKET = 0;
+    LIMIT = 1;
+    STOP = 2;
+    STOP_LIMIT = 3;
+  }
+  
+  enum Side {
+    BUY = 0;
+    SELL = 1;
+  }
+  
+  enum Status {
+    PENDING = 0;
+    FILLED = 1;
+    CANCELLED = 2;
+    REJECTED = 3;
+  }
+  
+  string order_id = 1;
+  string symbol = 2;
+  Type type = 3;
+  Side side = 4;
+  double price = 5;
+  uint64 quantity = 6;
+  Status status = 7;
+  int64 timestamp_s = 8;
+} 

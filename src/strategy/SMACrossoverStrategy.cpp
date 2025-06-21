@@ -44,12 +44,13 @@ void SMACrossoverStrategy::on_bar(const qse::Bar& bar) {
     if (prev_long_val > 0) { // Guard against trading on the very first calculation
         // Golden Cross (Buy Signal)
         if (prev_short_val < prev_long_val && current_short_val > current_long_val) {
-            // Now that we have a full Bar object, we can execute trades as before.
-            order_manager_->execute_buy(bar);
+            // Use the new OrderManager interface with symbol, quantity, and price
+            order_manager_->execute_buy(bar.symbol, 1, bar.close);
         }
         // Death Cross (Sell Signal)
         else if (prev_short_val > prev_long_val && current_short_val < current_long_val) {
-            order_manager_->execute_sell(bar);
+            // Use the new OrderManager interface with symbol, quantity, and price
+            order_manager_->execute_sell(bar.symbol, 1, bar.close);
         }
     }
 }

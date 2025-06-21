@@ -37,6 +37,6 @@ echo
 echo "--- Running Multi-Asset Backtest Application ---"
 # IMPORTANT: Go back to the root directory before running the app.
 cd ..
-# CORRECTED NAME: The executable is named 'qse_engine' in CMakeLists.txt.
-./build/qse_engine
+# CORRECTED NAME: The executable is named 'strategy_engine' in CMakeLists.txt.
+./build/strategy_engine
 echo "--- Application Finished ---"

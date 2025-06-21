@@ -1,34 +1,50 @@
 #pragma once
 
-#include "qse/order/IOrderManager.h"
-#include <iostream>
-#include <vector> // <-- Make sure this is included
-#include "qse/data/Data.h" // <-- Make sure this is included for the 'Trade' struct
+#include "IOrderManager.h"
+#include "qse/data/Data.h"
+
+#include <string>
+#include <vector>
+#include <fstream>
+#include <map>
+#include <memory>
 
 namespace qse {
 
-class OrderManager : public IOrderManager {
-public:
-    OrderManager(double starting_cash, double commission, double slippage);
+    // A concrete implementation of the IOrderManager interface.
+    // This class handles order execution, position tracking, and logging for multiple assets.
+    class OrderManager : public IOrderManager {
+    public:
+        // Constructor initializes the order manager with starting capital and file paths for logging.
+        OrderManager(double initial_cash, const std::string& equity_curve_path, const std::string& tradelog_path);
+        ~OrderManager() override;
 
-    void execute_buy(const qse::Bar& bar) override;
-    void execute_sell(const qse::Bar& bar) override;
-    int get_position() const override;
-    double get_portfolio_value(double current_price) const override;
-    
-    // This is the declaration for the new function
-    const std::vector<Trade>& get_trade_log() const override;
+        // Execute a buy order for a given symbol.
+        void execute_buy(const std::string& symbol, int quantity, double price) override;
 
-    double get_cash() const; // Helper for testing
+        // Execute a sell order for a given symbol.
+        void execute_sell(const std::string& symbol, int quantity, double price) override;
 
-private:
-    int position_;
-    double cash_;
-    const double commission_per_trade_;
-    const double slippage_per_trade_;
-    
-    // This is the new vector to store the trades
-    std::vector<Trade> trade_log_;
-};
+        // Get the current position for a given symbol.
+        int get_position(const std::string& symbol) const override;
+        
+        // Get the total cash value of the portfolio.
+        double get_cash() const override;
+
+        // Update the equity curve with the current portfolio value at a given timestamp.
+        void record_equity(long long timestamp, const std::map<std::string, double>& market_prices) override;
+
+    private:
+        // Log a trade to the tradelog file.
+        void log_trade(long long timestamp, const std::string& symbol, const std::string& type, int quantity, double price);
+
+        // Calculate the total value of all holdings across all symbols.
+        double calculate_holdings_value(const std::map<std::string, double>& market_prices) const;
+
+        double cash_;                           // Current cash balance.
+        std::map<std::string, int> positions_;  // Map of symbol to position quantity.
+        std::ofstream equity_curve_file_;       // File stream for the equity curve log.
+        std::ofstream tradelog_file_;           // File stream for the trade log.
+    };
 
 } // namespace qse

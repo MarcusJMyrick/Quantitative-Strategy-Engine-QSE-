@@ -29,7 +29,7 @@ class BacktesterTest : public ::testing::Test {
 protected:
     MockDataReader* data_reader_;
     MockStrategy* strategy_;
-    MockOrderManager* order_manager_;
+    qse::MockOrderManager* order_manager_;
     std::vector<qse::Tick> sample_ticks_;
     std::vector<qse::Bar> sample_bars_;
     const std::vector<qse::Trade> empty_trade_log_{};
@@ -37,7 +37,7 @@ protected:
     void SetUp() override {
         data_reader_ = new MockDataReader();
         strategy_ = new MockStrategy();
-        order_manager_ = new MockOrderManager();
+        order_manager_ = new qse::MockOrderManager();
 
         // Create sample ticks for the primary test
         qse::Tick tick1;
@@ -113,21 +113,29 @@ TEST_F(BacktesterTest, CanCreateBacktesterAndRun) {
 }
 
 TEST_F(BacktesterTest, CanRunBacktestWithRealComponents) {
-    // Use a simple relative path from the build directory
-    const std::string test_data_path = "../test_data/test_data.csv";
-    
-    auto real_data_reader = std::make_unique<qse::CSVDataReader>(test_data_path);
-    auto real_order_manager = std::make_unique<qse::OrderManager>(100000.0, 1.0, 0.01);
+    auto data_reader = std::make_unique<qse::CSVDataReader>("../test_data/test_data.csv");
+    auto real_order_manager = std::make_unique<qse::OrderManager>(100000.0, "test_equity.csv", "test_tradelog.csv");
+
+    // FIX: Add a bar_duration (e.g., 24 hours) as the fourth argument
     auto real_strategy = std::make_unique<qse::SMACrossoverStrategy>(
         real_order_manager.get(), 10, 20, std::chrono::hours(24)
     );
 
     qse::Backtester backtester(
-        "TEST_REAL",
-        std::move(real_data_reader),
+        "TEST_SYMBOL",
+        std::move(data_reader),
         std::move(real_strategy),
         std::move(real_order_manager)
     );
 
-    EXPECT_NO_THROW(backtester.run());
+    // Run the backtest
+    backtester.run();
+
+    // Verify that output files were created
+    EXPECT_TRUE(std::filesystem::exists("test_equity.csv"));
+    EXPECT_TRUE(std::filesystem::exists("test_tradelog.csv"));
+    
+    // Clean up test files
+    std::filesystem::remove("test_equity.csv");
+    std::filesystem::remove("test_tradelog.csv");
 }

@@ -118,7 +118,9 @@ TEST_F(BacktesterTest, CanRunBacktestWithRealComponents) {
     
     auto real_data_reader = std::make_unique<qse::CSVDataReader>(test_data_path);
     auto real_order_manager = std::make_unique<qse::OrderManager>(100000.0, 1.0, 0.01);
-    auto real_strategy = std::make_unique<qse::SMACrossoverStrategy>(real_order_manager.get(), 10, 20);
+    auto real_strategy = std::make_unique<qse::SMACrossoverStrategy>(
+        real_order_manager.get(), 10, 20, std::chrono::hours(24)
+    );
 
     qse::Backtester backtester(
         "TEST_REAL",

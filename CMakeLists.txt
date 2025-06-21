@@ -81,7 +81,16 @@ target_include_directories(qse PUBLIC
 
 
 # --- Executables ---
-add_executable(run_tests tests/cpp/test_Messaging.cpp tests/cpp/test_DataReader.cpp)
+add_executable(run_tests
+    tests/cpp/test_Messaging.cpp
+    tests/cpp/test_DataReader.cpp
+    tests/cpp/test_OrderManager.cpp
+    tests/cpp/test_Backtester.cpp
+    tests/cpp/test_Strategy.cpp
+    tests/cpp/test_ThreadPool.cpp
+    tests/cpp/test_BarBuilder.cpp
+)
+
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)
 
 add_executable(messaging_example src/messaging_example.cpp)

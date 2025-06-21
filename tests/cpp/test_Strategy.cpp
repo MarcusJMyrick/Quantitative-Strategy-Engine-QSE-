@@ -28,7 +28,7 @@ protected:
 
 TEST_F(SMACrossoverStrategyTest, GeneratesBuySignalOnGoldenCross) {
     // 1. Arrange: Create the strategy with a short window of 3 and long of 5
-    qse::SMACrossoverStrategy strategy(&mock_order_manager, 3, 5);
+    qse::SMACrossoverStrategy strategy(&mock_order_manager, 3, 5, std::chrono::minutes(1));
 
     // This specific price sequence will cause a crossover on the last bar.
     std::vector<double> prices = {100, 99, 98, 97, 96, 105, 106, 107};

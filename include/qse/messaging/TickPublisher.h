@@ -28,21 +28,24 @@ public:
     
     /**
      * @brief Publish a tick to all subscribers
+     * @param topic The topic to publish on
      * @param tick The tick data to publish
      */
-    void publish_tick(const Tick& tick);
+    void publish_tick(const std::string& topic, const Tick& tick);
     
     /**
      * @brief Publish a bar to all subscribers
+     * @param topic The topic to publish on
      * @param bar The bar data to publish
      */
-    void publish_bar(const Bar& bar);
+    void publish_bar(const std::string& topic, const Bar& bar);
     
     /**
      * @brief Publish an order to all subscribers
+     * @param topic The topic to publish on
      * @param order The order data to publish
      */
-    void publish_order(const Order& order);
+    void publish_order(const std::string& topic, const Order& order);
 
 private:
     std::unique_ptr<zmq::context_t> context_;

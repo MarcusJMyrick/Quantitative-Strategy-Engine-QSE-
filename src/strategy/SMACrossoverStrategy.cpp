@@ -5,11 +5,11 @@ namespace qse {
 
 // The constructor now also initializes the BarBuilder.
 // For this example, we'll build 1-day bars.
-SMACrossoverStrategy::SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window)
+SMACrossoverStrategy::SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window, std::chrono::minutes bar_duration)
     : order_manager_(order_manager),
       short_ma_(short_window),
       long_ma_(long_window),
-      bar_builder_(std::chrono::hours(24)) // Build daily bars from ticks
+      bar_builder_(bar_duration) // <-- Pass the duration to the BarBuilder
 {}
 
 // This is now the primary entry point for new data.

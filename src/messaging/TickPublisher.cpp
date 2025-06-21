@@ -27,10 +27,14 @@ TickPublisher::~TickPublisher() {
     }
 }
 
-void TickPublisher::publish_tick(const Tick& tick) {
+void TickPublisher::publish_tick(const std::string& topic, const Tick& tick) {
     try {
         std::string serialized = serialize_tick(tick);
-        zmq::message_t topic_msg("TICK", 4);
+        
+        std::cout << "[PUBLISHER] Sending " << topic.size() << "-byte topic: '" << topic << "'" << std::endl;
+        std::cout << "[PUBLISHER] Sending " << serialized.size() << "-byte payload." << std::endl;
+        
+        zmq::message_t topic_msg(topic.data(), topic.size());
         zmq::message_t data_msg(serialized.data(), serialized.size());
         
         socket_->send(topic_msg, zmq::send_flags::sndmore);
@@ -43,10 +47,14 @@ void TickPublisher::publish_tick(const Tick& tick) {
     }
 }
 
-void TickPublisher::publish_bar(const Bar& bar) {
+void TickPublisher::publish_bar(const std::string& topic, const Bar& bar) {
     try {
         std::string serialized = serialize_bar(bar);
-        zmq::message_t topic_msg("BAR", 3);
+        
+        std::cout << "[PUBLISHER] Sending " << topic.size() << "-byte topic: '" << topic << "'" << std::endl;
+        std::cout << "[PUBLISHER] Sending " << serialized.size() << "-byte payload." << std::endl;
+        
+        zmq::message_t topic_msg(topic.data(), topic.size());
         zmq::message_t data_msg(serialized.data(), serialized.size());
         
         socket_->send(topic_msg, zmq::send_flags::sndmore);
@@ -60,10 +68,10 @@ void TickPublisher::publish_bar(const Bar& bar) {
     }
 }
 
-void TickPublisher::publish_order(const Order& order) {
+void TickPublisher::publish_order(const std::string& topic, const Order& order) {
     try {
         std::string serialized = serialize_order(order);
-        zmq::message_t topic_msg("ORDER", 5);
+        zmq::message_t topic_msg(topic.data(), topic.size());
         zmq::message_t data_msg(serialized.data(), serialized.size());
         
         socket_->send(topic_msg, zmq::send_flags::sndmore);

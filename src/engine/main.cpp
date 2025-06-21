@@ -1,71 +1,65 @@
 #include <iostream>
 #include <memory>
+#include <vector>
 #include <string>
-#include "qse/core/Backtester.h"
+#include <stdexcept>
+#include <chrono>
+
 #include "qse/data/ZeroMQDataReader.h"
 #include "qse/strategy/SMACrossoverStrategy.h"
 #include "qse/order/OrderManager.h"
+#include "qse/core/Backtester.h"
 
-using namespace qse;
-
-int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cout << "Usage: " << argv[0] << " <zmq_endpoint>" << std::endl;
-        std::cout << "Example: " << argv[0] << " tcp://localhost:5555" << std::endl;
-        return 1;
-    }
-
-    std::string zmq_endpoint = argv[1];
-    
+int main() {
     try {
-        std::cout << "Starting Strategy Engine..." << std::endl;
-        std::cout << "Connecting to data publisher at: " << zmq_endpoint << std::endl;
+        std::cout << "--- Strategy Engine Starting ---" << std::endl;
+        auto start_time = std::chrono::high_resolution_clock::now();
         
-        // Create ZeroMQ data reader instead of CSV reader
-        auto data_reader = std::make_unique<ZeroMQDataReader>(zmq_endpoint);
+        // --- Configuration ---
+        const std::string symbol = "SPY"; // The symbol this engine instance will trade
+        const std::string zmq_endpoint = "tcp://localhost:5555";
+        const double initial_capital = 100000.0;
         
-        // Create order manager with initial capital
-        auto order_manager = std::make_unique<OrderManager>(100000.0, 1.0, 0.01);
+        // --- Create Components ---
+        // The engine now subscribes to the data feed instead of reading a file.
+        auto data_reader = std::make_unique<qse::ZeroMQDataReader>(zmq_endpoint);
         
-        // Create strategy with moving average parameters
-        auto strategy = std::make_unique<SMACrossoverStrategy>(order_manager.get(), 10, 20);
-        
-        // Create backtester
-        Backtester backtester(
-            "AAPL",  // Symbol
+        auto order_manager = std::make_unique<qse::OrderManager>(initial_capital, 1.0, 0.01);
+
+        // This strategy will build 1-hour bars from the incoming tick stream
+        auto strategy = std::make_unique<qse::SMACrossoverStrategy>(
+            order_manager.get(), 10, 20, std::chrono::minutes(60)
+        );
+
+        // --- Create and Run the Backtester ---
+        qse::Backtester backtester(
+            symbol,
             std::move(data_reader),
             std::move(strategy),
             std::move(order_manager)
         );
-        
-        std::cout << "Running backtest with real-time data..." << std::endl;
-        
-        // Run the backtest
+
         backtester.run();
+
+        // --- Post-Run Reporting ---
+        auto end_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;
+        std::cout << "----------------------------------------" << std::endl;
+        std::cout << "Total execution time: " << elapsed_time.count() << " ms" << std::endl;
         
-        std::cout << "Backtest completed successfully!" << std::endl;
+        // FIX: The reporting logic below is removed for now.
+        // The current OrderManager is single-asset and doesn't use symbol strings.
+        // A future step will be to upgrade OrderManager to handle a multi-asset portfolio.
+        // std::cout << "Final Portfolio Value: $" << order_manager->get_portfolio_value(<???>) << std::endl;
+        // std::cout << "Final Position: " << order_manager->get_position() << " shares" << std::endl;
         
-        // Print final results
-        std::cout << "\n=== Final Results ===" << std::endl;
-        std::cout << "Final Portfolio Value: $" << order_manager->get_portfolio_value("AAPL") << std::endl;
-        std::cout << "Final Position: " << order_manager->get_position("AAPL") << " shares" << std::endl;
-        
-        const auto& trade_log = order_manager->get_trade_log();
-        std::cout << "Total Trades: " << trade_log.size() << std::endl;
-        
-        if (!trade_log.empty()) {
-            std::cout << "\n=== Trade Summary ===" << std::endl;
-            for (const auto& trade : trade_log) {
-                std::cout << "Trade: " << (trade.type == TradeType::BUY ? "BUY" : "SELL")
-                          << " " << trade.quantity << " shares at $" << trade.price
-                          << " (Commission: $" << trade.commission << ")" << std::endl;
-            }
-        }
+        std::cout << "----------------------------------------" << std::endl;
+        std::cout << "--- Strategy Engine Finished ---" << std::endl;
+
+        return 0;
         
     } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << "An unhandled error occurred in main: " << e.what() << std::endl;
         return 1;
     }
-    
-    return 0;
 } 

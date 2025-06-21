@@ -2,15 +2,16 @@
 
 #include "qse/strategy/IStrategy.h"
 #include "qse/order/IOrderManager.h"
+#include "qse/data/Data.h"
 #include "qse/strategy/MovingAverage.h"
-#include "qse/data/BarBuilder.h" // <-- Include the new BarBuilder
-#include <memory>
+#include "qse/data/BarBuilder.h"
+#include <chrono>
 
 namespace qse {
 
 class SMACrossoverStrategy : public qse::IStrategy {
 public:
-    SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window);
+    SMACrossoverStrategy(IOrderManager* order_manager, size_t short_window, size_t long_window, std::chrono::minutes bar_duration);
 
     // Implement the new on_tick method from the interface.
     void on_tick(const qse::Tick& tick) override;

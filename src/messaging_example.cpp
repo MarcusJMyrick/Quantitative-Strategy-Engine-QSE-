@@ -26,7 +26,7 @@ void run_publisher() {
             tick.price = price_dist(gen);
             tick.volume = volume_dist(gen);
             
-            publisher.publish_tick(tick);
+            publisher.publish_tick("TICK_DATA", tick);
             
             // Create a sample bar
             Bar bar;
@@ -38,7 +38,7 @@ void run_publisher() {
             bar.close = tick.price + 0.5;
             bar.volume = tick.volume;
             
-            publisher.publish_bar(bar);
+            publisher.publish_bar("BAR_DATA", bar);
             
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
@@ -50,15 +50,17 @@ void run_publisher() {
 
 void run_subscriber() {
     try {
-        TickSubscriber subscriber("tcp://localhost:5555");
+        // Subscribe to both tick and bar topics
+        TickSubscriber tick_subscriber("tcp://localhost:5555", "TICK_DATA");
+        TickSubscriber bar_subscriber("tcp://localhost:5555", "BAR_DATA");
         
         // Set up callbacks
-        subscriber.set_tick_callback([](const Tick& tick) {
+        tick_subscriber.set_tick_callback([](const Tick& tick) {
             std::cout << "Received tick: price=" << tick.price 
                       << ", volume=" << tick.volume << std::endl;
         });
         
-        subscriber.set_bar_callback([](const Bar& bar) {
+        bar_subscriber.set_bar_callback([](const Bar& bar) {
             std::cout << "Received bar: " << bar.symbol 
                       << " O:" << bar.open << " H:" << bar.high 
                       << " L:" << bar.low << " C:" << bar.close << std::endl;
@@ -66,8 +68,17 @@ void run_subscriber() {
         
         std::cout << "Subscriber started. Listening for messages..." << std::endl;
         
-        // Listen for messages
-        subscriber.listen();
+        // Listen for messages from both subscribers
+        std::thread tick_thread([&]() {
+            tick_subscriber.listen();
+        });
+        
+        std::thread bar_thread([&]() {
+            bar_subscriber.listen();
+        });
+        
+        tick_thread.join();
+        bar_thread.join();
         
     } catch (const std::exception& e) {
         std::cerr << "Subscriber error: " << e.what() << std::endl;

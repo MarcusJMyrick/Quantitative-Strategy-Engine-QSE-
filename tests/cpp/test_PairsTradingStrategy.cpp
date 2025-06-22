@@ -47,96 +47,144 @@ TEST_F(PairsTradingStrategyTest, DoesNothingBeforeWarmup) {
 
 // Test entry of a SHORT position on a high z-score.
 TEST_F(PairsTradingStrategyTest, EntersShortPositionOnHighZScore) {
-    // Reset the strategy with a smaller window for this test
     strategy = std::make_unique<PairsTradingStrategy>(
-        "ASSET_A", "ASSET_B", 
-        2.0,  // Hedge ratio
-        2,    // Spread window (very small for clearer signals)
-        2.0,  // Entry z-score threshold
-        0.5,  // Exit z-score threshold
+        "ASSET_A", "ASSET_B",
+        2.0,   // hedge ratio
+        10,    // spread_window
+        2.0,   // entry_z
+        0.5,   // exit_z
         mock_order_manager
     );
-    
-    // ARRANGE: Prime with varied data to establish baseline (based on mathematical proof)
-    strategy->update_price("ASSET_A", 90.0);  strategy->update_price("ASSET_B", 100.0); // spread = -110
-    strategy->update_price("ASSET_A", 110.0); strategy->update_price("ASSET_B", 100.0); // spread = -90
 
-    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A")).WillRepeatedly(Return(0));
+    // Prime with identical spreads => stddev == 0, no trades fire
+    for(int i = 0; i < 10; ++i) {
+        strategy->update_price("ASSET_A", 100.0);
+        strategy->update_price("ASSET_B", 50.0);
+    }
 
-    // Expect a SHORT trade with extreme positive z-score (z > 2.0)
-    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_A", 100, 5000.0)).Times(1);
-    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_B", 200, 100.0)).Times(1);
-    
-    // ACT: Use extreme price to guarantee z-score > 2.0
-    strategy->update_price("ASSET_A", 5000.0);  // Creates spread = 5000 - 2*100 = 4800
-    strategy->update_price("ASSET_B", 100.0);
+    // Seed a tiny jitter to get stddev > 0 (but still z < threshold)
+    strategy->update_price("ASSET_A", 100.1);
+    strategy->update_price("ASSET_B", 50.0);
+
+    // Clear any accidental expectations
+    ::testing::Mock::VerifyAndClearExpectations(mock_order_manager.get());
+
+    // Reset ASSET_A back to a known positive price (so guard passes)
+    strategy->update_price("ASSET_A", 100.0);
+
+    // Now outlier => spread = 10000 - 2*50 = 9900
+    //    μ ≈ 0, σ small ⇒ z ≫ 2
+    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A"))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_A", 100, 10000.0))
+        .Times(1);
+    EXPECT_CALL(*mock_order_manager, execute_buy ("ASSET_B", 200,    50.0))
+        .Times(1);
+
+    strategy->update_price("ASSET_A", 10000.0);
 }
 
 // Test entry of a LONG position on a low z-score.
 TEST_F(PairsTradingStrategyTest, EntersLongPositionOnLowZScore) {
-    // Reset the strategy with a smaller window for this test
+    // 1) Setup with a 10‐bar window
     strategy = std::make_unique<PairsTradingStrategy>(
-        "ASSET_A", "ASSET_B", 
-        2.0,  // Hedge ratio
-        2,    // Spread window (very small for clearer signals)
-        2.0,  // Entry z-score threshold
-        0.5,  // Exit z-score threshold
+        "ASSET_A","ASSET_B",
+        2.0,   // hedge ratio
+        10,    // window
+        2.0,   // entry_z
+        0.5,   // exit_z
         mock_order_manager
     );
-    
-    // ARRANGE: Prime with varied data to establish baseline (based on mathematical proof)
-    strategy->update_price("ASSET_A", 110.0); strategy->update_price("ASSET_B", 100.0); // spread = -90
-    strategy->update_price("ASSET_A", 90.0);  strategy->update_price("ASSET_B", 100.0); // spread = -110
-    
-    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A")).WillRepeatedly(Return(0));
-    
-    // Expect a LONG trade with extreme negative z-score (z = -9 < -2.0)
-    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_A", 100, 10.0)).Times(1);
-    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_B", 200, 100.0)).Times(1);
-    
-    // ACT: Use extreme negative price to guarantee z-score < -2.0 (z = -9)
-    strategy->update_price("ASSET_A", 10.0);   // Creates spread = 10 - 2*100 = -190, z = (-190-(-100))/10 = -9
-    strategy->update_price("ASSET_B", 100.0);
+
+    // 2) Prime 6x identical spreads = 0
+    for(int i = 0; i < 6; ++i) {
+        strategy->update_price("ASSET_A", 100.0);
+        strategy->update_price("ASSET_B", 50.0);
+    }
+
+    // 3) Add 4 small jitters: +0.2, –0.2, +0.4, –0.4
+    strategy->update_price("ASSET_A", 100.2); strategy->update_price("ASSET_B", 50.0); // +0.2
+    strategy->update_price("ASSET_A",  99.8); strategy->update_price("ASSET_B", 50.0); // –0.2
+    strategy->update_price("ASSET_A", 100.4); strategy->update_price("ASSET_B", 50.0); // +0.4
+    strategy->update_price("ASSET_A",  99.6); strategy->update_price("ASSET_B", 50.0); // –0.4
+
+    // Now σ ≈ sqrt((.2²+.2²+.4²+.4²)/10) = sqrt(0.4/10) ≈ 0.2
+
+    // 4) A tiny negative jitter: spread ≈ –0.01 ⇒ z≈–0.05 (no trade)
+    strategy->update_price("ASSET_A", 99.99);
+    strategy->update_price("ASSET_B", 50.0);
+
+    // Clear any priming/jitter expectations
+    ::testing::Mock::VerifyAndClearExpectations(mock_order_manager.get());
+
+    // Reset ASSET_A back to a known positive price (so guard passes)
+    strategy->update_price("ASSET_A", 100.0);
+
+    // Now drive ASSET_B to a huge value to force a large negative spread:
+    //   spread = 100.0 - 2*10000.0 = -19900.0   ⇒   z ≪ -2
+    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A"))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*mock_order_manager, execute_buy ("ASSET_A", 100,    100.0))
+        .Times(1);
+    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_B", 200, 10000.0))
+        .Times(1);
+
+    strategy->update_price("ASSET_B", 10000.0);
 }
 
 // Test closing a position on mean reversion.
 TEST_F(PairsTradingStrategyTest, ExitsPositionOnMeanReversion) {
-    // Reset the strategy with a window of 3 for this test
+    // window=5 to get a stable σ
     strategy = std::make_unique<PairsTradingStrategy>(
         "ASSET_A", "ASSET_B", 
         2.0,  // Hedge ratio
-        3,    // Spread window
+        5,    // Spread window
         2.0,  // Entry z-score threshold
         0.5,  // Exit z-score threshold
         mock_order_manager
     );
-    // Prime with three varied spreads (based on mathematical proof)
-    strategy->update_price("ASSET_A", 100.0); strategy->update_price("ASSET_B", 100.0); // spread = -100
-    strategy->update_price("ASSET_A", 110.0); strategy->update_price("ASSET_B", 100.0); // spread = -90
-    strategy->update_price("ASSET_A", 90.0);  strategy->update_price("ASSET_B", 100.0); // spread = -110
+    // Prime with small variance that won't trigger trades: spreads = [0, 0.1, -0.1, 0.2, -0.2]
+    strategy->update_price("ASSET_A", 100.0);  strategy->update_price("ASSET_B", 50.0); // spread = 0
+    strategy->update_price("ASSET_A", 100.1);  strategy->update_price("ASSET_B", 50.0); // spread = 0.1
+    strategy->update_price("ASSET_A", 99.9);   strategy->update_price("ASSET_B", 50.0); // spread = -0.1
+    strategy->update_price("ASSET_A", 100.2);  strategy->update_price("ASSET_B", 50.0); // spread = 0.2
+    strategy->update_price("ASSET_A", 99.8);   strategy->update_price("ASSET_B", 50.0); // spread = -0.2
 
-    // Set up expectations for get_position calls - start with no position
-    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A")).WillRepeatedly(Return(0));
-    EXPECT_CALL(*mock_order_manager, get_position("ASSET_B")).WillRepeatedly(Return(0));
-    
-    // Trigger a LONG position entry with extreme negative z-score (z ≈ -11.02 < -2.0)
-    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_A", 100, 10.0)).Times(1);
-    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_B", 200, 100.0)).Times(1);
-    
-    strategy->update_price("ASSET_A", 10.0);   // Creates spread = 10 - 2*100 = -190, z ≈ -11.02
-    strategy->update_price("ASSET_B", 100.0);
-    
-    // Now set up expectations for exit - we now have a LONG position
-    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A")).WillRepeatedly(Return(100));
-    EXPECT_CALL(*mock_order_manager, get_position("ASSET_B")).WillRepeatedly(Return(-200));
-    
-    // Expect the closing trades when z-score < 0.5 (z = 0)
-    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_A", 100, 100.0)).Times(1);
-    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_B", 200, 100.0)).Times(1);
-    
-    // ACT: Create a final tick that causes the spread to revert to mean (z = 0 < 0.5).
+    // Clear any priming expectations
+    ::testing::Mock::VerifyAndClearExpectations(mock_order_manager.get());
+
+    // Revert ASSET_A to known positive price so entry can run
     strategy->update_price("ASSET_A", 100.0);
-    strategy->update_price("ASSET_B", 100.0);
+    
+    // Trigger LONG entry on extreme negative-spread outlier (via ASSET_B jump)
+    // μ = (0 + 0.1 - 0.1 + 0.2 - 0.2)/5 = 0; σ = √((0²+0.1²+0.1²+0.2²+0.2²)/5)≈0.141
+    // spread = 100 - 2*10000 = -19900; z=(-19900-0)/0.141 ≈ -141134 < -2
+    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A"))
+        .WillOnce(Return(0));
+    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_A", 100, 100.0))
+        .Times(1);
+    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_B", 200, 10000.0))
+        .Times(1);
+    
+    strategy->update_price("ASSET_B", 10000.0);
+    
+    // Clear expectations from entry phase
+    ::testing::Mock::VerifyAndClearExpectations(mock_order_manager.get());
+    
+    // Stub open positions for exit logic
+    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A"))
+        .WillOnce(Return(100));
+    EXPECT_CALL(*mock_order_manager, get_position("ASSET_B"))
+        .WillOnce(Return(-200));
+    
+    // Expect the closing trades at the known price levels
+    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_A", 100, 100.0))
+        .Times(1);
+    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_B", 200, 50.1))
+        .Times(1);
+
+    // Revert ASSET_B to slightly higher price to trigger exit (spread = 100 - 2*50.1 = -0.2, z < 0.5)
+    strategy->update_price("ASSET_B", 50.1);
 }
 
 // Test that the strategy ignores ticks for symbols not in the pair
@@ -146,60 +194,61 @@ TEST_F(PairsTradingStrategyTest, IgnoresUnrelatedSymbols) {
     EXPECT_CALL(*mock_order_manager, execute_sell(_, _, _)).Times(0);
 }
 
-// Test that the strategy handles edge cases gracefully
+// Test handling of edge cases.
 TEST_F(PairsTradingStrategyTest, HandlesEdgeCases) {
-    // Reset the strategy with a window of 3 for this test
+    // window=4 for stability
     strategy = std::make_unique<PairsTradingStrategy>(
         "ASSET_A", "ASSET_B", 
         2.0,  // Hedge ratio
-        3,    // Spread window
+        4,    // Spread window
         2.0,  // Entry z-score threshold
         0.5,  // Exit z-score threshold
         mock_order_manager
     );
-    
-    // Prime the strategy with varied data (based on mathematical proof)
-    strategy->update_price("ASSET_A", 100.0); strategy->update_price("ASSET_B", 100.0); // spread = -100
-    strategy->update_price("ASSET_A", 110.0); strategy->update_price("ASSET_B", 100.0); // spread = -90
-    strategy->update_price("ASSET_A", 90.0);  strategy->update_price("ASSET_B", 100.0); // spread = -110
-    
-    // Set up expectations
+    // Prime small variance: spreads = [0, +10, -10, 20]
+    strategy->update_price("ASSET_A", 100.0); strategy->update_price("ASSET_B", 50.0); // spread = 0
+    strategy->update_price("ASSET_A", 110.0); strategy->update_price("ASSET_B", 50.0); // spread = 10
+    strategy->update_price("ASSET_A", 90.0);  strategy->update_price("ASSET_B", 50.0); // spread = -10
+    strategy->update_price("ASSET_A", 120.0); strategy->update_price("ASSET_B", 50.0); // spread = 20
+
     EXPECT_CALL(*mock_order_manager, get_position("ASSET_A")).WillRepeatedly(Return(0));
-    
-    // Use a price that will create z-score > 2.0 (z ≈ 49 > 2.0)
-    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_A", 100, 500.0)).Times(1);
-    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_B", 200, 100.0)).Times(1);
-    
-    strategy->update_price("ASSET_A", 500.0);  // Creates spread = 500 - 2*100 = 300, z ≈ 49
-    strategy->update_price("ASSET_B", 100.0);
+
+    // Now extreme outlier to force z>2:
+    // A=5000, B=50 ⇒ spread=5000-100=4900
+    // μ=(0+10-10+20)/4=5, σ=√((0²+10²+(-10)²+20²)/4)≈13.69 ⇒ z≈(4900-5)/13.69≈357>2
+    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_A", 100, 5000.0)).Times(1);
+    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_B", 200, 50.0)).Times(1);
+
+    strategy->update_price("ASSET_A", 5000.0);
+    strategy->update_price("ASSET_B", 50.0);
 }
 
-// Test that the strategy correctly calculates hedge ratios
+// Test that the hedge ratio is correctly applied in position sizing.
 TEST_F(PairsTradingStrategyTest, CorrectHedgeRatioCalculation) {
-    // Reset the strategy with a window of 3 for this test
+    // window=4 for a clear σ
     strategy = std::make_unique<PairsTradingStrategy>(
         "ASSET_A", "ASSET_B", 
         2.0,  // Hedge ratio
-        3,    // Spread window
+        4,    // Spread window
         2.0,  // Entry z-score threshold
         0.5,  // Exit z-score threshold
         mock_order_manager
     );
-    
-    // Set up expectations for get_position calls
-    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A")).WillRepeatedly(Return(0));
-    
-    // Prime the strategy with varied data (based on mathematical proof)
+
+    // Prime with spreads [0, +20, -20, +40]
     strategy->update_price("ASSET_A", 100.0); strategy->update_price("ASSET_B", 50.0); // spread = 0
     strategy->update_price("ASSET_A", 120.0); strategy->update_price("ASSET_B", 50.0); // spread = 20
     strategy->update_price("ASSET_A", 80.0);  strategy->update_price("ASSET_B", 50.0); // spread = -20
-    
-    // Set up expectations for a short trade with z-score > 2.0 (z ≈ 24.5 > 2.0)
-    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_A", 100, 500.0)).Times(1);
-    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_B", 200, 50.0)).Times(1); // 100 * 2.0 hedge ratio
-    
-    // Trigger a high z-score
-    strategy->update_price("ASSET_A", 500.0);  // Creates spread = 500 - 2*50 = 400, z ≈ 24.5
+    strategy->update_price("ASSET_A", 140.0); strategy->update_price("ASSET_B", 50.0); // spread = 40
+
+    EXPECT_CALL(*mock_order_manager, get_position("ASSET_A")).WillRepeatedly(Return(0));
+
+    // Now extreme outlier to drive z>2:
+    // A=5000, B=50 ⇒ spread=5000-100=4900; μ=(0+20-20+40)/4=10; σ≈√((0²+20²+20²+30²)/4)=18.03
+    // z=(4900-10)/18.03≈270. >2
+    EXPECT_CALL(*mock_order_manager, execute_sell("ASSET_A", 100, 5000.0)).Times(1);
+    EXPECT_CALL(*mock_order_manager, execute_buy("ASSET_B", 200, 50.0)).Times(1);
+    strategy->update_price("ASSET_A", 5000.0);
     strategy->update_price("ASSET_B", 50.0);
 }
 

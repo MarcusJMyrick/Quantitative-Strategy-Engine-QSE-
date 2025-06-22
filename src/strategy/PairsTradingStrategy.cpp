@@ -35,11 +35,15 @@ namespace qse {
 
     // Logic for calculating the spread and executing trades.
     void PairsTradingStrategy::check_and_execute_trades() {
+        std::cout << "DEBUG: Entering check_and_execute_trades(), "
+                  << "spread_ready=" << spread_mean_.is_ready() << "\n";
+        
         // 1. Calculate the current spread.
         double current_spread = latest_prices_[symbol1_] - (hedge_ratio_ * latest_prices_[symbol2_]);
 
         // 2. If indicators are not ready, just update them and wait for the next tick.
         if (!spread_mean_.is_ready()) {
+            std::cout << "DEBUG: Warmup – inserted spread=" << current_spread << "\n";
             spread_mean_.update(current_spread);
             spread_std_dev_.update(current_spread);
             return;
@@ -55,30 +59,34 @@ namespace qse {
         
         // 5. Calculate the z-score of the current spread against the historical data.
         if (std::abs(std_dev) < 1e-7) {
+            std::cout << "DEBUG: std_dev too small ("
+                      << std_dev << "), skipping z-score calc\n";
             return; // Avoid division by zero if history is flat.
         }
         double z_score = (current_spread - mean) / std_dev;
-        std::cout << "DEBUG: current_spread=" << current_spread << ", mean=" << mean << ", std_dev=" << std_dev << ", z_score=" << z_score << std::endl;
+        std::cout << "DEBUG: spread=" << current_spread << ", mean=" << mean << ", stddev=" << std_dev << ", z=" << z_score << std::endl;
 
         // 6. Apply trading rules.
         int position_s1 = order_manager_->get_position(symbol1_);
         
         if (position_s1 == 0) {
             if (z_score > entry_threshold_) {
-                std::cout << "DEBUG: Executing SHORT trade at price " << latest_prices_[symbol1_] << std::endl;
+                std::cout << "DEBUG: Branch=SHORT_ENTRY, z_score=" << z_score << "\n";
                 int qty1 = 100;
                 int qty2 = static_cast<int>(qty1 * hedge_ratio_);
                 order_manager_->execute_sell(symbol1_, qty1, latest_prices_[symbol1_]);
                 order_manager_->execute_buy(symbol2_, qty2, latest_prices_[symbol2_]);
             } else if (z_score < -entry_threshold_) {
-                std::cout << "DEBUG: Executing LONG trade at price " << latest_prices_[symbol1_] << std::endl;
+                std::cout << "DEBUG: Branch=LONG_ENTRY, z_score=" << z_score << "\n";
                 int qty1 = 100;
                 int qty2 = static_cast<int>(qty1 * hedge_ratio_);
                 order_manager_->execute_buy(symbol1_, qty1, latest_prices_[symbol1_]);
                 order_manager_->execute_sell(symbol2_, qty2, latest_prices_[symbol2_]);
+            } else {
+                std::cout << "DEBUG: Branch=NO_ENTRY, z_score=" << z_score << " (threshold=" << entry_threshold_ << ")\n";
             }
         } else if (std::abs(z_score) < exit_threshold_) {
-            std::cout << "DEBUG: Executing EXIT trade" << std::endl;
+            std::cout << "DEBUG: Branch=EXIT, z_score=" << z_score << "\n";
             int position_s2 = order_manager_->get_position(symbol2_);
             if (position_s1 > 0) {
                 order_manager_->execute_sell(symbol1_, std::abs(position_s1), latest_prices_[symbol1_]);
@@ -87,6 +95,8 @@ namespace qse {
                 order_manager_->execute_buy(symbol1_, std::abs(position_s1), latest_prices_[symbol1_]);
                 order_manager_->execute_sell(symbol2_, std::abs(position_s2), latest_prices_[symbol2_]);
             }
+        } else {
+            std::cout << "DEBUG: Branch=HOLD, z_score=" << z_score << " (exit_threshold=" << exit_threshold_ << ")\n";
         }
     }
 

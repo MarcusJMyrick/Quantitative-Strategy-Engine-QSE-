@@ -29,7 +29,7 @@ class BacktesterTest : public ::testing::Test {
 protected:
     MockDataReader* data_reader_;
     MockStrategy* strategy_;
-    qse::MockOrderManager* order_manager_;
+    MockOrderManager* order_manager_;
     std::vector<qse::Tick> sample_ticks_;
     std::vector<qse::Bar> sample_bars_;
     const std::vector<qse::Trade> empty_trade_log_{};
@@ -37,7 +37,7 @@ protected:
     void SetUp() override {
         data_reader_ = new MockDataReader();
         strategy_ = new MockStrategy();
-        order_manager_ = new qse::MockOrderManager();
+        order_manager_ = new MockOrderManager();
 
         // Create sample ticks for the primary test
         qse::Tick tick1;

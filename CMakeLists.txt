@@ -59,7 +59,9 @@ add_library(qse SHARED
     src/messaging/TickSubscriber.cpp
     src/order/OrderManager.cpp
     src/strategy/MovingAverage.cpp
+    src/strategy/MovingStandardDeviation.cpp
     src/strategy/SMACrossoverStrategy.cpp
+    src/strategy/PairsTradingStrategy.cpp
     ${PROTO_SRCS}
 )
 
@@ -89,6 +91,7 @@ add_executable(run_tests
     tests/cpp/test_Strategy.cpp
     tests/cpp/test_ThreadPool.cpp
     tests/cpp/test_BarBuilder.cpp
+    tests/cpp/test_PairsTradingStrategy.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

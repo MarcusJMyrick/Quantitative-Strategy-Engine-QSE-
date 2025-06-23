@@ -1,69 +1,59 @@
-#include <gtest/gtest.h>
+#include "gtest/gtest.h"
 #include "qse/data/BarBuilder.h"
-#include "qse/data/Data.h" // For Tick and Bar structs
-#include <vector>
-#include <chrono>
-#include <optional>
+#include "qse/data/Data.h"
 
-// Use the C++ standard library's chrono literals for cleaner time duration syntax (e.g., 60s)
-using namespace std::chrono_literals;
+using namespace qse;
 
-// A test fixture class to set up a common environment for all BarBuilder tests.
-class BarBuilderTest : public ::testing::Test {
-protected:
-    // Create a BarBuilder that will construct 1-minute (60-second) bars.
-    qse::BarBuilder bar_builder_{60s};
+TEST(BarBuilderTest, AggregatesTicksIntoBars) {
+    // 1-second bars
+    BarBuilder builder(std::chrono::seconds(1));
 
-    // A helper function to easily create Tick objects for our tests.
-    qse::Tick create_tick(int seconds_offset, double price, long long volume = 100) {
-        // Use a fixed starting point in time for consistent test results.
-        auto start_time = std::chrono::system_clock::from_time_t(1609459200); // 2021-01-01 00:00:00 UTC
-        return {start_time + std::chrono::seconds(seconds_offset), price, static_cast<qse::Volume>(volume)};
+    // Scrambled tick input (ms, price, volume)
+    std::vector<Tick> ticks = {
+        {from_unix_ms(2500), 11.0,  3},
+        {from_unix_ms(1000), 10.0,  1},
+        {from_unix_ms(1500), 12.0,  2},
+    };
+
+    std::vector<Bar> completed;
+
+    // 1) On each tick, capture _only_ the bar that add_tick() returns
+    for (auto const& tk : ticks) {
+        if (auto b = builder.add_tick(tk)) {
+            completed.push_back(*b);
+        }
     }
-};
 
-// Test to ensure the BarBuilder correctly aggregates ticks that fall within a single bar interval.
-TEST_F(BarBuilderTest, FormsSingleBarCorrectly) {
-    // Arrange: Create a series of ticks that are all within the same 60-second window.
-    auto tick1 = create_tick(10, 100.0); // The Open price
-    auto tick2 = create_tick(20, 102.0); // This should become the High
-    auto tick3 = create_tick(30, 99.0);  // This should become the Low
-    auto tick4 = create_tick(40, 101.0); // This should become the Close
+    // 2) Finally, flush the one remaining bar
+    if (auto b = builder.flush()) {
+        completed.push_back(*b);
+    }
 
-    // Act: Add the ticks to the builder.
-    bar_builder_.add_tick(tick1);
-    bar_builder_.add_tick(tick2);
-    bar_builder_.add_tick(tick3);
-    auto result = bar_builder_.add_tick(tick4);
+    // Sort by start timestamp so we assert chronologically:
+    std::sort(completed.begin(), completed.end(),
+        [](auto const &a, auto const &b){
+            return to_unix_ms(a.timestamp) < to_unix_ms(b.timestamp);
+        }
+    );
 
-    // Assert: Since all ticks are within the 60s interval, no bar should be completed yet.
-    ASSERT_FALSE(result.has_value());
-}
+    // Now we should have exactly two bars:
+    ASSERT_EQ(completed.size(), 2u);
 
-// Test to ensure the BarBuilder completes the old bar and returns it when a new tick
-// arrives that belongs to the next time interval.
-TEST_F(BarBuilderTest, CompletesBarOnNextIntervalTick) {
-    // Arrange: Create four ticks for the first bar.
-    bar_builder_.add_tick(create_tick(10, 100.0)); // Open
-    bar_builder_.add_tick(create_tick(20, 102.0)); // High
-    bar_builder_.add_tick(create_tick(30, 99.0));  // Low
-    bar_builder_.add_tick(create_tick(40, 101.0)); // Close
-    
-    // This tick is at second 70, which is in the *next* 60-second interval.
-    // This tick should trigger the completion of the first bar.
-    auto closing_tick = create_tick(70, 105.0); 
+    // Bar 1: [1000,2000)
+    auto &bar1 = completed[0];
+    EXPECT_EQ(to_unix_ms(bar1.timestamp), 1000LL);
+    EXPECT_DOUBLE_EQ(bar1.open,  10.0);
+    EXPECT_DOUBLE_EQ(bar1.high,  12.0);
+    EXPECT_DOUBLE_EQ(bar1.low,   10.0);
+    EXPECT_DOUBLE_EQ(bar1.close, 12.0);
+    EXPECT_EQ(bar1.volume,       3);
 
-    // Act: Add the final tick.
-    auto result = bar_builder_.add_tick(closing_tick);
-
-    // Assert: A bar should be complete now.
-    ASSERT_TRUE(result.has_value());
-    
-    // Verify the completed bar's values are correct.
-    qse::Bar completed_bar = *result;
-    EXPECT_DOUBLE_EQ(completed_bar.open, 100.0);
-    EXPECT_DOUBLE_EQ(completed_bar.high, 102.0);
-    EXPECT_DOUBLE_EQ(completed_bar.low, 99.0);
-    EXPECT_DOUBLE_EQ(completed_bar.close, 101.0);
-    EXPECT_EQ(completed_bar.volume, 400); // 100 volume for each of the 4 ticks
+    // Bar 2: [2000,3000)
+    auto &bar2 = completed[1];
+    EXPECT_EQ(to_unix_ms(bar2.timestamp), 2000LL);
+    EXPECT_DOUBLE_EQ(bar2.open,  11.0);
+    EXPECT_DOUBLE_EQ(bar2.high,  11.0);
+    EXPECT_DOUBLE_EQ(bar2.low,   11.0);
+    EXPECT_DOUBLE_EQ(bar2.close, 11.0);
+    EXPECT_EQ(bar2.volume,       3);
 } 

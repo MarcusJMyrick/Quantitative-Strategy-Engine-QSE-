@@ -94,4 +94,13 @@ struct Trade {
     Price commission;
 };
 
+// --- Timestamp helpers for ms conversions ---
+inline Timestamp from_unix_ms(int64_t ms) {
+    return Timestamp(std::chrono::milliseconds(ms));
+}
+
+inline int64_t to_unix_ms(const Timestamp& ts) {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(ts.time_since_epoch()).count();
+}
+
 } // namespace qse

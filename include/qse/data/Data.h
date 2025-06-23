@@ -43,23 +43,31 @@ struct Tick {
 
 /**
  * @brief Represents an order submitted to the market.
- * This is a foundational struct for a future, more advanced OrderManager.
+ * Enhanced for tick-level simulation with support for limit orders, IOC, and partial fills.
  */
 struct Order {
-    enum class Type { MARKET, LIMIT, STOP, STOP_LIMIT };
+    enum class Type { MARKET, LIMIT, IOC };  // Simplified for initial implementation
     enum class Side { BUY, SELL };
-    enum class Status { PENDING, FILLED, CANCELLED, REJECTED };
+    enum class Status { PENDING, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED };
 
     std::string order_id;
     std::string symbol;
     Type type;
     Side side;
-    Price price;
-    Volume quantity;
+    Price limit_price;        // For limit orders
+    Volume quantity;          // Original order quantity
+    Volume filled_quantity;   // How much has been filled
+    Price avg_fill_price;     // Average fill price for partial fills
     Status status;
-    Timestamp timestamp;
+    Timestamp timestamp;      // When order was placed
+    Timestamp expiry_time;    // For IOC orders
     
-    Order() = default; // Default constructor
+    // Helper methods
+    bool is_active() const { return status == Status::PENDING || status == Status::PARTIALLY_FILLED; }
+    bool is_filled() const { return status == Status::FILLED; }
+    Volume remaining_quantity() const { return quantity - filled_quantity; }
+    
+    Order() = default;
 };
 
 // --- Data structures for logging trades ---

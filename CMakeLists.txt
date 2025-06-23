@@ -92,6 +92,7 @@ add_executable(run_tests
     tests/cpp/test_ThreadPool.cpp
     tests/cpp/test_BarBuilder.cpp
     tests/cpp/test_PairsTradingStrategy.cpp
+    tests/cpp/test_CSVDataReaderTicks.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

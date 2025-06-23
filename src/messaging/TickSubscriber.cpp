@@ -229,7 +229,7 @@ Order TickSubscriber::deserialize_order(const std::string& data) {
     
     // Parse price
     std::getline(iss, token, ',');
-    order.price = std::stod(token);
+    order.limit_price = std::stod(token);
     
     // Parse quantity
     std::getline(iss, token, ',');

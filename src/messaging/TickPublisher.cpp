@@ -110,7 +110,7 @@ std::string TickPublisher::serialize_order(const Order& order) {
         order.timestamp.time_since_epoch()).count();
     oss << order.order_id << "," << order.symbol << "," 
         << static_cast<int>(order.type) << "," << static_cast<int>(order.side)
-        << "," << order.price << "," << order.quantity 
+        << "," << order.limit_price << "," << order.quantity 
         << "," << static_cast<int>(order.status) << "," << timestamp_s;
     return oss.str();
 }

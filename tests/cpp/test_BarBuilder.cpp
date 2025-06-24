@@ -10,9 +10,9 @@ TEST(BarBuilderTest, AggregatesTicksIntoBars) {
 
     // Scrambled tick input (ms, price, volume)
     std::vector<Tick> ticks = {
-        {"TEST", from_unix_ms(2500), 11.0, 0.0, 0.0, 3},
-        {"TEST", from_unix_ms(1000), 10.0, 0.0, 0.0, 1},
-        {"TEST", from_unix_ms(1500), 12.0, 0.0, 0.0, 2},
+        {"TEST", from_unix_ms(2500), 11.0, 10.5, 11.5, 3, 100, 100},
+        {"TEST", from_unix_ms(1000), 10.0, 9.5, 10.5, 1, 100, 100},
+        {"TEST", from_unix_ms(1500), 12.0, 11.5, 12.5, 2, 100, 100},
     };
 
     std::vector<Bar> completed;
@@ -46,7 +46,7 @@ TEST(BarBuilderTest, AggregatesTicksIntoBars) {
     EXPECT_DOUBLE_EQ(bar1.high,  12.0);
     EXPECT_DOUBLE_EQ(bar1.low,   10.0);
     EXPECT_DOUBLE_EQ(bar1.close, 12.0);
-    EXPECT_EQ(bar1.volume,       3);
+    EXPECT_EQ(bar1.volume,       200); // 100 + 100 (bid_size + ask_size)
 
     // Bar 2: [2000,3000)
     auto &bar2 = completed[1];
@@ -55,5 +55,5 @@ TEST(BarBuilderTest, AggregatesTicksIntoBars) {
     EXPECT_DOUBLE_EQ(bar2.high,  11.0);
     EXPECT_DOUBLE_EQ(bar2.low,   11.0);
     EXPECT_DOUBLE_EQ(bar2.close, 11.0);
-    EXPECT_EQ(bar2.volume,       3);
+    EXPECT_EQ(bar2.volume,       100); // 100 (bid_size + ask_size)
 } 

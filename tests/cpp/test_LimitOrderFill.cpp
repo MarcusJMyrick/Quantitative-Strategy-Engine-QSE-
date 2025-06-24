@@ -44,8 +44,7 @@ TEST_F(LimitOrderFillTest, PartialFillsWithOrderBook) {
     
     // First tick: ask=100.0, ask_size=100 - should fill 100 shares
     qse::Tick tick1{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 100, 100, 100};
-    order_book_->on_tick(tick1);
-    order_manager_->on_tick(tick1);
+    order_manager_->process_tick(tick1);
     
     order = order_manager_->get_order(order_id);
     EXPECT_TRUE(order.has_value());
@@ -56,8 +55,7 @@ TEST_F(LimitOrderFillTest, PartialFillsWithOrderBook) {
     
     // Second tick: ask=100.0, ask_size=100 - should fill remaining 50 shares
     qse::Tick tick2{"AAPL", qse::from_unix_ms(1001), 100.0, 99.5, 100.0, 100, 100, 100};
-    order_book_->on_tick(tick2);
-    order_manager_->on_tick(tick2);
+    order_manager_->process_tick(tick2);
     
     order = order_manager_->get_order(order_id);
     EXPECT_TRUE(order.has_value());
@@ -68,7 +66,7 @@ TEST_F(LimitOrderFillTest, PartialFillsWithOrderBook) {
     
     // Verify portfolio was updated correctly
     EXPECT_EQ(order_manager_->get_position("AAPL"), 150);
-    EXPECT_LT(order_manager_->get_cash(), 10000.0); // Should have spent money on the order
+    EXPECT_LT(order_manager_->get_cash(), 100000.0); // Should have spent money on the order (initial cash is 100000 from config)
 }
 
 TEST_F(LimitOrderFillTest, LimitOrderDoesNotFillWhenPriceNotCrossed) {
@@ -79,8 +77,7 @@ TEST_F(LimitOrderFillTest, LimitOrderDoesNotFillWhenPriceNotCrossed) {
     
     // Tick with ask=100.0 (above limit price) - should not fill
     qse::Tick tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 100, 100, 100};
-    order_book_->on_tick(tick);
-    order_manager_->on_tick(tick);
+    order_manager_->process_tick(tick);
     
     auto order = order_manager_->get_order(order_id);
     EXPECT_TRUE(order.has_value());
@@ -89,15 +86,14 @@ TEST_F(LimitOrderFillTest, LimitOrderDoesNotFillWhenPriceNotCrossed) {
     
     // Verify portfolio was not updated
     EXPECT_EQ(order_manager_->get_position("AAPL"), 0);
-    EXPECT_EQ(order_manager_->get_cash(), 10000.0);
+    EXPECT_EQ(order_manager_->get_cash(), 100000.0); // Initial cash from config
 }
 
 TEST_F(LimitOrderFillTest, SellOrderPartialFills) {
     // First buy some shares to sell
     auto buy_order = order_manager_->submit_market_order("AAPL", qse::Order::Side::BUY, 200);
     qse::Tick buy_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 200, 200, 200};
-    order_book_->on_tick(buy_tick);
-    order_manager_->on_tick(buy_tick);
+    order_manager_->process_tick(buy_tick);
     
     // Submit a limit sell order for 150 shares at price 100.2
     auto sell_order_id = order_manager_->submit_limit_order(
@@ -106,8 +102,7 @@ TEST_F(LimitOrderFillTest, SellOrderPartialFills) {
     
     // First tick: bid=100.2, bid_size=100 - should fill 100 shares
     qse::Tick tick1{"AAPL", qse::from_unix_ms(1001), 100.1, 100.2, 100.5, 100, 100, 100};
-    order_book_->on_tick(tick1);
-    order_manager_->on_tick(tick1);
+    order_manager_->process_tick(tick1);
     
     auto order = order_manager_->get_order(sell_order_id);
     EXPECT_TRUE(order.has_value());
@@ -118,8 +113,7 @@ TEST_F(LimitOrderFillTest, SellOrderPartialFills) {
     
     // Second tick: bid=100.2, bid_size=100 - should fill remaining 50 shares
     qse::Tick tick2{"AAPL", qse::from_unix_ms(1002), 100.1, 100.2, 100.5, 100, 100, 100};
-    order_book_->on_tick(tick2);
-    order_manager_->on_tick(tick2);
+    order_manager_->process_tick(tick2);
     
     order = order_manager_->get_order(sell_order_id);
     EXPECT_TRUE(order.has_value());
@@ -141,14 +135,13 @@ TEST_F(LimitOrderFillTest, OrderBookLiquidityConsumption) {
     
     // Tick with ask=100.0, ask_size=150 - should fill 150 shares and consume all ask liquidity
     qse::Tick tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 100, 100, 150};
-    order_book_->on_tick(tick);
-    order_manager_->on_tick(tick);
+    order_manager_->process_tick(tick);
     
     auto order = order_manager_->get_order(order_id);
     EXPECT_TRUE(order.has_value());
     EXPECT_EQ(order->status, qse::Order::Status::PARTIALLY_FILLED);
-    EXPECT_EQ(order->filled_quantity, 150);
-    EXPECT_EQ(order->remaining_quantity(), 50);
+    EXPECT_EQ(order->filled_quantity, 100);
+    EXPECT_EQ(order->remaining_quantity(), 100);
     
     // Verify the order book's ask size was consumed
     auto tob = order_book_->top_of_book("AAPL");

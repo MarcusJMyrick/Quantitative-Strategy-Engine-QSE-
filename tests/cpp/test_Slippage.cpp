@@ -67,7 +67,7 @@ TEST_F(SlippageTest, MarketBuyOrderWithSlippage) {
     auto order_id = order_manager->submit_market_order("TEST", qse::Order::Side::BUY, 100);
     
     // Create a tick with mid price 50.0
-    qse::Tick test_tick{"TEST", qse::from_unix_ms(1000), 50.0, 49.5, 50.5, 100};
+    qse::Tick test_tick{"TEST", qse::from_unix_ms(1000), 50.0, 49.5, 50.5, 100, 100, 100};
     
     // Process the tick - should fill with slippage
     order_manager->process_tick(test_tick);
@@ -91,14 +91,14 @@ TEST_F(SlippageTest, MarketSellOrderWithSlippage) {
     
     // First buy some shares
     order_manager->submit_market_order("TEST", qse::Order::Side::BUY, 100);
-    qse::Tick buy_tick{"TEST", qse::from_unix_ms(1000), 50.0, 49.5, 50.5, 100};
+    qse::Tick buy_tick{"TEST", qse::from_unix_ms(1000), 50.0, 49.5, 50.5, 100, 100, 100};
     order_manager->process_tick(buy_tick);
     
     // Submit a market sell order
     auto order_id = order_manager->submit_market_order("TEST", qse::Order::Side::SELL, 50);
     
     // Create a tick with mid price 60.0
-    qse::Tick sell_tick{"TEST", qse::from_unix_ms(1001), 60.0, 59.5, 60.5, 100};
+    qse::Tick sell_tick{"TEST", qse::from_unix_ms(1001), 60.0, 59.5, 60.5, 100, 100, 100};
     
     // Process the tick - should fill with slippage
     order_manager->process_tick(sell_tick);
@@ -121,7 +121,7 @@ TEST_F(SlippageTest, NoSlippageForUnknownSymbol) {
     auto order_id = order_manager->submit_market_order("UNKNOWN", qse::Order::Side::BUY, 100);
     
     // Create a tick with mid price 50.0
-    qse::Tick test_tick{"UNKNOWN", qse::from_unix_ms(1000), 50.0, 49.5, 50.5, 100};
+    qse::Tick test_tick{"UNKNOWN", qse::from_unix_ms(1000), 50.0, 49.5, 50.5, 100, 100, 100};
     
     // Process the tick - should fill without slippage
     order_manager->process_tick(test_tick);
@@ -144,7 +144,7 @@ TEST_F(SlippageTest, LimitOrderWithSlippage) {
     auto order_id = order_manager->submit_limit_order("TEST", qse::Order::Side::BUY, 100, 50.0, qse::Order::TimeInForce::GTC);
     
     // Create a tick that crosses the limit (ask <= limit price)
-    qse::Tick test_tick{"TEST", qse::from_unix_ms(1000), 50.0, 49.5, 50.0, 100};
+    qse::Tick test_tick{"TEST", qse::from_unix_ms(1000), 50.0, 49.5, 50.0, 100, 100, 100};
     
     // Process the tick - should fill at limit price with slippage
     order_manager->process_tick(test_tick);

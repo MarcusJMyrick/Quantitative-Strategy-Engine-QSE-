@@ -68,6 +68,7 @@ add_library(qse SHARED
     src/strategy/MovingStandardDeviation.cpp
     src/strategy/SMACrossoverStrategy.cpp
     src/strategy/PairsTradingStrategy.cpp
+    src/strategy/FillTrackingStrategy.cpp
     ${PROTO_SRCS}
 )
 
@@ -103,6 +104,7 @@ add_executable(run_tests
     tests/cpp/test_Slippage.cpp
     tests/cpp/test_LimitOrderFill.cpp
     tests/cpp/test_TickDrivenArchitecture.cpp
+    tests/cpp/test_FillCallback.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

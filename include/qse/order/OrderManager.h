@@ -43,6 +43,13 @@ namespace qse {
                                   Price limit_price, Order::TimeInForce tif) override;
         bool cancel_order(const OrderId& order_id) override;
         void process_tick(const Tick& tick) override;
+        
+        // --- NEW: Attempt fills against current order book ---
+        void attempt_fills() override;
+        
+        // --- NEW: Set fill callback for strategy notifications ---
+        void set_fill_callback(FillCallback callback) override;
+        
         std::optional<Order> get_order(const OrderId& order_id) const override;
         std::vector<Order> get_active_orders(const std::string& symbol) const override;
 
@@ -67,6 +74,9 @@ namespace qse {
         // File outputs
         std::ofstream equity_curve_file_;
         std::ofstream tradelog_file_;
+        
+        // --- NEW: Fill callback for strategy notifications ---
+        FillCallback fill_callback_;
         
         // Helper methods
         OrderId generate_order_id();

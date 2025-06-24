@@ -102,6 +102,19 @@ struct Trade {
     Price commission;
 };
 
+// --- NEW: Fill structure for order execution feedback ---
+struct Fill {
+    OrderId order_id;
+    std::string symbol;
+    Volume quantity;
+    Price price;
+    Timestamp timestamp;
+    std::string side; // "BUY" or "SELL"
+    
+    Fill(OrderId id, const std::string& sym, Volume qty, Price px, Timestamp ts, const std::string& s)
+        : order_id(id), symbol(sym), quantity(qty), price(px), timestamp(ts), side(s) {}
+};
+
 // --- Timestamp helpers for ms conversions ---
 inline Timestamp from_unix_ms(int64_t ms) {
     return Timestamp(std::chrono::milliseconds(ms));

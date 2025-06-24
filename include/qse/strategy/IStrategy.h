@@ -17,6 +17,11 @@ public:
     // This will now typically be called by the strategy's own BarBuilder.
     // Default implementation does nothing - strategies can override if needed.
     virtual void on_bar(const qse::Bar& bar) {}
+
+    // --- NEW: Called when an order is filled ---
+    // This allows strategies to track their own fills and update positions.
+    // Default implementation does nothing - strategies can override if needed.
+    virtual void on_fill(const qse::Fill& fill) {}
 };
 
 } // namespace qse

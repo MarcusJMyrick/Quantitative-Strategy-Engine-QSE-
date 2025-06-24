@@ -485,4 +485,94 @@ Volume OrderManager::process_ioc_order_fill(Order& order, const TopOfBook& tob) 
     return fill_qty;
 }
 
+// --- NEW: Attempt fills against current order book ---
+void OrderManager::attempt_fills() {
+    if (order_book_ == nullptr) {
+        return; // No order book available
+    }
+    
+    // Process fills for each symbol that has active orders
+    for (const auto& symbol_pair : symbol_orders_) {
+        const std::string& symbol = symbol_pair.first;
+        const std::vector<OrderId>& order_ids = symbol_pair.second;
+        
+        if (order_ids.empty()) {
+            continue;
+        }
+        
+        // Get current top of book for this symbol
+        TopOfBook tob = order_book_->top_of_book(symbol);
+        if (!tob.has_bid() && !tob.has_ask()) {
+            continue; // No liquidity available
+        }
+        
+        std::vector<OrderId> to_remove;
+        
+        for (const OrderId& order_id : order_ids) {
+            auto order_it = orders_.find(order_id);
+            if (order_it == orders_.end()) {
+                continue;
+            }
+            
+            Order& order = order_it->second;
+            if (!order.is_active()) {
+                continue;
+            }
+            
+            Volume fill_qty = 0;
+            Price fill_price = 0.0;
+            
+            if (order.type == Order::Type::MARKET) {
+                // Market orders fill immediately
+                fill_qty = order_book_->consume_liquidity(symbol, order.side, order.remaining_quantity());
+                if (fill_qty > 0) {
+                    fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
+                }
+            } else if (order.type == Order::Type::LIMIT) {
+                // Limit orders fill when price crosses limit
+                fill_qty = process_limit_order_fill(order, tob);
+                if (fill_qty > 0) {
+                    fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
+                }
+            }
+            
+            if (fill_qty > 0) {
+                // Create a dummy tick for the fill (since we don't have a real tick here)
+                Tick dummy_tick;
+                dummy_tick.symbol = symbol;
+                dummy_tick.timestamp = std::chrono::system_clock::now();
+                dummy_tick.bid = tob.best_bid_price;
+                dummy_tick.ask = tob.best_ask_price;
+                dummy_tick.bid_size = tob.best_bid_size;
+                dummy_tick.ask_size = tob.best_ask_size;
+                dummy_tick.price = (tob.best_bid_price + tob.best_ask_price) / 2.0;
+                dummy_tick.volume = fill_qty;
+                
+                fill_order(order, fill_qty, fill_price, dummy_tick);
+                
+                // Emit fill callback if registered
+                if (fill_callback_) {
+                    std::string side_str = (order.side == Order::Side::BUY) ? "BUY" : "SELL";
+                    Fill fill(order.order_id, order.symbol, fill_qty, fill_price, dummy_tick.timestamp, side_str);
+                    fill_callback_(fill);
+                }
+                
+                if (order.is_filled()) {
+                    to_remove.push_back(order_id);
+                }
+            }
+        }
+        
+        // Remove filled orders from symbol_orders_
+        for (const OrderId& order_id : to_remove) {
+            remove_order_from_book(order_id);
+        }
+    }
+}
+
+// --- NEW: Set fill callback for strategy notifications ---
+void OrderManager::set_fill_callback(FillCallback callback) {
+    fill_callback_ = callback;
+}
+
 } // namespace qse

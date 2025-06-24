@@ -24,7 +24,12 @@ Backtester::Backtester(
 {}
 
 void Backtester::run() {
-    std::cout << "--- Starting Tick-Driven Backtest for " << symbol_ << " ---" << std::endl;
+    std::cout << "--- Starting Tick-Driven Backtester for " << symbol_ << " ---" << std::endl;
+    
+    // Set up fill callback to notify strategy of fills
+    order_manager_->set_fill_callback([this](const qse::Fill& fill) {
+        strategy_->on_fill(fill);
+    });
     
     // Read all ticks from the data reader
     const std::vector<Tick>& all_ticks = data_reader_->read_all_ticks();
@@ -34,47 +39,44 @@ void Backtester::run() {
         std::cout << "No tick data to process for " << symbol_ << ". Exiting." << std::endl;
         return;
     }
-
-    // --- NEW: The main tick-driven loop ---
-    // This implements the architecture: Ticks → BarBuilder → Bars → Strategy
+    
+    int tick_count = 0;
+    int bar_count = 0;
+    
+    // Main tick-driven loop
     for (const auto& tick : all_ticks) {
-        // 1. Update the order book with the new tick
+        tick_count++;
+        
+        // Update order book with new tick
         order_book_.on_tick(tick);
         
-        // 2. Feed tick to BarBuilder and get any completed bars
+        // Build bars from ticks
         if (auto bar = bar_builder_.add_tick(tick)) {
-            // 3. If a bar was completed, feed it to the strategy
+            bar_count++;
             strategy_->on_bar(*bar);
         }
         
-        // 4. Feed the tick directly to the strategy (for tick-driven strategies)
+        // Notify strategy of tick
         strategy_->on_tick(tick);
         
-        // 5. Process the order book for fills
+        // Attempt fills against current order book
+        order_manager_->attempt_fills();
+        
+        // Process tick for legacy order management
         order_manager_->process_tick(tick);
     }
     
-    // Flush any remaining bars at the end
-    while (auto bar = bar_builder_.flush()) {
+    // Flush any remaining bars
+    if (auto bar = bar_builder_.flush()) {
+        bar_count++;
         strategy_->on_bar(*bar);
     }
-      
-    std::filesystem::create_directories("results");
     
-    // --- The results generation would also need to be updated ---
-    // For now, we comment this part out as the equity curve is not being built
-    // and the order manager is not being called in the same way.
-    /*
-    std::string equity_filename = "results/equity_" + symbol_ + ".csv";
-    ...
-    std::string tradelog_filename = "results/tradelog_" + symbol_ + ".csv";
-    ...
-    */
-
-    std::cout << "--- Backtest Finished for " << symbol_ << " ---" << std::endl;
-    
-    // Reporting final value is more complex without a simple "last bar".
-    // We will revisit more advanced reporting in a later phase.
+    std::cout << "--- Backtest Complete ---" << std::endl;
+    std::cout << "Ticks processed: " << tick_count << std::endl;
+    std::cout << "Bars created: " << bar_count << std::endl;
+    std::cout << "Final cash: $" << order_manager_->get_cash() << std::endl;
+    std::cout << "Final position: " << order_manager_->get_position(symbol_) << std::endl;
 }
 
 } // namespace qse

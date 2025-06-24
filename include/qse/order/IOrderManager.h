@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <optional>
+#include <functional>
 
 namespace qse {
 
@@ -14,6 +15,9 @@ namespace qse {
     class IOrderManager {
     public:
         virtual ~IOrderManager() = default;
+
+        // --- NEW: Fill callback type ---
+        using FillCallback = std::function<void(const Fill&)>;
 
         // --- Tick-level order management ---
         
@@ -29,6 +33,13 @@ namespace qse {
         
         // Process a tick and match orders
         virtual void process_tick(const Tick& tick) = 0;
+        
+        // --- NEW: Attempt fills against current order book ---
+        // This should be called after order_book.on_tick() to match orders
+        virtual void attempt_fills() = 0;
+        
+        // --- NEW: Set fill callback for strategy notifications ---
+        virtual void set_fill_callback(FillCallback callback) = 0;
         
         // Get order information
         virtual std::optional<Order> get_order(const OrderId& order_id) const = 0;

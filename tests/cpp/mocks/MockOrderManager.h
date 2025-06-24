@@ -24,6 +24,11 @@ public:
     MOCK_METHOD(qse::OrderId, submit_limit_order, (const std::string& symbol, qse::Order::Side side, qse::Volume quantity, qse::Price limit_price, qse::Order::TimeInForce tif), (override));
     MOCK_METHOD(bool, cancel_order, (const qse::OrderId& order_id), (override));
     MOCK_METHOD(void, process_tick, (const qse::Tick& tick), (override));
+    
+    // --- NEW: Fill callback mock methods ---
+    MOCK_METHOD(void, attempt_fills, (), (override));
+    MOCK_METHOD(void, set_fill_callback, (qse::IOrderManager::FillCallback callback), (override));
+    
     MOCK_METHOD(std::optional<qse::Order>, get_order, (const qse::OrderId& order_id), (const, override));
     MOCK_METHOD(std::vector<qse::Order>, get_active_orders, (const std::string& symbol), (const, override));
 }; 

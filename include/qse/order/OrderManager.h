@@ -9,6 +9,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 
 namespace qse {
 
@@ -67,6 +68,19 @@ namespace qse {
         std::map<std::string, int> positions_;  // Map of symbol to position quantity.
         std::ofstream equity_curve_file_;       // File stream for the equity curve log.
         std::ofstream tradelog_file_;           // File stream for the trade log.
+        
+        // --- Order book data structures ---
+        std::unordered_map<OrderId, Order> orders_;                    // All orders by ID
+        std::unordered_map<std::string, std::vector<OrderId>> symbol_orders_;  // Active orders by symbol
+        int next_order_id_;                                            // Counter for generating unique order IDs
+        
+        // --- Helper methods ---
+        OrderId generate_order_id();
+        void add_order_to_book(const Order& order);
+        void remove_order_from_book(const OrderId& order_id);
+        void match_orders_for_symbol(const std::string& symbol, const Tick& tick);
+        void fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick);
+        void cancel_ioc_orders(const std::string& symbol, const Tick& tick);
     };
 
 } // namespace qse

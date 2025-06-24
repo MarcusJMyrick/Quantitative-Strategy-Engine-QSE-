@@ -32,14 +32,12 @@ struct Bar {
  * @brief Represents a single market trade event (a tick).
  */
 struct Tick {
-    Timestamp timestamp;  // Tick's exact timestamp
+    std::string symbol;    // Symbol/identifier for the asset
+    Timestamp timestamp;   // Tick's exact timestamp
     Price price;         // Price of the trade (last trade price)
     Price bid;           // Best bid price
     Price ask;           // Best ask price
     Volume volume;       // Volume of the trade
-    
-    // Note: Symbol can be added if the data source provides it per-tick.
-    // For now, we assume the DataReader handles one symbol at a time.
     
     Tick() = default; // Default constructor
     

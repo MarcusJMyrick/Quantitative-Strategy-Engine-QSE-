@@ -3,11 +3,13 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <chrono>
+#include <algorithm>
 
 namespace qse {
 
 OrderManager::OrderManager(double initial_cash, const std::string& equity_curve_path, const std::string& tradelog_path)
-    : cash_(initial_cash) {
+    : cash_(initial_cash), next_order_id_(1) {
 
     equity_curve_file_.open(equity_curve_path);
     if (!equity_curve_file_.is_open()) {
@@ -111,30 +113,268 @@ double OrderManager::calculate_holdings_value(const std::map<std::string, double
 // --- Tick-level order management stub implementations ---
 
 OrderId OrderManager::submit_market_order(const std::string& symbol, Order::Side side, Volume quantity) {
-    static int dummy_id = 0;
-    return "M" + std::to_string(dummy_id++);
+    OrderId order_id = generate_order_id();
+    
+    Order order;
+    order.order_id = order_id;
+    order.symbol = symbol;
+    order.type = Order::Type::MARKET;
+    order.side = side;
+    order.time_in_force = Order::TimeInForce::DAY;
+    order.quantity = quantity;
+    order.filled_quantity = 0;
+    order.avg_fill_price = 0.0;
+    order.status = Order::Status::PENDING;
+    order.timestamp = std::chrono::system_clock::now();
+    
+    add_order_to_book(order);
+    return order_id;
 }
 
 OrderId OrderManager::submit_limit_order(const std::string& symbol, Order::Side side, Volume quantity, 
                                         Price limit_price, Order::TimeInForce tif) {
-    static int dummy_id = 0;
-    return "L" + std::to_string(dummy_id++);
+    OrderId order_id = generate_order_id();
+    
+    Order order;
+    order.order_id = order_id;
+    order.symbol = symbol;
+    order.type = Order::Type::LIMIT;
+    order.side = side;
+    order.time_in_force = tif;
+    order.limit_price = limit_price;
+    order.quantity = quantity;
+    order.filled_quantity = 0;
+    order.avg_fill_price = 0.0;
+    order.status = Order::Status::PENDING;
+    order.timestamp = std::chrono::system_clock::now();
+    
+    // For IOC orders, set expiry time to current time
+    if (tif == Order::TimeInForce::IOC) {
+        order.expiry_time = order.timestamp;
+    }
+    
+    add_order_to_book(order);
+    return order_id;
 }
 
 bool OrderManager::cancel_order(const OrderId& order_id) {
-    return false; // Stub: always return false
+    auto it = orders_.find(order_id);
+    if (it == orders_.end()) {
+        return false; // Order not found
+    }
+    
+    Order& order = it->second;
+    if (order.status != Order::Status::PENDING && order.status != Order::Status::PARTIALLY_FILLED) {
+        return false; // Order cannot be cancelled
+    }
+    
+    order.status = Order::Status::CANCELLED;
+    remove_order_from_book(order_id);
+    return true;
 }
 
 void OrderManager::process_tick(const Tick& tick) {
-    // Stub: no-op for now
+    // Use the tick's symbol for order matching
+    std::string symbol = tick.symbol;
+    
+    std::cout << "DEBUG: Processing tick for " << symbol << " bid=" << tick.bid << " ask=" << tick.ask << " mid=" << tick.mid_price() << std::endl;
+    
+    // Match orders for this symbol first
+    match_orders_for_symbol(symbol, tick);
+    
+    // Cancel IOC orders that weren't filled immediately
+    cancel_ioc_orders(symbol, tick);
 }
 
 std::optional<Order> OrderManager::get_order(const OrderId& order_id) const {
-    return std::nullopt; // Stub: return empty optional
+    auto it = orders_.find(order_id);
+    if (it == orders_.end()) {
+        return std::nullopt;
+    }
+    return it->second;
 }
 
 std::vector<Order> OrderManager::get_active_orders(const std::string& symbol) const {
-    return {}; // Stub: return empty vector
+    std::vector<Order> active_orders;
+    
+    auto symbol_it = symbol_orders_.find(symbol);
+    if (symbol_it == symbol_orders_.end()) {
+        return active_orders;
+    }
+    
+    for (const OrderId& order_id : symbol_it->second) {
+        auto order_it = orders_.find(order_id);
+        if (order_it != orders_.end()) {
+            const Order& order = order_it->second;
+            if (order.is_active()) {
+                active_orders.push_back(order);
+            }
+        }
+    }
+    
+    return active_orders;
+}
+
+// --- Helper method implementations ---
+
+OrderId OrderManager::generate_order_id() {
+    return "ORDER_" + std::to_string(next_order_id_++);
+}
+
+void OrderManager::add_order_to_book(const Order& order) {
+    orders_[order.order_id] = order;
+    symbol_orders_[order.symbol].push_back(order.order_id);
+}
+
+void OrderManager::remove_order_from_book(const OrderId& order_id) {
+    auto order_it = orders_.find(order_id);
+    if (order_it == orders_.end()) {
+        return;
+    }
+    
+    const std::string& symbol = order_it->second.symbol;
+    
+    // Remove from symbol_orders_
+    auto symbol_it = symbol_orders_.find(symbol);
+    if (symbol_it != symbol_orders_.end()) {
+        auto& order_ids = symbol_it->second;
+        order_ids.erase(std::remove(order_ids.begin(), order_ids.end(), order_id), order_ids.end());
+        
+        // Remove empty symbol entries
+        if (order_ids.empty()) {
+            symbol_orders_.erase(symbol_it);
+        }
+    }
+}
+
+void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick& tick) {
+    auto symbol_it = symbol_orders_.find(symbol);
+    if (symbol_it == symbol_orders_.end()) {
+        std::cout << "DEBUG: No orders found for symbol " << symbol << std::endl;
+        return;
+    }
+    
+    std::vector<OrderId>& order_ids = symbol_it->second;
+    std::cout << "DEBUG: Found " << order_ids.size() << " orders for symbol " << symbol << std::endl;
+    std::vector<OrderId> to_remove;
+    
+    for (const OrderId& order_id : order_ids) {
+        auto order_it = orders_.find(order_id);
+        if (order_it == orders_.end()) {
+            continue;
+        }
+        
+        Order& order = order_it->second;
+        if (!order.is_active()) {
+            std::cout << "DEBUG: Order " << order_id << " is not active, status=" << static_cast<int>(order.status) << std::endl;
+            continue;
+        }
+        
+        std::cout << "DEBUG: Processing order " << order_id << " type=" << static_cast<int>(order.type) << " side=" << static_cast<int>(order.side) << " qty=" << order.quantity << std::endl;
+        
+        // Check if order should be filled
+        bool should_fill = false;
+        Price fill_price = 0.0;
+        
+        if (order.type == Order::Type::MARKET) {
+            // Market orders fill immediately at mid price
+            should_fill = true;
+            fill_price = tick.mid_price();
+            std::cout << "DEBUG: Market order should fill at " << fill_price << std::endl;
+        } else if (order.type == Order::Type::LIMIT) {
+            // Limit orders fill when price crosses the limit
+            if (order.side == Order::Side::BUY && tick.ask <= order.limit_price) {
+                should_fill = true;
+                fill_price = order.limit_price;
+                std::cout << "DEBUG: Limit buy order should fill at " << fill_price << std::endl;
+            } else if (order.side == Order::Side::SELL && tick.bid >= order.limit_price) {
+                should_fill = true;
+                fill_price = order.limit_price;
+                std::cout << "DEBUG: Limit sell order should fill at " << fill_price << std::endl;
+            } else {
+                std::cout << "DEBUG: Limit order not filled - buy side=" << (order.side == Order::Side::BUY) << " ask=" << tick.ask << " limit=" << order.limit_price << std::endl;
+            }
+        }
+        
+        if (should_fill) {
+            Volume remaining_qty = order.remaining_quantity();
+            Volume fill_qty = std::min(remaining_qty, tick.volume);
+            
+            std::cout << "DEBUG: Filling order with qty=" << fill_qty << " at price=" << fill_price << std::endl;
+            fill_order(order, fill_qty, fill_price, tick);
+            
+            if (order.is_filled()) {
+                to_remove.push_back(order_id);
+            }
+        }
+    }
+    
+    // Remove filled orders from symbol_orders_
+    for (const OrderId& order_id : to_remove) {
+        remove_order_from_book(order_id);
+    }
+}
+
+void OrderManager::fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick) {
+    // Update order
+    Volume old_filled = order.filled_quantity;
+    order.filled_quantity += fill_qty;
+    
+    // Update average fill price
+    double total_cost = order.avg_fill_price * old_filled + fill_price * fill_qty;
+    order.avg_fill_price = total_cost / order.filled_quantity;
+    
+    // Update status
+    if (order.filled_quantity >= order.quantity) {
+        order.status = Order::Status::FILLED;
+    } else {
+        order.status = Order::Status::PARTIALLY_FILLED;
+    }
+    
+    // Update portfolio
+    if (order.side == Order::Side::BUY) {
+        double cost = fill_qty * fill_price;
+        if (cost <= cash_) {
+            cash_ -= cost;
+            positions_[order.symbol] += fill_qty;
+            log_trade(to_unix_ms(tick.timestamp), order.symbol, "BUY", fill_qty, fill_price);
+        }
+    } else { // SELL
+        double proceeds = fill_qty * fill_price;
+        cash_ += proceeds;
+        positions_[order.symbol] -= fill_qty;
+        log_trade(to_unix_ms(tick.timestamp), order.symbol, "SELL", fill_qty, fill_price);
+    }
+}
+
+void OrderManager::cancel_ioc_orders(const std::string& symbol, const Tick& tick) {
+    auto symbol_it = symbol_orders_.find(symbol);
+    if (symbol_it == symbol_orders_.end()) {
+        return;
+    }
+    
+    std::vector<OrderId>& order_ids = symbol_it->second;
+    std::vector<OrderId> to_cancel;
+    
+    for (const OrderId& order_id : order_ids) {
+        auto order_it = orders_.find(order_id);
+        if (order_it == orders_.end()) {
+            continue;
+        }
+        
+        Order& order = order_it->second;
+        if (order.time_in_force == Order::TimeInForce::IOC && order.filled_quantity == 0) {
+            to_cancel.push_back(order_id);
+        }
+    }
+    
+    for (const OrderId& order_id : to_cancel) {
+        auto order_it = orders_.find(order_id);
+        if (order_it != orders_.end()) {
+            order_it->second.status = Order::Status::CANCELLED;
+        }
+        remove_order_from_book(order_id);
+    }
 }
 
 } // namespace qse

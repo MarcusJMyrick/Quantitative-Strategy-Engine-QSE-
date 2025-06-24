@@ -244,11 +244,11 @@ TEST_F(OrderManagerTest, FileOutputFormat) {
 class OrderManagerTickSimulationTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Create test ticks with bid/ask spreads
+        // Create test ticks with bid/ask spreads that allow limit orders to fill
         test_ticks_ = {
-            {qse::from_unix_ms(1000), 100.0, 99.5, 100.5, 100},  // mid: 100.0
-            {qse::from_unix_ms(1001), 100.2, 99.8, 100.6, 150},  // mid: 100.2
-            {qse::from_unix_ms(1002), 100.1, 99.9, 100.3, 200},  // mid: 100.1
+            {"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.5, 100},  // mid: 100.0
+            {"AAPL", qse::from_unix_ms(1001), 100.2, 99.8, 100.6, 150},  // mid: 100.2
+            {"AAPL", qse::from_unix_ms(1002), 100.1, 99.9, 100.0, 200},  // mid: 100.1, ask=100.0 allows buy limit at 100.0 to fill
         };
     }
 
@@ -280,7 +280,7 @@ TEST_F(OrderManagerTickSimulationTest, MarketOrderFillsImmediately) {
     
     // Verify position and cash updated
     EXPECT_EQ(order_manager->get_position("AAPL"), 100);
-    EXPECT_DOUBLE_EQ(order_manager->get_cash(), 9000.0); // 10000 - (100 * 100.0)
+    EXPECT_DOUBLE_EQ(order_manager->get_cash(), 0.0); // 10000 - (100 * 100.0) = 0.0
 }
 
 // Test 2: Market sell order fills at mid price
@@ -329,7 +329,7 @@ TEST_F(OrderManagerTickSimulationTest, LimitBuyOrderFillsOnCross) {
     EXPECT_TRUE(order.has_value());
     EXPECT_EQ(order->status, qse::Order::Status::PENDING);
     
-    // Process third tick (bid=99.9, ask=100.3) - should fill at 100.0
+    // Process third tick (bid=99.9, ask=100.0) - should fill at 100.0
     order_manager->process_tick(test_ticks_[2]);
     
     order = order_manager->get_order(order_id);
@@ -359,6 +359,10 @@ TEST_F(OrderManagerTickSimulationTest, LimitSellOrderFillsOnCross) {
     
     // Process second tick (bid=99.8, ask=100.6) - should fill at 100.2
     order_manager->process_tick(test_ticks_[1]);
+    
+    // Create a tick where bid crosses the sell limit price
+    qse::Tick cross_tick{"AAPL", qse::from_unix_ms(1003), 100.3, 100.2, 100.4, 100}; // bid=100.2 allows sell limit at 100.2 to fill
+    order_manager->process_tick(cross_tick);
     
     order = order_manager->get_order(order_id);
     EXPECT_TRUE(order.has_value());
@@ -391,7 +395,8 @@ TEST_F(OrderManagerTickSimulationTest, IOCOrderFillsIfPriceCrosses) {
     auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 100, 100.0, qse::Order::TimeInForce::IOC);
     
     // Process tick - should fill immediately
-    order_manager->process_tick(test_ticks_[0]);
+    qse::Tick fill_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 100}; // ask=100.0 allows buy limit at 100.0 to fill
+    order_manager->process_tick(fill_tick);
     
     auto order = order_manager->get_order(order_id);
     EXPECT_TRUE(order.has_value());
@@ -451,8 +456,8 @@ TEST_F(OrderManagerTickSimulationTest, PartialFills) {
     // Submit a large limit buy order
     auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 1000, 100.0, qse::Order::TimeInForce::GTC);
     
-    // Create a tick with limited volume
-    qse::Tick limited_tick{qse::from_unix_ms(1000), 100.0, 99.5, 100.5, 500}; // only 500 volume
+    // Create a tick with limited volume and ask that crosses the limit
+    qse::Tick limited_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 500}; // ask=100.0 allows buy limit at 100.0 to fill, but only 500 volume
     
     // Process tick - should partially fill
     order_manager->process_tick(limited_tick);
@@ -478,7 +483,8 @@ TEST_F(OrderManagerTickSimulationTest, MultipleOrdersOnSameTick) {
     order_manager->process_tick(test_ticks_[0]);
     
     // Process tick - both orders should fill
-    order_manager->process_tick(test_ticks_[0]);
+    qse::Tick cross_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 100.0, 100.0, 200}; // bid=ask=100.0 allows both buy and sell limits at 100.0 to fill
+    order_manager->process_tick(cross_tick);
     
     auto buy = order_manager->get_order(buy_order);
     auto sell = order_manager->get_order(sell_order);

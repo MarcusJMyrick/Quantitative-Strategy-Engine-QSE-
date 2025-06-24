@@ -161,16 +161,16 @@ protected:
     void SetUp() override {
         // Create test tick data
         test_ticks_ = {
-            {qse::from_unix_ms(1000), 100.0, 100},
-            {qse::from_unix_ms(1001), 100.5, 150},
-            {qse::from_unix_ms(1002), 101.0, 200},
-            {qse::from_unix_ms(1003), 100.8, 120},
-            {qse::from_unix_ms(1004), 101.2, 180},
-            {qse::from_unix_ms(1005), 101.5, 250},
-            {qse::from_unix_ms(1006), 101.8, 300},
-            {qse::from_unix_ms(1007), 102.0, 350},
-            {qse::from_unix_ms(1008), 102.2, 400},
-            {qse::from_unix_ms(1009), 102.5, 450}
+            {"TEST", qse::from_unix_ms(1000), 100.0, 99.5, 100.5, 100},
+            {"TEST", qse::from_unix_ms(1001), 100.5, 100.0, 101.0, 150},
+            {"TEST", qse::from_unix_ms(1002), 101.0, 100.5, 101.5, 200},
+            {"TEST", qse::from_unix_ms(1003), 100.8, 100.3, 101.3, 120},
+            {"TEST", qse::from_unix_ms(1004), 101.2, 100.7, 101.7, 180},
+            {"TEST", qse::from_unix_ms(1005), 101.5, 101.0, 102.0, 250},
+            {"TEST", qse::from_unix_ms(1006), 101.8, 101.3, 102.3, 300},
+            {"TEST", qse::from_unix_ms(1007), 102.0, 101.5, 102.5, 350},
+            {"TEST", qse::from_unix_ms(1008), 102.2, 101.7, 102.7, 400},
+            {"TEST", qse::from_unix_ms(1009), 102.5, 102.0, 103.0, 450}
         };
         empty_ticks_.clear();
     }
@@ -285,6 +285,7 @@ TEST_F(BacktesterTickIntegrationTest, LargeTickStream) {
     std::vector<qse::Tick> large_tick_stream;
     for (int i = 0; i < 1000; ++i) {
         large_tick_stream.push_back({
+            "TEST",
             qse::from_unix_ms(1000 + i),
             100.0 + (i * 0.01),
             99.5 + (i * 0.01),  // bid

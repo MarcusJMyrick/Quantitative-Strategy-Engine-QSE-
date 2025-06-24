@@ -10,9 +10,9 @@ TEST(BarBuilderTest, AggregatesTicksIntoBars) {
 
     // Scrambled tick input (ms, price, volume)
     std::vector<Tick> ticks = {
-        {from_unix_ms(2500), 11.0,  3},
-        {from_unix_ms(1000), 10.0,  1},
-        {from_unix_ms(1500), 12.0,  2},
+        {"TEST", from_unix_ms(2500), 11.0, 0.0, 0.0, 3},
+        {"TEST", from_unix_ms(1000), 10.0, 0.0, 0.0, 1},
+        {"TEST", from_unix_ms(1500), 12.0, 0.0, 0.0, 2},
     };
 
     std::vector<Bar> completed;

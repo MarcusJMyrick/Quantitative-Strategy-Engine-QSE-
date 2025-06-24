@@ -1,0 +1,34 @@
+# QSE Configuration File
+# Market Impact & Slippage Configuration
+
+symbols:
+  AAPL:
+    slippage:
+      linear_coeff: 0.0005
+  GOOGL:
+    slippage:
+      linear_coeff: 0.0008
+  MSFT:
+    slippage:
+      linear_coeff: 0.0003
+  SPY:
+    slippage:
+      linear_coeff: 0.0002
+  FOO:
+    slippage:
+      linear_coeff: 0.0010
+  BAR:
+    slippage:
+      linear_coeff: 0.0007
+
+# Backtester Configuration
+backtester:
+  initial_cash: 100000.0
+  commission_rate: 0.001
+  min_trade_size: 1
+
+# Data Configuration
+data:
+  base_path: "./data"
+  processed_path: "./data/processed"
+  results_path: "./results" 

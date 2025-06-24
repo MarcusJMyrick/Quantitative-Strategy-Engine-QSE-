@@ -29,6 +29,7 @@ execute_process(
 find_package(Arrow REQUIRED)
 find_package(Parquet REQUIRED)
 find_package(Protobuf REQUIRED) # Still need this for the helper functions
+find_package(yaml-cpp REQUIRED)
 
 
 # --- Google Test Setup ---
@@ -47,12 +48,17 @@ file(GLOB PROTO_FILES "${PROTO_DIR}/*.proto")
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
 
 
+# Add Homebrew yaml-cpp library path for linker
+link_directories(/opt/homebrew/opt/yaml-cpp/lib)
+
 # --- Main QSE Shared Library ---
 add_library(qse SHARED
     src/core/Backtester.cpp
+    src/core/Config.cpp
     src/core/ThreadPool.cpp
     src/data/BarBuilder.cpp
     src/data/CSVDataReader.cpp
+    src/data/OrderBook.cpp
     src/data/ParquetDataReader.cpp
     src/data/ZeroMQDataReader.cpp
     src/messaging/TickPublisher.cpp
@@ -69,6 +75,7 @@ add_library(qse SHARED
 target_link_libraries(qse PUBLIC
     Arrow::arrow_shared
     Parquet::parquet_shared
+    yaml-cpp
     # Add the raw linker flags from our pkg-config command
     ${PKG_CONFIG_LIBS}
 )
@@ -93,6 +100,7 @@ add_executable(run_tests
     tests/cpp/test_BarBuilder.cpp
     tests/cpp/test_PairsTradingStrategy.cpp
     tests/cpp/test_CSVDataReaderTicks.cpp
+    tests/cpp/test_Slippage.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

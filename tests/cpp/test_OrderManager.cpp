@@ -5,6 +5,7 @@
 #include <string>
 
 #include "qse/order/OrderManager.h"
+#include "qse/data/OrderBook.h"
 
 using namespace qse;
 using ::testing::_;
@@ -494,3 +495,21 @@ TEST_F(OrderManagerTickSimulationTest, MultipleOrdersOnSameTick) {
     EXPECT_EQ(buy->status, qse::Order::Status::FILLED);
     EXPECT_EQ(sell->status, qse::Order::Status::FILLED);
 }
+
+namespace qse {
+
+void OrderBook::on_tick(const Tick& tick) {
+    auto& tob = books_[tick.symbol];
+    tob.best_bid_price = tick.bid;
+    tob.best_bid_size  = tick.bid_size;
+    tob.best_ask_price = tick.ask;
+    tob.best_ask_size  = tick.ask_size;
+}
+
+const TopOfBook& OrderBook::top_of_book(const std::string& symbol) const {
+    static TopOfBook empty;
+    auto it = books_.find(symbol);
+    return (it != books_.end()) ? it->second : empty;
+}
+
+} // namespace qse

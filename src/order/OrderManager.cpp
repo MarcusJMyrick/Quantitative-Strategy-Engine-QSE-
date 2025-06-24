@@ -8,8 +8,40 @@
 
 namespace qse {
 
+OrderManager::OrderManager(const Config& config, OrderBook& order_book, const std::string& equity_curve_path, const std::string& tradelog_path)
+    : config_(&config), order_book_(&order_book), cash_(config.get_initial_cash()), next_order_id_(1) {
+
+    equity_curve_file_.open(equity_curve_path);
+    if (!equity_curve_file_.is_open()) {
+        throw std::runtime_error("Could not open equity curve file: " + equity_curve_path);
+    }
+    equity_curve_file_ << "timestamp,equity\n"; // Write header
+
+    tradelog_file_.open(tradelog_path);
+    if (!tradelog_file_.is_open()) {
+        throw std::runtime_error("Could not open tradelog file: " + tradelog_path);
+    }
+    tradelog_file_ << "timestamp,symbol,type,quantity,price,cash\n"; // Write header
+}
+
+OrderManager::OrderManager(const Config& config, const std::string& equity_curve_path, const std::string& tradelog_path)
+    : config_(&config), order_book_(nullptr), cash_(config.get_initial_cash()), next_order_id_(1) {
+
+    equity_curve_file_.open(equity_curve_path);
+    if (!equity_curve_file_.is_open()) {
+        throw std::runtime_error("Could not open equity curve file: " + equity_curve_path);
+    }
+    equity_curve_file_ << "timestamp,equity\n"; // Write header
+
+    tradelog_file_.open(tradelog_path);
+    if (!tradelog_file_.is_open()) {
+        throw std::runtime_error("Could not open tradelog file: " + tradelog_path);
+    }
+    tradelog_file_ << "timestamp,symbol,type,quantity,price,cash\n"; // Write header
+}
+
 OrderManager::OrderManager(double initial_cash, const std::string& equity_curve_path, const std::string& tradelog_path)
-    : cash_(initial_cash), next_order_id_(1) {
+    : config_(nullptr), order_book_(nullptr), cash_(initial_cash), next_order_id_(1) {
 
     equity_curve_file_.open(equity_curve_path);
     if (!equity_curve_file_.is_open()) {
@@ -174,6 +206,11 @@ bool OrderManager::cancel_order(const OrderId& order_id) {
 }
 
 void OrderManager::process_tick(const Tick& tick) {
+    // Update the order book first
+    if (order_book_ != nullptr) {
+        order_book_->on_tick(tick);
+    }
+    
     // Use the tick's symbol for order matching
     std::string symbol = tick.symbol;
     
@@ -258,6 +295,12 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
     std::cout << "DEBUG: Found " << order_ids.size() << " orders for symbol " << symbol << std::endl;
     std::vector<OrderId> to_remove;
     
+    // Get current top of book if OrderBook is available
+    TopOfBook tob;
+    if (order_book_ != nullptr) {
+        tob = order_book_->top_of_book(symbol);
+    }
+    
     for (const OrderId& order_id : order_ids) {
         auto order_it = orders_.find(order_id);
         if (order_it == orders_.end()) {
@@ -272,34 +315,44 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
         
         std::cout << "DEBUG: Processing order " << order_id << " type=" << static_cast<int>(order.type) << " side=" << static_cast<int>(order.side) << " qty=" << order.quantity << std::endl;
         
-        // Check if order should be filled
-        bool should_fill = false;
+        Volume fill_qty = 0;
         Price fill_price = 0.0;
         
         if (order.type == Order::Type::MARKET) {
             // Market orders fill immediately at mid price
-            should_fill = true;
-            fill_price = tick.mid_price();
-            std::cout << "DEBUG: Market order should fill at " << fill_price << std::endl;
-        } else if (order.type == Order::Type::LIMIT) {
-            // Limit orders fill when price crosses the limit
-            if (order.side == Order::Side::BUY && tick.ask <= order.limit_price) {
-                should_fill = true;
-                fill_price = order.limit_price;
-                std::cout << "DEBUG: Limit buy order should fill at " << fill_price << std::endl;
-            } else if (order.side == Order::Side::SELL && tick.bid >= order.limit_price) {
-                should_fill = true;
-                fill_price = order.limit_price;
-                std::cout << "DEBUG: Limit sell order should fill at " << fill_price << std::endl;
+            if (order_book_ != nullptr) {
+                // Use OrderBook to consume liquidity
+                fill_qty = order_book_->consume_liquidity(symbol, order.side, order.remaining_quantity());
+                if (fill_qty > 0) {
+                    fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
+                }
             } else {
-                std::cout << "DEBUG: Limit order not filled - buy side=" << (order.side == Order::Side::BUY) << " ask=" << tick.ask << " limit=" << order.limit_price << std::endl;
+                // Fallback to old logic
+                fill_qty = std::min(order.remaining_quantity(), tick.volume);
+                fill_price = tick.mid_price();
             }
+            std::cout << "DEBUG: Market order fill_qty=" << fill_qty << " at " << fill_price << std::endl;
+        } else if (order.type == Order::Type::LIMIT) {
+            // Use OrderBook for limit order fills
+            if (order_book_ != nullptr) {
+                fill_qty = process_limit_order_fill(order, tob);
+                if (fill_qty > 0) {
+                    fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
+                }
+            } else {
+                // Fallback to old logic
+                if (order.side == Order::Side::BUY && tick.ask <= order.limit_price) {
+                    fill_qty = std::min(order.remaining_quantity(), tick.volume);
+                    fill_price = order.limit_price;
+                } else if (order.side == Order::Side::SELL && tick.bid >= order.limit_price) {
+                    fill_qty = std::min(order.remaining_quantity(), tick.volume);
+                    fill_price = order.limit_price;
+                }
+            }
+            std::cout << "DEBUG: Limit order fill_qty=" << fill_qty << " at " << fill_price << std::endl;
         }
         
-        if (should_fill) {
-            Volume remaining_qty = order.remaining_quantity();
-            Volume fill_qty = std::min(remaining_qty, tick.volume);
-            
+        if (fill_qty > 0) {
             std::cout << "DEBUG: Filling order with qty=" << fill_qty << " at price=" << fill_price << std::endl;
             fill_order(order, fill_qty, fill_price, tick);
             
@@ -316,12 +369,31 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
 }
 
 void OrderManager::fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick) {
+    // Calculate base fill price (before slippage)
+    Price base_fill_price = fill_price;
+    
+    // Apply slippage if config is available
+    if (config_ != nullptr) {
+        double k = config_->get_slippage_coeff(order.symbol);
+        if (k > 0.0) {
+            double slippage = base_fill_price * k * fill_qty;
+            if (order.side == Order::Side::BUY) {
+                base_fill_price += slippage;
+            } else { // SELL
+                base_fill_price -= slippage;
+            }
+            std::cout << "DEBUG: Applied slippage for " << order.symbol 
+                      << " - base: " << fill_price << ", slippage: " << slippage 
+                      << ", final: " << base_fill_price << std::endl;
+        }
+    }
+    
     // Update order
     Volume old_filled = order.filled_quantity;
     order.filled_quantity += fill_qty;
     
     // Update average fill price
-    double total_cost = order.avg_fill_price * old_filled + fill_price * fill_qty;
+    double total_cost = order.avg_fill_price * old_filled + base_fill_price * fill_qty;
     order.avg_fill_price = total_cost / order.filled_quantity;
     
     // Update status
@@ -333,17 +405,17 @@ void OrderManager::fill_order(Order& order, Volume fill_qty, Price fill_price, c
     
     // Update portfolio
     if (order.side == Order::Side::BUY) {
-        double cost = fill_qty * fill_price;
+        double cost = fill_qty * base_fill_price;
         if (cost <= cash_) {
             cash_ -= cost;
             positions_[order.symbol] += fill_qty;
-            log_trade(to_unix_ms(tick.timestamp), order.symbol, "BUY", fill_qty, fill_price);
+            log_trade(to_unix_ms(tick.timestamp), order.symbol, "BUY", fill_qty, base_fill_price);
         }
     } else { // SELL
-        double proceeds = fill_qty * fill_price;
+        double proceeds = fill_qty * base_fill_price;
         cash_ += proceeds;
         positions_[order.symbol] -= fill_qty;
-        log_trade(to_unix_ms(tick.timestamp), order.symbol, "SELL", fill_qty, fill_price);
+        log_trade(to_unix_ms(tick.timestamp), order.symbol, "SELL", fill_qty, base_fill_price);
     }
 }
 
@@ -375,6 +447,42 @@ void OrderManager::cancel_ioc_orders(const std::string& symbol, const Tick& tick
         }
         remove_order_from_book(order_id);
     }
+}
+
+Volume OrderManager::process_limit_order_fill(Order& order, const TopOfBook& tob) {
+    Volume fill_qty = 0;
+    
+    if (order.side == Order::Side::BUY) {
+        // Buy limit order fills when ask price is at or below limit price
+        if (tob.has_ask() && tob.best_ask_price <= order.limit_price) {
+            fill_qty = order_book_->consume_liquidity(order.symbol, order.side, order.remaining_quantity());
+        }
+    } else { // SELL
+        // Sell limit order fills when bid price is at or above limit price
+        if (tob.has_bid() && tob.best_bid_price >= order.limit_price) {
+            fill_qty = order_book_->consume_liquidity(order.symbol, order.side, order.remaining_quantity());
+        }
+    }
+    
+    return fill_qty;
+}
+
+Volume OrderManager::process_ioc_order_fill(Order& order, const TopOfBook& tob) {
+    Volume fill_qty = 0;
+    
+    if (order.side == Order::Side::BUY) {
+        // IOC buy order fills when ask price is at or below limit price
+        if (tob.has_ask() && tob.best_ask_price <= order.limit_price) {
+            fill_qty = order_book_->consume_liquidity(order.symbol, order.side, order.remaining_quantity());
+        }
+    } else { // SELL
+        // IOC sell order fills when bid price is at or above limit price
+        if (tob.has_bid() && tob.best_bid_price >= order.limit_price) {
+            fill_qty = order_book_->consume_liquidity(order.symbol, order.side, order.remaining_quantity());
+        }
+    }
+    
+    return fill_qty;
 }
 
 } // namespace qse

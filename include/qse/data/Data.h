@@ -37,6 +37,8 @@ struct Tick {
     Price price;         // Price of the trade (last trade price)
     Price bid;           // Best bid price
     Price ask;           // Best ask price
+    Volume bid_size;     // Best bid size
+    Volume ask_size;     // Best ask size
     Volume volume;       // Volume of the trade
     
     Tick() = default; // Default constructor

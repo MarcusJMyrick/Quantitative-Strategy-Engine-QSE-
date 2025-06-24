@@ -247,9 +247,9 @@ protected:
     void SetUp() override {
         // Create test ticks with bid/ask spreads that allow limit orders to fill
         test_ticks_ = {
-            {"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.5, 100},  // mid: 100.0
-            {"AAPL", qse::from_unix_ms(1001), 100.2, 99.8, 100.6, 150},  // mid: 100.2
-            {"AAPL", qse::from_unix_ms(1002), 100.1, 99.9, 100.0, 200},  // mid: 100.1, ask=100.0 allows buy limit at 100.0 to fill
+            {"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.5, 100, 100, 100},  // mid: 100.0
+            {"AAPL", qse::from_unix_ms(1001), 100.2, 99.8, 100.6, 150, 150, 150},  // mid: 100.2
+            {"AAPL", qse::from_unix_ms(1002), 100.1, 99.9, 100.0, 200, 200, 200},  // mid: 100.1, ask=100.0 allows buy limit at 100.0 to fill
         };
     }
 
@@ -277,6 +277,7 @@ TEST_F(OrderManagerTickSimulationTest, MarketOrderFillsImmediately) {
     EXPECT_TRUE(order.has_value());
     EXPECT_EQ(order->status, qse::Order::Status::FILLED);
     EXPECT_EQ(order->filled_quantity, 100);
+    EXPECT_EQ(order->remaining_quantity(), 0); // When filled, remaining should be 0
     EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.0); // mid price
     
     // Verify position and cash updated
@@ -303,6 +304,7 @@ TEST_F(OrderManagerTickSimulationTest, MarketSellOrderFillsImmediately) {
     EXPECT_TRUE(order.has_value());
     EXPECT_EQ(order->status, qse::Order::Status::FILLED);
     EXPECT_EQ(order->filled_quantity, 50);
+    EXPECT_EQ(order->remaining_quantity(), 0); // When filled, remaining should be 0
     EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.2); // mid price of second tick
     
     // Verify position updated
@@ -337,6 +339,7 @@ TEST_F(OrderManagerTickSimulationTest, LimitBuyOrderFillsOnCross) {
     EXPECT_TRUE(order.has_value());
     EXPECT_EQ(order->status, qse::Order::Status::FILLED);
     EXPECT_EQ(order->filled_quantity, 100);
+    EXPECT_EQ(order->remaining_quantity(), 0);
     EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.0);
 }
 
@@ -362,13 +365,14 @@ TEST_F(OrderManagerTickSimulationTest, LimitSellOrderFillsOnCross) {
     order_manager->process_tick(test_ticks_[1]);
     
     // Create a tick where bid crosses the sell limit price
-    qse::Tick cross_tick{"AAPL", qse::from_unix_ms(1003), 100.3, 100.2, 100.4, 100}; // bid=100.2 allows sell limit at 100.2 to fill
+    qse::Tick cross_tick{"AAPL", qse::from_unix_ms(1003), 100.3, 100.2, 100.4, 100, 100, 100}; // bid=100.2 allows sell limit at 100.2 to fill
     order_manager->process_tick(cross_tick);
     
     order = order_manager->get_order(order_id);
     EXPECT_TRUE(order.has_value());
     EXPECT_EQ(order->status, qse::Order::Status::FILLED);
     EXPECT_EQ(order->filled_quantity, 50);
+    EXPECT_EQ(order->remaining_quantity(), 0);
     EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.2);
 }
 
@@ -396,13 +400,14 @@ TEST_F(OrderManagerTickSimulationTest, IOCOrderFillsIfPriceCrosses) {
     auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 100, 100.0, qse::Order::TimeInForce::IOC);
     
     // Process tick - should fill immediately
-    qse::Tick fill_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 100}; // ask=100.0 allows buy limit at 100.0 to fill
+    qse::Tick fill_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 100, 100, 100}; // ask=100.0 allows buy limit at 100.0 to fill
     order_manager->process_tick(fill_tick);
     
     auto order = order_manager->get_order(order_id);
     EXPECT_TRUE(order.has_value());
     EXPECT_EQ(order->status, qse::Order::Status::FILLED);
     EXPECT_EQ(order->filled_quantity, 100);
+    EXPECT_EQ(order->remaining_quantity(), 0);
     EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.0);
 }
 
@@ -458,7 +463,7 @@ TEST_F(OrderManagerTickSimulationTest, PartialFills) {
     auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 1000, 100.0, qse::Order::TimeInForce::GTC);
     
     // Create a tick with limited volume and ask that crosses the limit
-    qse::Tick limited_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 500}; // ask=100.0 allows buy limit at 100.0 to fill, but only 500 volume
+    qse::Tick limited_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 99.5, 100.0, 500, 500, 500}; // ask=100.0 allows buy limit at 100.0 to fill, but only 500 volume
     
     // Process tick - should partially fill
     order_manager->process_tick(limited_tick);
@@ -484,7 +489,7 @@ TEST_F(OrderManagerTickSimulationTest, MultipleOrdersOnSameTick) {
     order_manager->process_tick(test_ticks_[0]);
     
     // Process tick - both orders should fill
-    qse::Tick cross_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 100.0, 100.0, 200}; // bid=ask=100.0 allows both buy and sell limits at 100.0 to fill
+    qse::Tick cross_tick{"AAPL", qse::from_unix_ms(1000), 100.0, 100.0, 100.0, 200, 200, 200}; // bid=ask=100.0 allows both buy and sell limits at 100.0 to fill
     order_manager->process_tick(cross_tick);
     
     auto buy = order_manager->get_order(buy_order);

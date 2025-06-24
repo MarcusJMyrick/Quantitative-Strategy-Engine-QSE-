@@ -122,7 +122,8 @@ TEST_F(BacktesterTest, CanCreateBacktesterAndRun) {
         "TEST_SYMBOL",
         std::unique_ptr<qse::IDataReader>(data_reader_),
         std::unique_ptr<qse::IStrategy>(strategy_),
-        std::unique_ptr<qse::IOrderManager>(order_manager_)
+        std::unique_ptr<qse::IOrderManager>(order_manager_),
+        std::chrono::seconds(60)
     );
     
     EXPECT_NO_THROW(backtester.run());
@@ -141,7 +142,8 @@ TEST_F(BacktesterTest, CanRunBacktestWithRealComponents) {
         "TEST_SYMBOL",
         std::move(data_reader),
         std::move(real_strategy),
-        std::move(real_order_manager)
+        std::move(real_order_manager),
+        std::chrono::seconds(60)
     );
 
     // Run the backtest
@@ -195,10 +197,22 @@ TEST_F(BacktesterTickIntegrationTest, TickStreamIntegration) {
         EXPECT_CALL(*mock_strategy, on_tick(tick))
             .Times(1);
     }
+    
+    // Expect order manager to process each tick
+    for (const auto& tick : test_ticks_) {
+        EXPECT_CALL(*mock_order_manager, process_tick(tick))
+            .Times(1);
+    }
+    
+    // Expect strategy to receive bars when they're completed
+    // The BarBuilder will create bars and call on_bar
+    EXPECT_CALL(*mock_strategy, on_bar(_))
+        .Times(::testing::AtLeast(1)); // At least one bar will be completed
 
     // Create and run backtester
     qse::Backtester backtester("TEST", std::move(mock_data_reader), 
-                         std::move(mock_strategy), std::move(mock_order_manager));
+                         std::move(mock_strategy), std::move(mock_order_manager),
+                         std::chrono::seconds(60));
     
     // This should not throw and should process all ticks
     EXPECT_NO_THROW(backtester.run());
@@ -219,7 +233,8 @@ TEST_F(BacktesterTickIntegrationTest, EmptyTickStream) {
         .Times(0);
 
     qse::Backtester backtester("TEST", std::move(mock_data_reader), 
-                         std::move(mock_strategy), std::move(mock_order_manager));
+                         std::move(mock_strategy), std::move(mock_order_manager),
+                         std::chrono::seconds(60));
     
     EXPECT_NO_THROW(backtester.run());
 }
@@ -247,7 +262,8 @@ TEST_F(BacktesterTickIntegrationTest, RealCSVDataReaderIntegration) {
 
     // Create and run backtester
     qse::Backtester backtester("TEST", std::move(data_reader), 
-                         std::move(strategy), std::move(order_manager));
+                         std::move(strategy), std::move(order_manager),
+                         std::chrono::seconds(60));
     
     EXPECT_NO_THROW(backtester.run());
 
@@ -271,10 +287,17 @@ TEST_F(BacktesterTickIntegrationTest, TickProcessingOrder) {
     for (const auto& tick : test_ticks_) {
         EXPECT_CALL(*mock_strategy, on_tick(tick))
             .Times(1);
+        EXPECT_CALL(*mock_order_manager, process_tick(tick))
+            .Times(1);
     }
+    
+    // Expect strategy to receive bars when they're completed
+    EXPECT_CALL(*mock_strategy, on_bar(_))
+        .Times(::testing::AtLeast(1));
 
     qse::Backtester backtester("TEST", std::move(mock_data_reader), 
-                         std::move(mock_strategy), std::move(mock_order_manager));
+                         std::move(mock_strategy), std::move(mock_order_manager),
+                         std::chrono::seconds(60));
     
     EXPECT_NO_THROW(backtester.run());
 }
@@ -304,9 +327,16 @@ TEST_F(BacktesterTickIntegrationTest, LargeTickStream) {
     // Expect all ticks to be processed
     EXPECT_CALL(*mock_strategy, on_tick(_))
         .Times(1000);
+    EXPECT_CALL(*mock_order_manager, process_tick(_))
+        .Times(1000);
+    
+    // Expect strategy to receive bars when they're completed
+    EXPECT_CALL(*mock_strategy, on_bar(_))
+        .Times(::testing::AtLeast(1));
 
     qse::Backtester backtester("TEST", std::move(mock_data_reader), 
-                         std::move(mock_strategy), std::move(mock_order_manager));
+                         std::move(mock_strategy), std::move(mock_order_manager),
+                         std::chrono::seconds(60));
     
     EXPECT_NO_THROW(backtester.run());
 }
@@ -325,7 +355,8 @@ TEST_F(BacktesterTickIntegrationTest, TickProcessingErrorHandling) {
         .WillOnce(::testing::Throw(std::runtime_error("Strategy error")));
 
     qse::Backtester backtester("TEST", std::move(mock_data_reader), 
-                         std::move(mock_strategy), std::move(mock_order_manager));
+                         std::move(mock_strategy), std::move(mock_order_manager),
+                         std::chrono::seconds(60));
     
     // The backtester should handle the error gracefully
     // Note: Current implementation doesn't have error handling, so this will throw

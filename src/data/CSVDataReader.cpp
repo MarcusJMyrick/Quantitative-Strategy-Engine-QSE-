@@ -59,12 +59,29 @@ void CSVDataReader::load_data() {
             while(std::getline(ss, item, ',')) {
                 tokens.push_back(item);
             }
-            if(tokens.size() >= 3) {
+            if(tokens.size() >= 8) {
+                // Full tick format: timestamp,symbol,price,volume,bid,ask,bid_size,ask_size
                 Tick tick;
-                // Parse millisecond timestamp
                 tick.timestamp = qse::Timestamp(std::chrono::milliseconds(std::stoll(tokens[0])));
+                tick.symbol = tokens[1];
+                tick.price = std::stod(tokens[2]);
+                tick.volume = std::stoull(tokens[3]);
+                tick.bid = std::stod(tokens[4]);
+                tick.ask = std::stod(tokens[5]);
+                tick.bid_size = std::stoull(tokens[6]);
+                tick.ask_size = std::stoull(tokens[7]);
+                ticks_.push_back(tick);
+            } else if(tokens.size() >= 3) {
+                // Legacy format: timestamp,price,volume
+                Tick tick;
+                tick.timestamp = qse::Timestamp(std::chrono::milliseconds(std::stoll(tokens[0])));
+                tick.symbol = "UNKNOWN"; // Default symbol for legacy format
                 tick.price = std::stod(tokens[1]);
                 tick.volume = std::stoull(tokens[2]);
+                tick.bid = tick.price; // Use price as bid/ask for legacy format
+                tick.ask = tick.price;
+                tick.bid_size = tick.volume; // Use volume as size for legacy format
+                tick.ask_size = tick.volume;
                 ticks_.push_back(tick);
             }
         }

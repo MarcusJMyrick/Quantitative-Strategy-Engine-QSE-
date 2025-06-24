@@ -15,13 +15,10 @@ SMACrossoverStrategy::SMACrossoverStrategy(IOrderManager* order_manager, size_t 
 // This is now the primary entry point for new data.
 // It receives every single tick from the backtester.
 void SMACrossoverStrategy::on_tick(const qse::Tick& tick) {
-    // We pass every tick to our BarBuilder.
-    auto completed_bar = bar_builder_.add_tick(tick);
-
-    // The BarBuilder will return a bar if one has just been completed.
-    if (completed_bar.has_value()) {
-        // ...then we call our existing on_bar logic with the newly created bar.
-        on_bar(*completed_bar);
+    // Feed the tick to our internal BarBuilder
+    if (auto bar = bar_builder_.add_tick(tick)) {
+        // If a bar was completed, process it
+        on_bar(*bar);
     }
 }
 

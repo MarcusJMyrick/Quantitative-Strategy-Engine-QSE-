@@ -6,6 +6,8 @@
 #include "qse/data/IDataReader.h"
 #include "qse/strategy/IStrategy.h"
 #include "qse/order/IOrderManager.h"
+#include "qse/data/BarBuilder.h"
+#include "qse/data/OrderBook.h"
 
 namespace qse {
 
@@ -16,7 +18,8 @@ public:
         const std::string& symbol, // The symbol for this specific backtest (e.g., "SPY")
         std::unique_ptr<IDataReader> data_reader,
         std::unique_ptr<IStrategy> strategy,
-        std::unique_ptr<IOrderManager> order_manager
+        std::unique_ptr<IOrderManager> order_manager,
+        const std::chrono::seconds& bar_interval = std::chrono::seconds(60) // Default to 1-minute bars
     );
 
     void run();
@@ -26,6 +29,10 @@ private:
     std::unique_ptr<IDataReader> data_reader_;
     std::unique_ptr<IStrategy> strategy_;
     std::unique_ptr<IOrderManager> order_manager_;
+    
+    // --- NEW: BarBuilder and OrderBook for tick-driven processing ---
+    BarBuilder bar_builder_;
+    OrderBook order_book_;
 };
 
 } // namespace qse

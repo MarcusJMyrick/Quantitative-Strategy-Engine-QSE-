@@ -30,8 +30,15 @@ namespace qse {
     // This strategy is tick-driven, so on_bar is empty.
     void PairsTradingStrategy::on_bar(const Bar& bar) {}
 
-    // Remove on_tick logic; use update_price instead
-    void PairsTradingStrategy::on_tick(const Tick& tick) {}
+    // --- NEW: Implement on_tick to make this strategy tick-driven ---
+    void PairsTradingStrategy::on_tick(const Tick& tick) {
+        // Only process ticks for our symbols
+        if (tick.symbol == symbol1_ || tick.symbol == symbol2_) {
+            // Update the price for this symbol using the mid price
+            double mid_price = (tick.bid + tick.ask) / 2.0;
+            update_price(tick.symbol, mid_price);
+        }
+    }
 
     // Logic for calculating the spread and executing trades.
     void PairsTradingStrategy::check_and_execute_trades() {

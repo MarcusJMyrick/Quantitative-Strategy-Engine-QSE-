@@ -5,6 +5,7 @@
 #include <vector> // <-- Make sure <vector> is included
 #include <string>
 #include <map>
+#include <optional>
 
 namespace qse {
 
@@ -14,6 +15,29 @@ namespace qse {
     public:
         virtual ~IOrderManager() = default;
 
+        // --- Tick-level order management ---
+        
+        // Submit a market order
+        virtual OrderId submit_market_order(const std::string& symbol, Order::Side side, Volume quantity) = 0;
+        
+        // Submit a limit order
+        virtual OrderId submit_limit_order(const std::string& symbol, Order::Side side, Volume quantity, 
+                                         Price limit_price, Order::TimeInForce tif) = 0;
+        
+        // Cancel an existing order
+        virtual bool cancel_order(const OrderId& order_id) = 0;
+        
+        // Process a tick and match orders
+        virtual void process_tick(const Tick& tick) = 0;
+        
+        // Get order information
+        virtual std::optional<Order> get_order(const OrderId& order_id) const = 0;
+        
+        // Get all active orders for a symbol
+        virtual std::vector<Order> get_active_orders(const std::string& symbol) const = 0;
+
+        // --- Legacy methods (for backward compatibility) ---
+        
         // Execute a buy order for a given symbol.
         virtual void execute_buy(const std::string& symbol, int quantity, double price) = 0;
 

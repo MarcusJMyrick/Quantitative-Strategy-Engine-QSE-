@@ -11,6 +11,7 @@ namespace qse {
 using Timestamp = std::chrono::system_clock::time_point;
 using Price = double;
 using Volume = uint64_t;
+using OrderId = std::string;  // Order identifier
 
 /**
  * @brief Represents a single price bar (OHLCV data).
@@ -32,13 +33,18 @@ struct Bar {
  */
 struct Tick {
     Timestamp timestamp;  // Tick's exact timestamp
-    Price price;         // Price of the trade
+    Price price;         // Price of the trade (last trade price)
+    Price bid;           // Best bid price
+    Price ask;           // Best ask price
     Volume volume;       // Volume of the trade
     
     // Note: Symbol can be added if the data source provides it per-tick.
     // For now, we assume the DataReader handles one symbol at a time.
     
     Tick() = default; // Default constructor
+    
+    // Helper method to get mid price
+    Price mid_price() const { return (bid + ask) / 2.0; }
 };
 
 /**
@@ -49,11 +55,13 @@ struct Order {
     enum class Type { MARKET, LIMIT, IOC };  // Simplified for initial implementation
     enum class Side { BUY, SELL };
     enum class Status { PENDING, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED };
+    enum class TimeInForce { DAY, IOC, GTC };  // Day, Immediate-or-Cancel, Good-Till-Cancelled
 
     std::string order_id;
     std::string symbol;
     Type type;
     Side side;
+    TimeInForce time_in_force;
     Price limit_price;        // For limit orders
     Volume quantity;          // Original order quantity
     Volume filled_quantity;   // How much has been filled

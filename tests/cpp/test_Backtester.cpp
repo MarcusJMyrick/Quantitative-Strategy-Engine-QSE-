@@ -287,6 +287,8 @@ TEST_F(BacktesterTickIntegrationTest, LargeTickStream) {
         large_tick_stream.push_back({
             qse::from_unix_ms(1000 + i),
             100.0 + (i * 0.01),
+            99.5 + (i * 0.01),  // bid
+            100.5 + (i * 0.01), // ask
             static_cast<qse::Volume>(100 + i)
         });
     }

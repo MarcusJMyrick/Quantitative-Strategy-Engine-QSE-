@@ -108,4 +108,33 @@ double OrderManager::calculate_holdings_value(const std::map<std::string, double
     return total_value;
 }
 
+// --- Tick-level order management stub implementations ---
+
+OrderId OrderManager::submit_market_order(const std::string& symbol, Order::Side side, Volume quantity) {
+    static int dummy_id = 0;
+    return "M" + std::to_string(dummy_id++);
+}
+
+OrderId OrderManager::submit_limit_order(const std::string& symbol, Order::Side side, Volume quantity, 
+                                        Price limit_price, Order::TimeInForce tif) {
+    static int dummy_id = 0;
+    return "L" + std::to_string(dummy_id++);
+}
+
+bool OrderManager::cancel_order(const OrderId& order_id) {
+    return false; // Stub: always return false
+}
+
+void OrderManager::process_tick(const Tick& tick) {
+    // Stub: no-op for now
+}
+
+std::optional<Order> OrderManager::get_order(const OrderId& order_id) const {
+    return std::nullopt; // Stub: return empty optional
+}
+
+std::vector<Order> OrderManager::get_active_orders(const std::string& symbol) const {
+    return {}; // Stub: return empty vector
+}
+
 } // namespace qse

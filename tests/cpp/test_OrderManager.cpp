@@ -1,10 +1,16 @@
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
+#include <memory>
+#include <vector>
+#include <string>
+
 #include "qse/order/OrderManager.h"
-#include <filesystem>
-#include <fstream>
-#include <sstream>
 
 using namespace qse;
+using ::testing::_;
+using ::testing::Return;
+using ::testing::StrictMock;
+using ::testing::AtLeast;
 
 class OrderManagerTest : public ::testing::Test {
 protected:
@@ -233,4 +239,252 @@ TEST_F(OrderManagerTest, FileOutputFormat) {
     std::string trade_line;
     std::getline(tradelog_file, trade_line);
     EXPECT_FALSE(trade_line.empty());
+}
+
+class OrderManagerTickSimulationTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        // Create test ticks with bid/ask spreads
+        test_ticks_ = {
+            {qse::from_unix_ms(1000), 100.0, 99.5, 100.5, 100},  // mid: 100.0
+            {qse::from_unix_ms(1001), 100.2, 99.8, 100.6, 150},  // mid: 100.2
+            {qse::from_unix_ms(1002), 100.1, 99.9, 100.3, 200},  // mid: 100.1
+        };
+    }
+
+    std::vector<qse::Tick> test_ticks_;
+};
+
+// Test 1: Market order fills immediately at mid price
+TEST_F(OrderManagerTickSimulationTest, MarketOrderFillsImmediately) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // Submit a market buy order
+    auto order_id = order_manager->submit_market_order("AAPL", qse::Order::Side::BUY, 100);
+    EXPECT_FALSE(order_id.empty());
+    
+    // Verify order is active
+    auto order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::PENDING);
+    
+    // Process a tick - should fill immediately
+    order_manager->process_tick(test_ticks_[0]);
+    
+    // Verify order is filled
+    order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::FILLED);
+    EXPECT_EQ(order->filled_quantity, 100);
+    EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.0); // mid price
+    
+    // Verify position and cash updated
+    EXPECT_EQ(order_manager->get_position("AAPL"), 100);
+    EXPECT_DOUBLE_EQ(order_manager->get_cash(), 9000.0); // 10000 - (100 * 100.0)
+}
+
+// Test 2: Market sell order fills at mid price
+TEST_F(OrderManagerTickSimulationTest, MarketSellOrderFillsImmediately) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // First buy some shares
+    order_manager->submit_market_order("AAPL", qse::Order::Side::BUY, 100);
+    order_manager->process_tick(test_ticks_[0]);
+    
+    // Submit a market sell order
+    auto order_id = order_manager->submit_market_order("AAPL", qse::Order::Side::SELL, 50);
+    
+    // Process a tick - should fill immediately
+    order_manager->process_tick(test_ticks_[1]);
+    
+    // Verify order is filled
+    auto order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::FILLED);
+    EXPECT_EQ(order->filled_quantity, 50);
+    EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.2); // mid price of second tick
+    
+    // Verify position updated
+    EXPECT_EQ(order_manager->get_position("AAPL"), 50);
+}
+
+// Test 3: Limit buy order fills when tick crosses limit price
+TEST_F(OrderManagerTickSimulationTest, LimitBuyOrderFillsOnCross) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // Submit a limit buy order at 100.0
+    auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 100, 100.0, qse::Order::TimeInForce::GTC);
+    
+    // Process first tick (bid=99.5, ask=100.5) - should not fill
+    order_manager->process_tick(test_ticks_[0]);
+    
+    auto order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::PENDING);
+    
+    // Process second tick (bid=99.8, ask=100.6) - should not fill
+    order_manager->process_tick(test_ticks_[1]);
+    
+    order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::PENDING);
+    
+    // Process third tick (bid=99.9, ask=100.3) - should fill at 100.0
+    order_manager->process_tick(test_ticks_[2]);
+    
+    order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::FILLED);
+    EXPECT_EQ(order->filled_quantity, 100);
+    EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.0);
+}
+
+// Test 4: Limit sell order fills when tick crosses limit price
+TEST_F(OrderManagerTickSimulationTest, LimitSellOrderFillsOnCross) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // First buy some shares
+    order_manager->submit_market_order("AAPL", qse::Order::Side::BUY, 100);
+    order_manager->process_tick(test_ticks_[0]);
+    
+    // Submit a limit sell order at 100.2
+    auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::SELL, 50, 100.2, qse::Order::TimeInForce::GTC);
+    
+    // Process first tick - should not fill
+    order_manager->process_tick(test_ticks_[0]);
+    
+    auto order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::PENDING);
+    
+    // Process second tick (bid=99.8, ask=100.6) - should fill at 100.2
+    order_manager->process_tick(test_ticks_[1]);
+    
+    order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::FILLED);
+    EXPECT_EQ(order->filled_quantity, 50);
+    EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.2);
+}
+
+// Test 5: IOC order cancels if not filled on same tick
+TEST_F(OrderManagerTickSimulationTest, IOCOrderCancelsIfNotFilled) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // Submit an IOC buy order at 99.0 (below current bid)
+    auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 100, 99.0, qse::Order::TimeInForce::IOC);
+    
+    // Process tick - should cancel immediately since price doesn't cross
+    order_manager->process_tick(test_ticks_[0]);
+    
+    auto order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::CANCELLED);
+    EXPECT_EQ(order->filled_quantity, 0);
+}
+
+// Test 6: IOC order fills if price crosses on same tick
+TEST_F(OrderManagerTickSimulationTest, IOCOrderFillsIfPriceCrosses) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // Submit an IOC buy order at 100.0 (should fill at mid price)
+    auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 100, 100.0, qse::Order::TimeInForce::IOC);
+    
+    // Process tick - should fill immediately
+    order_manager->process_tick(test_ticks_[0]);
+    
+    auto order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::FILLED);
+    EXPECT_EQ(order->filled_quantity, 100);
+    EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.0);
+}
+
+// Test 7: Order cancellation works
+TEST_F(OrderManagerTickSimulationTest, OrderCancellation) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // Submit a limit order
+    auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 100, 99.0, qse::Order::TimeInForce::GTC);
+    
+    // Verify order is active
+    auto order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::PENDING);
+    
+    // Cancel the order
+    bool cancelled = order_manager->cancel_order(order_id);
+    EXPECT_TRUE(cancelled);
+    
+    // Verify order is cancelled
+    order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::CANCELLED);
+}
+
+// Test 8: Get active orders for symbol
+TEST_F(OrderManagerTickSimulationTest, GetActiveOrders) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // Submit multiple orders
+    auto order1 = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 100, 99.0, qse::Order::TimeInForce::GTC);
+    auto order2 = order_manager->submit_limit_order("AAPL", qse::Order::Side::SELL, 50, 101.0, qse::Order::TimeInForce::GTC);
+    auto order3 = order_manager->submit_limit_order("GOOGL", qse::Order::Side::BUY, 200, 150.0, qse::Order::TimeInForce::GTC);
+    
+    // Get active orders for AAPL
+    auto aapl_orders = order_manager->get_active_orders("AAPL");
+    EXPECT_EQ(aapl_orders.size(), 2);
+    
+    // Get active orders for GOOGL
+    auto googl_orders = order_manager->get_active_orders("GOOGL");
+    EXPECT_EQ(googl_orders.size(), 1);
+    
+    // Get active orders for non-existent symbol
+    auto empty_orders = order_manager->get_active_orders("INVALID");
+    EXPECT_EQ(empty_orders.size(), 0);
+}
+
+// Test 9: Partial fills work correctly
+TEST_F(OrderManagerTickSimulationTest, PartialFills) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // Submit a large limit buy order
+    auto order_id = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 1000, 100.0, qse::Order::TimeInForce::GTC);
+    
+    // Create a tick with limited volume
+    qse::Tick limited_tick{qse::from_unix_ms(1000), 100.0, 99.5, 100.5, 500}; // only 500 volume
+    
+    // Process tick - should partially fill
+    order_manager->process_tick(limited_tick);
+    
+    auto order = order_manager->get_order(order_id);
+    EXPECT_TRUE(order.has_value());
+    EXPECT_EQ(order->status, qse::Order::Status::PARTIALLY_FILLED);
+    EXPECT_EQ(order->filled_quantity, 500);
+    EXPECT_EQ(order->remaining_quantity(), 500);
+    EXPECT_DOUBLE_EQ(order->avg_fill_price, 100.0);
+}
+
+// Test 10: Multiple orders on same tick
+TEST_F(OrderManagerTickSimulationTest, MultipleOrdersOnSameTick) {
+    auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
+    
+    // Submit multiple orders
+    auto buy_order = order_manager->submit_limit_order("AAPL", qse::Order::Side::BUY, 100, 100.0, qse::Order::TimeInForce::GTC);
+    auto sell_order = order_manager->submit_limit_order("AAPL", qse::Order::Side::SELL, 50, 100.0, qse::Order::TimeInForce::GTC);
+    
+    // First buy some shares for the sell order
+    order_manager->submit_market_order("AAPL", qse::Order::Side::BUY, 50);
+    order_manager->process_tick(test_ticks_[0]);
+    
+    // Process tick - both orders should fill
+    order_manager->process_tick(test_ticks_[0]);
+    
+    auto buy = order_manager->get_order(buy_order);
+    auto sell = order_manager->get_order(sell_order);
+    
+    EXPECT_TRUE(buy.has_value());
+    EXPECT_TRUE(sell.has_value());
+    EXPECT_EQ(buy->status, qse::Order::Status::FILLED);
+    EXPECT_EQ(sell->status, qse::Order::Status::FILLED);
 }

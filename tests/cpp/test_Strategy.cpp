@@ -18,6 +18,13 @@ public:
     MOCK_METHOD(int, get_position, (const std::string& symbol), (const, override));
     MOCK_METHOD(double, get_cash, (), (const, override));
     MOCK_METHOD(void, record_equity, (long long timestamp, (const std::map<std::string, double>&) market_prices), (override));
+    // --- Tick-level order management mock methods ---
+    MOCK_METHOD(qse::OrderId, submit_market_order, (const std::string& symbol, qse::Order::Side side, qse::Volume quantity), (override));
+    MOCK_METHOD(qse::OrderId, submit_limit_order, (const std::string& symbol, qse::Order::Side side, qse::Volume quantity, qse::Price limit_price, qse::Order::TimeInForce tif), (override));
+    MOCK_METHOD(bool, cancel_order, (const qse::OrderId& order_id), (override));
+    MOCK_METHOD(void, process_tick, (const qse::Tick& tick), (override));
+    MOCK_METHOD(std::optional<qse::Order>, get_order, (const qse::OrderId& order_id), (const, override));
+    MOCK_METHOD(std::vector<qse::Order>, get_active_orders, (const std::string& symbol), (const, override));
 };
 
 // Test fixture to hold our mock object

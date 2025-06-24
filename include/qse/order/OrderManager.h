@@ -8,6 +8,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
+#include <optional>
 
 namespace qse {
 
@@ -30,6 +31,27 @@ namespace qse {
         
         // Get the total cash value of the portfolio.
         double get_cash() const override;
+
+        // --- Tick-level order management ---
+        
+        // Submit a market order
+        OrderId submit_market_order(const std::string& symbol, Order::Side side, Volume quantity) override;
+        
+        // Submit a limit order
+        OrderId submit_limit_order(const std::string& symbol, Order::Side side, Volume quantity, 
+                                 Price limit_price, Order::TimeInForce tif) override;
+        
+        // Cancel an existing order
+        bool cancel_order(const OrderId& order_id) override;
+        
+        // Process a tick and match orders
+        void process_tick(const Tick& tick) override;
+        
+        // Get order information
+        std::optional<Order> get_order(const OrderId& order_id) const override;
+        
+        // Get all active orders for a symbol
+        std::vector<Order> get_active_orders(const std::string& symbol) const override;
 
         // Update the equity curve with the current portfolio value at a given timestamp.
         void record_equity(long long timestamp, const std::map<std::string, double>& market_prices) override;

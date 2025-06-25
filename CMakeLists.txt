@@ -105,6 +105,7 @@ add_executable(run_tests
     tests/cpp/test_LimitOrderFill.cpp
     tests/cpp/test_TickDrivenArchitecture.cpp
     tests/cpp/test_FillCallback.cpp
+    tests/cpp/test_SmokeTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

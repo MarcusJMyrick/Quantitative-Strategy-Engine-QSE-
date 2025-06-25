@@ -43,33 +43,47 @@ void Backtester::run() {
     int tick_count = 0;
     int bar_count = 0;
     
-    // Main tick-driven loop
+    bool error_occurred = false;
+    std::string error_msg;
+
+    // Main tick-driven loop with basic exception handling
     for (const auto& tick : all_ticks) {
-        tick_count++;
-        
-        // Update order book with new tick
-        order_book_.on_tick(tick);
-        
-        // Build bars from ticks
-        if (auto bar = bar_builder_.add_tick(tick)) {
+        try {
+            tick_count++;
+
+            // Update order book with new tick
+            order_book_.on_tick(tick);
+
+            // Build bars from ticks
+            if (auto bar = bar_builder_.add_tick(tick)) {
+                bar_count++;
+                strategy_->on_bar(*bar);
+            }
+
+            // Notify strategy of tick (may throw)
+            strategy_->on_tick(tick);
+
+            // Attempt fills against current order book
+            order_manager_->attempt_fills();
+
+            // Process tick for legacy order management
+            order_manager_->process_tick(tick);
+        } catch (const std::exception& ex) {
+            error_occurred = true;
+            error_msg = ex.what();
+            std::cerr << "[Backtester] Error processing tick: " << ex.what() << std::endl;
+            break; // stop processing further ticks
+        }
+    }
+
+    // Flush any remaining bars safely
+    try {
+        if (auto bar = bar_builder_.flush()) {
             bar_count++;
             strategy_->on_bar(*bar);
         }
-        
-        // Notify strategy of tick
-        strategy_->on_tick(tick);
-        
-        // Attempt fills against current order book
-        order_manager_->attempt_fills();
-        
-        // Process tick for legacy order management
-        order_manager_->process_tick(tick);
-    }
-    
-    // Flush any remaining bars
-    if (auto bar = bar_builder_.flush()) {
-        bar_count++;
-        strategy_->on_bar(*bar);
+    } catch (const std::exception& ex) {
+        std::cerr << "[Backtester] Error during flush: " << ex.what() << std::endl;
     }
     
     std::cout << "--- Backtest Complete ---" << std::endl;
@@ -77,6 +91,10 @@ void Backtester::run() {
     std::cout << "Bars created: " << bar_count << std::endl;
     std::cout << "Final cash: $" << order_manager_->get_cash() << std::endl;
     std::cout << "Final position: " << order_manager_->get_position(symbol_) << std::endl;
+
+    if (error_occurred) {
+        std::cout << "Backtest terminated early due to error: " << error_msg << std::endl;
+    }
 }
 
 } // namespace qse

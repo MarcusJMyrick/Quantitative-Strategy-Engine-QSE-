@@ -20,6 +20,8 @@ namespace qse {
      * the z-score of the spread relative to its moving average and standard deviation.
      * It enters a position when the spread deviates significantly from its mean (high or low z-score)
      * and exits when the spread reverts back towards the mean.
+     * 
+     * This strategy is now bar-driven and only processes bars for its two symbols.
      */
     class PairsTradingStrategy : public IStrategy {
     public:
@@ -43,14 +45,11 @@ namespace qse {
             std::shared_ptr<IOrderManager> order_manager
         );
 
-        // Process an incoming tick. This is the core logic of the strategy.
+        // Process an incoming tick (ignores all ticks)
         void on_tick(const Tick& tick) override;
 
-        // Process an incoming bar. (Not used in this tick-driven strategy).
+        // Process an incoming bar - this is the main logic for the strategy
         void on_bar(const Bar& bar) override;
-
-        // Update the price for a specific symbol and check for trading opportunities.
-        void update_price(const std::string& symbol, double price);
 
     private:
         // Checks the trading conditions and executes orders if necessary.

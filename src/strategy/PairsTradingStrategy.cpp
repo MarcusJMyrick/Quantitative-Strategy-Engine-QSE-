@@ -27,16 +27,22 @@ namespace qse {
         latest_prices_[symbol2_] = -1.0;
     }
 
-    // This strategy is tick-driven, so on_bar is empty.
-    void PairsTradingStrategy::on_bar(const Bar& bar) {}
-
-    // --- NEW: Implement on_tick to make this strategy tick-driven ---
+    // Ignore all ticks - this strategy is bar-driven
     void PairsTradingStrategy::on_tick(const Tick& tick) {
-        // Only process ticks for our symbols
-        if (tick.symbol == symbol1_ || tick.symbol == symbol2_) {
-            // Update the price for this symbol using the mid price
-            double mid_price = (tick.bid + tick.ask) / 2.0;
-            update_price(tick.symbol, mid_price);
+        // Do nothing - we only process bars
+    }
+
+    // Main strategy logic - process bars for our symbols
+    void PairsTradingStrategy::on_bar(const Bar& bar) {
+        // Only process bars for our two symbols
+        if (bar.symbol == symbol1_ || bar.symbol == symbol2_) {
+            // Update the price for this symbol using the close price
+            latest_prices_[bar.symbol] = bar.close;
+            
+            // If we have prices for both symbols, check for trading opportunities
+            if (latest_prices_[symbol1_] > 0 && latest_prices_[symbol2_] > 0) {
+                check_and_execute_trades();
+            }
         }
     }
 
@@ -50,7 +56,7 @@ namespace qse {
         // 1. Calculate the current spread.
         double current_spread = latest_prices_[symbol1_] - (hedge_ratio_ * latest_prices_[symbol2_]);
 
-        // 2. If indicators are not ready, just update them and wait for the next tick.
+        // 2. If indicators are not ready, just update them and wait for the next bar.
         if (!spread_mean_.is_ready()) {
 #ifdef DEBUG
             std::cout << "DEBUG: Warmup – inserted spread=" << current_spread << "\n";
@@ -122,18 +128,6 @@ namespace qse {
 #ifdef DEBUG
             std::cout << "DEBUG: Branch=HOLD, z_score=" << z_score << " (exit_threshold=" << exit_threshold_ << ")\n";
 #endif
-        }
-    }
-
-    // Add a method to update prices for a specific symbol
-    void PairsTradingStrategy::update_price(const std::string& symbol, double price) {
-        if (symbol == symbol1_ || symbol == symbol2_) {
-            latest_prices_[symbol] = price;
-        } else {
-            return;
-        }
-        if (latest_prices_[symbol1_] > 0 && latest_prices_[symbol2_] > 0) {
-            check_and_execute_trades();
         }
     }
 

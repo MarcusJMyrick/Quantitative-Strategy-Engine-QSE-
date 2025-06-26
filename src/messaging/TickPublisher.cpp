@@ -3,6 +3,13 @@
 #include <sstream>
 #include <chrono>
 
+#ifndef QSE_ENABLE_VERBOSE
+static struct DisablePublisherCout { DisablePublisherCout(){ std::cout.setstate(std::ios_base::failbit); } } _disable_pub_cout;
+#endif
+
+constexpr int ZMQ_HWM       = 100000;
+constexpr int ZMQ_BUF_SIZE  = 4 * 1024 * 1024;
+
 namespace qse {
 
 TickPublisher::TickPublisher(const std::string& endpoint) 
@@ -10,6 +17,8 @@ TickPublisher::TickPublisher(const std::string& endpoint)
     try {
         context_ = std::make_unique<zmq::context_t>(1);
         socket_ = std::make_unique<zmq::socket_t>(*context_, ZMQ_PUB);
+        socket_->set(zmq::sockopt::sndhwm,  ZMQ_HWM);
+        socket_->set(zmq::sockopt::sndbuf, ZMQ_BUF_SIZE);
         socket_->bind(endpoint_);
         std::cout << "TickPublisher bound to: " << endpoint_ << std::endl;
     } catch (const zmq::error_t& e) {

@@ -136,7 +136,7 @@ TEST_F(BacktesterTest, CanRunBacktestWithRealComponents) {
 
     // FIX: Add a bar_duration (e.g., 24 hours) as the fourth argument
     auto real_strategy = std::make_unique<qse::SMACrossoverStrategy>(
-        real_order_manager.get(), 10, 20, std::chrono::hours(24)
+        real_order_manager.get(), 10, 20, "TEST_SYMBOL"
     );
 
     qse::Backtester backtester(
@@ -285,7 +285,7 @@ TEST_F(BacktesterTickIntegrationTest, RealCSVDataReaderIntegration) {
     // Create real components
     auto data_reader = std::make_unique<qse::CSVDataReader>(test_file);
     auto order_manager = std::make_unique<qse::OrderManager>(10000.0, "test_equity.csv", "test_tradelog.csv");
-    auto strategy = std::make_unique<qse::SMACrossoverStrategy>(order_manager.get(), 5, 10, std::chrono::minutes(1));
+    auto strategy = std::make_unique<qse::SMACrossoverStrategy>(order_manager.get(), 5, 10, "TEST_SYMBOL");
 
     // Create and run backtester
     qse::Backtester backtester("TEST", std::move(data_reader), 

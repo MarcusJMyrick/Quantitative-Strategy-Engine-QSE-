@@ -39,3 +39,11 @@ processed_*_data.parquet
 
 # Ignore environment variables
 .env
+
+# Backtesting results and outputs
+results/
+plots/
+test_output/
+*.csv
+*.log
+temp_*.csv

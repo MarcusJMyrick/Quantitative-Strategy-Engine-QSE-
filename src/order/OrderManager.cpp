@@ -6,6 +6,10 @@
 #include <chrono>
 #include <algorithm>
 
+#ifndef QSE_ENABLE_VERBOSE
+static struct DisableOrderMgrCout { DisableOrderMgrCout(){ std::cout.setstate(std::ios_base::failbit);} } _disable_om_cout;
+#endif
+
 namespace qse {
 
 OrderManager::OrderManager(const Config& config, OrderBook& order_book, const std::string& equity_curve_path, const std::string& tradelog_path)

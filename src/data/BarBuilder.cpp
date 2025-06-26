@@ -2,6 +2,11 @@
 #include <algorithm> // for std::max/min
 #include <iostream>
 
+#ifndef QSE_ENABLE_VERBOSE
+// Disable all std::cout in this TU for performance
+static struct DisableBarBuilderCout { DisableBarBuilderCout(){ std::cout.setstate(std::ios_base::failbit); } } _disable_bb_cout;
+#endif
+
 namespace qse {
 
 BarBuilder::BarBuilder(const std::chrono::seconds& bar_interval)
@@ -135,6 +140,7 @@ void BarBuilder::start_new_bar(const Tick& tick) {
               << " for tick at: " << tick.timestamp.time_since_epoch().count() << std::endl;
 
     current_bar_.emplace( Bar{
+      .symbol    = tick.symbol,
       .timestamp = current_bar_start_time_,
       .open      = tick.price,
       .high      = tick.price,

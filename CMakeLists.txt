@@ -99,13 +99,14 @@ add_executable(run_tests
     tests/cpp/test_Strategy.cpp
     tests/cpp/test_ThreadPool.cpp
     tests/cpp/test_BarBuilder.cpp
-    tests/cpp/test_PairsTradingStrategy.cpp
     tests/cpp/test_CSVDataReaderTicks.cpp
     tests/cpp/test_Slippage.cpp
     tests/cpp/test_LimitOrderFill.cpp
     tests/cpp/test_TickDrivenArchitecture.cpp
     tests/cpp/test_FillCallback.cpp
     tests/cpp/test_SmokeTest.cpp
+    tests/cpp/test_BarDrivenStrategies.cpp
+    tests/cpp/test_BarDrivenIntegration.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)
@@ -118,6 +119,15 @@ target_link_libraries(data_publisher PRIVATE qse)
 
 add_executable(strategy_engine src/engine/main.cpp)
 target_link_libraries(strategy_engine PRIVATE qse)
+
+add_executable(multi_symbol_engine src/engine/multi_symbol_main.cpp)
+target_link_libraries(multi_symbol_engine PRIVATE qse)
+
+add_executable(multi_strategy_engine src/engine/multi_strategy_main.cpp)
+target_link_libraries(multi_strategy_engine PRIVATE qse)
+
+add_executable(direct_test scripts/testing/direct_test.cpp)
+target_link_libraries(direct_test PRIVATE qse)
 
 
 # --- Testing Setup ---

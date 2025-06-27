@@ -1,0 +1,27 @@
+=== PairsTrading Analysis Report ===
+Generated: 2025-06-27T16:59:04.706050
+
+SUMMARY:
+==================================================
+Total Pairs Analyzed: 1
+Total Trades: 5246
+Total P&L: 0.00
+Best Performing Pair: AAPL_GOOG
+Most Active Pair: AAPL_GOOG
+
+DETAILED ANALYSIS:
+==================================================
+
+AAPL_GOOG:
+------------------------------
+  Total Trades: 5246
+  Total P&L: 0.00
+  Trading Sessions: 1
+  AAPL:
+    Buys: 0, Sells: 0
+    P&L: 0.00
+    Volume: 262300
+  GOOG:
+    Buys: 0, Sells: 0
+    P&L: 0.00
+    Volume: 262300

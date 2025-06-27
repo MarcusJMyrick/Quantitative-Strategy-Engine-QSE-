@@ -1,0 +1,33 @@
+{
+  "analysis_timestamp": "2025-06-27T16:59:04.706050",
+  "pairs_analysis": {
+    "AAPL_GOOG": {
+      "total_trades": 5246,
+      "symbol1": {
+        "symbol": "AAPL",
+        "buys": 0,
+        "sells": 0,
+        "pnl": 0,
+        "volume": "262300"
+      },
+      "symbol2": {
+        "symbol": "GOOG",
+        "buys": 0,
+        "sells": 0,
+        "pnl": 0,
+        "volume": "262300"
+      },
+      "total_pnl": 0,
+      "avg_time_between_trades": "0 days 00:00:00",
+      "trading_sessions": "1",
+      "trade_data": "      timestamp symbol  ... hour  trade_count\n0    1970-01-01   AAPL  ...    0            1\n3501 1970-01-01   GOOG  ...    0            1\n3500 1970-01-01   AAPL  ...    0            1\n3499 1970-01-01   GOOG  ...    0            1\n3498 1970-01-01   AAPL  ...    0            1\n...         ...    ...  ...  ...          ...\n1745 1970-01-01   GOOG  ...    0            1\n1744 1970-01-01   AAPL  ...    0            1\n1743 1970-01-01   GOOG  ...    0            1\n1761 1970-01-01   GOOG  ...    0            1\n5245 1970-01-01   GOOG  ...    0            1\n\n[5246 rows x 11 columns]"
+    }
+  },
+  "summary": {
+    "total_pairs": 1,
+    "total_trades": 5246,
+    "total_pnl": 0,
+    "best_performing_pair": "AAPL_GOOG",
+    "most_active_pair": "AAPL_GOOG"
+  }
+}

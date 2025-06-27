@@ -1,0 +1,94 @@
+{
+  "analysis_timestamp": "2025-06-27T16:27:17.845640",
+  "performance_metrics": {
+    "AAPL_current_Unknown": {
+      "total_return_pct": 0.0,
+      "volatility_pct": 0.0,
+      "sharpe_ratio": 0.0,
+      "max_drawdown_pct": 0.0,
+      "final_equity": 100000.0,
+      "initial_equity": 100000.0,
+      "trading_days": 193
+    }
+  },
+  "trading_analysis": {
+    "GOOG_FillTracking": {
+      "total_trades": 1,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": 100.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    },
+    "AAPL_Unknown": {
+      "total_trades": 153,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": -1.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    },
+    "AAPL_FillTracking": {
+      "total_trades": 1,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": 100.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    },
+    "GOOG_Unknown": {
+      "total_trades": 14,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": 0.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    },
+    "MSFT_FillTracking": {
+      "total_trades": 1,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": 100.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    },
+    "SPY_FillTracking": {
+      "total_trades": 1,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": 100.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    },
+    "AAPL_GOOG_PairsTrading": {
+      "total_trades": 5246,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": 524600.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    },
+    "MSFT_Unknown": {
+      "total_trades": 238,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": 0.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    },
+    "SPY_Unknown": {
+      "total_trades": 140,
+      "buy_trades": 0,
+      "sell_trades": 0,
+      "total_volume": 0.0,
+      "total_pnl": 0.0,
+      "avg_pnl_per_trade": 0.0
+    }
+  },
+  "summary": {
+    "total_strategies": 1,
+    "total_trading_combinations": 9,
+    "best_performer": "AAPL_current_Unknown",
+    "worst_performer": "AAPL_current_Unknown"
+  }
+}

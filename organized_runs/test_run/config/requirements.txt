@@ -1,0 +1,4 @@
+pandas>=2.3.0
+requests>=2.32.4
+pyarrow>=20.0.0
+pytest>=8.4.0 

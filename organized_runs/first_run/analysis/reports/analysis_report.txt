@@ -1,0 +1,22 @@
+=== QSE Organized Analysis Report ===
+Generated: 2025-06-27T16:35:34.181994
+
+PERFORMANCE SUMMARY:
+==================================================
+Strategy                       Return%    Vol%     Sharpe   MaxDD%  
+----------------------------------------------------------------------
+AAPL_current_Unknown           0.00       0.00     0.00     0.00    
+
+TRADING ACTIVITY:
+==================================================
+Strategy                       Trades   Buy    Sell   Volume     P&L         
+----------------------------------------------------------------------
+GOOG_FillTracking              1        0      0      100        0.00        
+AAPL_Unknown                   153      0      0      -1         0.00        
+AAPL_FillTracking              1        0      0      100        0.00        
+GOOG_Unknown                   14       0      0      0          0.00        
+MSFT_FillTracking              1        0      0      100        0.00        
+SPY_FillTracking               1        0      0      100        0.00        
+AAPL_GOOG_PairsTrading         5246     0      0      524600     0.00        
+MSFT_Unknown                   238      0      0      0          0.00        
+SPY_Unknown                    140      0      0      0          0.00        

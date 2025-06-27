@@ -8,27 +8,20 @@ import glob
 from pathlib import Path
 import seaborn as sns
 import re
+import argparse
 
-def analyze_single_strategy_result(equity_file, tradelog_file, symbol, strategy):
+def analyze_single_strategy_result(equity_df, tradelog_df, symbol, strategy):
     """Analyze results for a single strategy on a single symbol."""
     try:
-        equity_df = pd.read_csv(equity_file)
-        tradelog_df = pd.read_csv(tradelog_file)
-
         if equity_df.empty:
-            print(f"Warning: Equity file is empty for {strategy} on {symbol}")
+            print(f"Warning: Equity dataframe is empty for {strategy} on {symbol}")
             return None
 
         # Convert timestamp to datetime
         equity_df['datetime'] = pd.to_datetime(equity_df['timestamp'], unit='s')
         
-        # Read trade log
-        try:
-            tradelog_df = pd.read_csv(tradelog_file)
-            num_trades = len(tradelog_df)
-        except:
-            num_trades = 0
-            tradelog_df = pd.DataFrame()
+        # Get trade count
+        num_trades = len(tradelog_df)
         
         # Calculate performance metrics
         initial_value = equity_df['equity'].iloc[0]
@@ -67,46 +60,52 @@ def analyze_single_strategy_result(equity_file, tradelog_file, symbol, strategy)
         print(f"Error analyzing {strategy} for {symbol}: {e}")
         return None
 
-def find_strategy_results(results_dir):
+def find_strategy_results(run_dir):
     """
-    Finds all equity and tradelog files in the new directory structure.
+    Finds all equity and tradelog files in a specific run directory.
     """
     results = []
-    equity_dir = results_dir / "equity_logs"
-    tradelog_dir = results_dir / "trade_logs"
-
-    if not equity_dir.is_dir() or not tradelog_dir.is_dir():
-        print(f"Error: Could not find equity_logs or trade_logs in {results_dir}")
+    
+    if not run_dir.is_dir():
+        print(f"Error: Could not find run directory {run_dir}")
         return results
 
-    for equity_file in equity_dir.glob('equity_*.csv'):
+    # The file names no longer have timestamps, so parsing is simpler
+    for equity_file in run_dir.glob('equity_*.csv'):
         try:
             filename = equity_file.stem
             parts = filename.split('_')
             
-            if len(parts) < 2:
-                continue
-
-            if parts[1] == "PAIRS":
-                symbol = f"{parts[2]}_{parts[3]}"
+            # e.g., equity_PairsTrading_AAPL_GOOG -> [equity, PairsTrading, AAPL, GOOG]
+            # e.g., equity_AAPL_SMA_20_50 -> [equity, AAPL, SMA, 20, 50]
+            if parts[1] == "PairsTrading":
                 strategy = "PairsTrading"
-                tradelog_filename = f"tradelog_{parts[1]}_{symbol}.csv"
+                symbol = f"{parts[2]}_{parts[3]}"
+                tradelog_filename = f"tradelog_PairsTrading_{symbol}.csv"
             else:
                 symbol = parts[1]
                 strategy = '_'.join(parts[2:])
                 tradelog_filename = f"tradelog_{symbol}_{strategy}.csv"
 
-            tradelog_file = tradelog_dir / tradelog_filename
+            tradelog_file = run_dir / tradelog_filename
             
             if tradelog_file.exists():
                 print(f"Found result for {strategy} on {symbol}")
-                result = analyze_single_strategy_result(equity_file, tradelog_file, symbol, strategy)
+                # Store the filename in the dataframe for later reference
+                equity_df = pd.read_csv(equity_file)
+                equity_df.attrs['filename'] = str(equity_file)
+                
+                tradelog_df = pd.read_csv(tradelog_file)
+                tradelog_df.attrs['filename'] = str(tradelog_file)
+
+                result = analyze_single_strategy_result(equity_df, tradelog_df, symbol, strategy)
                 if result:
                     results.append(result)
             else:
-                print(f"Warning: Found equity file for {strategy} on {symbol} but missing tradelog: {tradelog_filename}")
+                print(f"Warning: Found equity file but missing tradelog: {tradelog_file.name}")
         except Exception as e:
             print(f"Could not parse file {equity_file}: {e}")
+            
     return results
 
 def create_strategy_comparison_plots(results, timestamp, output_dir):
@@ -329,45 +328,65 @@ def print_detailed_summary_table(results, timestamp):
                   f"{best['sharpe_ratio']:>7.2f} {best['max_drawdown']:>7.2f}% {best['num_trades']:>8}")
 
 def analyze_and_plot(strategy_results, output_dir):
-    # ... existing code ...
-    pass
+    """Generate all plots and summaries for a given set of results."""
+    if not strategy_results:
+        print("No strategy results to analyze.")
+        return
+
+    # Use the first result's timestamp as a representative for the run
+    # This assumes all files in the directory share a similar naming scheme
+    first_equity_file = Path(strategy_results[0]['equity_df'].attrs['filename'])
+    run_timestamp = first_equity_file.parent.name
+    
+    print(f"\n--- Analysis Summary for Run: {run_timestamp} ---")
+
+    # Create plots and summaries
+    create_strategy_comparison_plots(strategy_results, run_timestamp, output_dir)
+    create_performance_heatmap(strategy_results, run_timestamp, output_dir)
+    create_best_strategy_summary(strategy_results, run_timestamp, output_dir)
+    
+    # Print detailed table to console
+    print_detailed_summary_table(strategy_results, run_timestamp)
 
 def main():
-    if len(sys.argv) != 2:
-        print("Usage: python analyze_multi_strategy.py <path_to_results_directory>")
-        sys.exit(1)
+    """Main function to find and analyze strategy results."""
+    parser = argparse.ArgumentParser(description="Analyze multi-strategy backtest results.")
+    parser.add_argument(
+        'run_directory',
+        nargs='?',
+        default=None,
+        help="Specific run directory to analyze (e.g., results/20240101_123000_000). If not provided, analyzes the latest run."
+    )
+    args = parser.parse_args()
+
+    results_root = Path("results")
     
-    results_dir = Path(sys.argv[1])
-    if not results_dir.is_dir():
-        print(f"Error: Directory not found at {results_dir}")
+    if not results_root.exists():
+        print(f"Error: Top-level results directory '{results_root}' not found.")
         sys.exit(1)
 
-    # Plots will be saved in a 'plots' subdirectory inside the run folder
-    output_plot_dir = results_dir / "plots"
-    output_plot_dir.mkdir(exist_ok=True)
-    
-    print(f"Analyzing results in: {results_dir}")
-    print(f"Saving plots to: {output_plot_dir}")
+    if args.run_directory:
+        target_dir = Path(args.run_directory)
+        if not target_dir.is_dir():
+            print(f"Error: Specified run directory '{target_dir}' does not exist.")
+            sys.exit(1)
+    else:
+        # Find the most recent run directory
+        run_dirs = sorted([d for d in results_root.iterdir() if d.is_dir()], reverse=True)
+        if not run_dirs:
+            print(f"Error: No run directories found in '{results_root}'.")
+            sys.exit(1)
+        target_dir = run_dirs[0]
 
-    results = find_strategy_results(results_dir)
+    print(f"--- Analyzing backtest results in: {target_dir} ---")
     
-    if not results:
-        print("No valid strategy results found in:", results_dir)
-        sys.exit(1)
+    # Find and analyze the results in the target directory
+    # Note: The original find_strategy_results might need adjustment if the file naming has changed.
+    # This implementation assumes the file naming inside the run folder is consistent with the old one.
+    strategy_results = find_strategy_results(target_dir)
     
-    print(f"Found {len(results)} valid strategy results")
-    
-    run_timestamp = results_dir.name
-
-    # Generate all plots and analysis
-    create_strategy_comparison_plots(results, run_timestamp, output_plot_dir)
-    create_performance_heatmap(results, run_timestamp, output_plot_dir)
-    create_best_strategy_summary(results, run_timestamp, output_plot_dir)
-    print_detailed_summary_table(results, run_timestamp)
-    
-    print(f"\n=== Multi-Strategy Analysis Complete ===")
-    print(f"Check the {output_plot_dir} directory for generated charts")
-    print(f"All files are tagged with timestamp: {run_timestamp}")
+    # The output plots will be saved inside the run directory itself
+    analyze_and_plot(strategy_results, target_dir)
 
 if __name__ == "__main__":
     main() 

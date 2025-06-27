@@ -1,0 +1,21 @@
+{
+  "run_timestamp": "2025-06-27T16:34:11.677485",
+  "files_organized": {
+    "equity_curves": 187,
+    "trade_logs": 186,
+    "plots": 0,
+    "config_files": 3
+  },
+  "directory_structure": {
+    "data/equity_curves": "Portfolio value over time for each strategy",
+    "data/trade_logs": "Detailed trade execution logs",
+    "data/raw_data": "Original input data files",
+    "plots/strategy_comparisons": "Performance comparisons across strategies",
+    "plots/performance_heatmaps": "Heatmaps showing performance metrics",
+    "plots/individual_strategies": "Individual strategy performance plots",
+    "analysis/reports": "Detailed analysis reports",
+    "analysis/summaries": "Summary statistics and metrics",
+    "logs": "Execution logs and error reports",
+    "config": "Configuration files used for this run"
+  }
+}

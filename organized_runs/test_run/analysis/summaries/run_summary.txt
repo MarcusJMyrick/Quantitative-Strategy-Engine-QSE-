@@ -1,0 +1,20 @@
+=== QSE Run Summary ===
+Generated: 2025-06-27T16:24:38.705801
+
+Files Organized:
+  - Equity curves: 174
+  - Trade logs: 173
+  - Plots: 0
+  - Config files: 3
+
+Directory Structure:
+  - data/equity_curves: Portfolio value over time for each strategy
+  - data/trade_logs: Detailed trade execution logs
+  - data/raw_data: Original input data files
+  - plots/strategy_comparisons: Performance comparisons across strategies
+  - plots/performance_heatmaps: Heatmaps showing performance metrics
+  - plots/individual_strategies: Individual strategy performance plots
+  - analysis/reports: Detailed analysis reports
+  - analysis/summaries: Summary statistics and metrics
+  - logs: Execution logs and error reports
+  - config: Configuration files used for this run

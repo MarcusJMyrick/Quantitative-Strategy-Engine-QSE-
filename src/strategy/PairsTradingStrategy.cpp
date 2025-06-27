@@ -1,7 +1,9 @@
 #include "qse/strategy/PairsTradingStrategy.h"
+#define DEBUG
 
 #include <iostream>
 #include <cmath>
+#include <chrono>
 
 namespace qse {
 
@@ -34,15 +36,36 @@ namespace qse {
 
     // Main strategy logic - process bars for our symbols
     void PairsTradingStrategy::on_bar(const Bar& bar) {
-        // Only process bars for our two symbols
-        if (bar.symbol == symbol1_ || bar.symbol == symbol2_) {
-            // Update the price for this symbol using the close price
-            latest_prices_[bar.symbol] = bar.close;
-            
-            // If we have prices for both symbols, check for trading opportunities
-            if (latest_prices_[symbol1_] > 0 && latest_prices_[symbol2_] > 0) {
-                check_and_execute_trades();
-            }
+        // Only track bars for the symbols we care about
+        if (bar.symbol != symbol1_ && bar.symbol != symbol2_) {
+            return; // Ignore other symbols
+        }
+
+        // Store the latest bar for this symbol
+        latest_bars_[bar.symbol] = bar;
+
+        // We need bars for both symbols AND they must belong to the same time bucket
+        if (latest_bars_.count(symbol1_) == 0 || latest_bars_.count(symbol2_) == 0) {
+            return; // Still waiting for both legs
+        }
+
+        const Bar& bar1 = latest_bars_[symbol1_];
+        const Bar& bar2 = latest_bars_[symbol2_];
+
+        // Ensure the bars are from the same timestamp bucket
+        if (bar1.timestamp != bar2.timestamp) {
+            return; // Different buckets – wait until both align
+        }
+
+        std::cerr << "[Pairs] aligned bars ts=" << std::chrono::duration_cast<std::chrono::seconds>(bar1.timestamp.time_since_epoch()).count() << " close1=" << bar1.close << " close2=" << bar2.close << std::endl;
+
+        // Update latest prices used by the existing trading logic
+        latest_prices_[symbol1_] = bar1.close;
+        latest_prices_[symbol2_] = bar2.close;
+
+        // Now evaluate trading logic
+        if (latest_prices_[symbol1_] > 0 && latest_prices_[symbol2_] > 0) {
+            check_and_execute_trades();
         }
     }
 

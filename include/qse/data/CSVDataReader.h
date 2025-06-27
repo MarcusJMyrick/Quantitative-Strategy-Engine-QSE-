@@ -8,7 +8,8 @@ namespace qse {
 
 class CSVDataReader : public qse::IDataReader {
 public:
-    CSVDataReader(const std::string& file_path);
+    explicit CSVDataReader(const std::string& file_path);
+    CSVDataReader(const std::string& file_path, const std::string& symbol_override);
     
     // Implement the new tick reading method.
     const std::vector<Tick>& read_all_ticks() const override;
@@ -19,6 +20,7 @@ public:
 private:
     void load_data(); // Renamed to be more generic
     std::string file_path_;
+    std::string symbol_override_;
     
     // The reader now stores both ticks and bars.
     std::vector<Bar> bars_;

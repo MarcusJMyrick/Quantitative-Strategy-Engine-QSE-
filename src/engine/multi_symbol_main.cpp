@@ -11,6 +11,7 @@
 #include "qse/strategy/SMACrossoverStrategy.h"
 #include "qse/order/OrderManager.h"
 #include "qse/core/Backtester.h"
+#include "qse/strategy/FillTrackingStrategy.h"
 
 std::string get_timestamp_suffix() {
     auto now = std::chrono::system_clock::now();
@@ -40,33 +41,49 @@ void run_strategy_for_symbol(const std::string& symbol, const std::string& times
         std::cout << "Equity output: " << equity_file << std::endl;
         std::cout << "Tradelog output: " << tradelog_file << std::endl;
         
-        // Create components
+        // Shared data reader (can be reused by both strategies)
         auto data_reader = std::make_unique<qse::CSVDataReader>(data_file);
-        auto order_manager = std::make_unique<qse::OrderManager>(
-            initial_capital, 
-            equity_file, 
-            tradelog_file
-        );
-        auto strategy = std::make_unique<qse::SMACrossoverStrategy>(
-            order_manager.get(), 20, 50, symbol
-        );
-        
-        // Create backtester
-        qse::Backtester backtester(
-            symbol,
-            std::move(data_reader),
-            std::move(strategy),
-            std::move(order_manager),
-            std::chrono::seconds(60)  // 1-minute bars
-        );
-        
-        // Run backtest
-        auto start_time = std::chrono::high_resolution_clock::now();
-        backtester.run();
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-        
-        std::cout << "Completed " << symbol << " in " << duration.count() << " ms" << std::endl;
+
+        // ---------- Strategy 1: Long-term SMA (20/50) ----------
+        {
+            auto om_sma = std::make_unique<qse::OrderManager>(
+                initial_capital,
+                "results/equity_" + symbol + "_sma_" + timestamp_suffix + ".csv",
+                "results/tradelog_" + symbol + "_sma_" + timestamp_suffix + ".csv");
+
+            auto strat_sma = std::make_unique<qse::SMACrossoverStrategy>(
+                om_sma.get(), 20, 50, symbol);
+
+            qse::Backtester bt_sma(
+                symbol,
+                std::make_unique<qse::CSVDataReader>(data_file), // fresh reader
+                std::move(strat_sma),
+                std::move(om_sma),
+                std::chrono::seconds(60));
+
+            bt_sma.run();
+        }
+
+        // ---------- Strategy 2: Fill-tracking smoke test ----------
+        {
+            auto om_fill = std::make_shared<qse::OrderManager>(
+                initial_capital,
+                "results/equity_" + symbol + "_fill_" + timestamp_suffix + ".csv",
+                "results/tradelog_" + symbol + "_fill_" + timestamp_suffix + ".csv");
+
+            auto strat_fill = std::make_unique<qse::FillTrackingStrategy>(om_fill);
+
+            qse::Backtester bt_fill(
+                symbol,
+                std::make_unique<qse::CSVDataReader>(data_file), // fresh reader
+                std::move(strat_fill),
+                om_fill,
+                std::chrono::seconds(60));
+
+            bt_fill.run();
+        }
+
+        std::cout << "Completed " << symbol << " with SMA & FillTracking" << std::endl;
         
     } catch (const std::exception& e) {
         std::cerr << "Error running strategy for " << symbol << ": " << e.what() << std::endl;

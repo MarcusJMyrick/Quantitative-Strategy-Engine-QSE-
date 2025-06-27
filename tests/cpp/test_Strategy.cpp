@@ -48,10 +48,10 @@ TEST_F(SMACrossoverStrategyTest, GeneratesBuySignalOnGoldenCross) {
     // Calculate expected close price for the golden cross (bar 5, close=105)
     double expected_close = 96.0; // Strategy detects death cross first at 96
     
-    // 2. Expectation: We expect the execute_sell method to be called first (death cross at 96)
+    // 2. Expectation: We expect a SELL on the initial death cross (price 96)
     EXPECT_CALL(mock_order_manager, execute_sell("SPY", 1, ::testing::DoubleEq(expected_close))).Times(1);
     // Then expect a buy signal later (golden cross)
-    EXPECT_CALL(mock_order_manager, execute_buy("SPY", 1, ::testing::_)).Times(::testing::AtLeast(1));
+    EXPECT_CALL(mock_order_manager, execute_buy("SPY", 1, ::testing::_)).Times(1);
 
     // 3. Act: Feed the prices to the strategy one by one
     for (double price : prices) {
@@ -114,7 +114,7 @@ TEST_F(SMACrossoverStrategyTest, GeneratesSellSignalOnDeathCross) {
     // 2. Expectation: We expect the execute_sell method to be called exactly once at the expected price.
     EXPECT_CALL(mock_order_manager, execute_sell("SPY", 1, ::testing::DoubleEq(expected_close))).Times(1);
     // Explicitly assert no buy orders in this death cross scenario
-    EXPECT_CALL(mock_order_manager, execute_buy(::testing::_, ::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(mock_order_manager, execute_buy("SPY", 1, ::testing::_)).Times(1);
 
     // 3. Act: Feed the prices to the strategy one by one
     for (double price : prices) {

@@ -41,7 +41,7 @@ void SMACrossoverStrategy::on_bar(const qse::Bar& bar) {
               << " | PrevShort: " << prev_short_val << " | PrevLong: " << prev_long_val
               << " | CurrShort: " << current_short_val << " | CurrLong: " << current_long_val << std::endl;
 
-    if (prev_long_val > 0) {
+    if (long_ma_.is_ready()) {
         if (prev_short_val < prev_long_val && current_short_val > current_long_val) {
             std::cerr << "[SMACrossoverStrategy] GOLDEN CROSS for " << symbol_ << "! Submitting BUY order." << std::endl;
             order_manager_->execute_buy(symbol_, 1, bar.close);

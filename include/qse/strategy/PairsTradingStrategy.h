@@ -9,6 +9,7 @@
 #include <string>
 #include <memory>
 #include <map>
+#include <unordered_map>
 
 namespace qse {
 
@@ -75,6 +76,9 @@ namespace qse {
 
         // Internal state to store the most recent price of each asset.
         std::map<std::string, double> latest_prices_;
+        // Internal state to store the latest bar for each symbol so we can
+        // ensure we only act when we have both legs for the SAME timestamp.
+        std::unordered_map<std::string, Bar> latest_bars_;
     };
 
 } // namespace qse 

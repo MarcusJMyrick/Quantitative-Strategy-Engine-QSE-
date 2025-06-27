@@ -9,7 +9,13 @@
 
 namespace qse {
 
-CSVDataReader::CSVDataReader(const std::string& file_path) : file_path_(file_path) {
+CSVDataReader::CSVDataReader(const std::string& file_path)
+    : file_path_(file_path), symbol_override_("") {
+    load_data();
+}
+
+CSVDataReader::CSVDataReader(const std::string& file_path, const std::string& symbol_override)
+    : file_path_(file_path), symbol_override_(symbol_override) {
     load_data();
 }
 
@@ -40,7 +46,7 @@ void CSVDataReader::load_data() {
             }
             if(tokens.size() >= 6) {
                 Bar bar;
-                bar.symbol = "UNKNOWN"; // Default symbol for CSV files
+                bar.symbol = symbol_override_.empty() ? "UNKNOWN" : symbol_override_;
                 bar.timestamp = qse::Timestamp(std::chrono::seconds(std::stoll(tokens[0])));
                 bar.open = std::stod(tokens[1]);
                 bar.high = std::stod(tokens[2]);
@@ -63,7 +69,7 @@ void CSVDataReader::load_data() {
                 // Full tick format: timestamp,symbol,price,volume,bid,ask,bid_size,ask_size
                 Tick tick;
                 tick.timestamp = qse::Timestamp(std::chrono::milliseconds(std::stoll(tokens[0])));
-                tick.symbol = tokens[1];
+                tick.symbol = symbol_override_.empty() ? tokens[1] : symbol_override_;
                 tick.price = std::stod(tokens[2]);
                 tick.volume = std::stoull(tokens[3]);
                 tick.bid = std::stod(tokens[4]);
@@ -75,7 +81,7 @@ void CSVDataReader::load_data() {
                 // Legacy format: timestamp,price,volume
                 Tick tick;
                 tick.timestamp = qse::Timestamp(std::chrono::milliseconds(std::stoll(tokens[0])));
-                tick.symbol = "UNKNOWN"; // Default symbol for legacy format
+                tick.symbol = symbol_override_.empty() ? "UNKNOWN" : symbol_override_;
                 tick.price = std::stod(tokens[1]);
                 tick.volume = std::stoull(tokens[2]);
                 tick.bid = tick.price; // Use price as bid/ask for legacy format

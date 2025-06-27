@@ -51,6 +51,10 @@ protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
 # Add Homebrew yaml-cpp library path for linker
 link_directories(/opt/homebrew/opt/yaml-cpp/lib)
 
+# --- Math Library (header-only) ---
+add_library(qse_math INTERFACE)
+target_include_directories(qse_math INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 # --- Main QSE Shared Library ---
 add_library(qse SHARED
     src/core/Backtester.cpp
@@ -69,6 +73,8 @@ add_library(qse SHARED
     src/strategy/SMACrossoverStrategy.cpp
     src/strategy/PairsTradingStrategy.cpp
     src/strategy/FillTrackingStrategy.cpp
+    src/strategy/MultiFactorStrategy.cpp
+    src/factor/MultiFactorCalculator.cpp
     ${PROTO_SRCS}
 )
 
@@ -112,6 +118,18 @@ add_executable(run_tests
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)
 
+# --- Factor Calculator Tests ---
+add_executable(FactorMathTest tests/cpp/FactorMathTest.cpp)
+target_link_libraries(FactorMathTest gtest gtest_main qse_math)
+
+add_executable(FactorCalcTest tests/cpp/FactorCalcTest.cpp)
+target_link_libraries(FactorCalcTest gtest gtest_main yaml-cpp)
+target_include_directories(FactorCalcTest PRIVATE /opt/homebrew/include)
+
+# --- Factor Calculator Tool ---
+add_executable(compute_factors src/tools/compute_factors.cpp)
+target_link_libraries(compute_factors PRIVATE qse)
+
 add_executable(messaging_example src/messaging_example.cpp)
 target_link_libraries(messaging_example PRIVATE qse)
 
@@ -135,6 +153,10 @@ target_link_libraries(direct_test PRIVATE qse)
 enable_testing()
 include(GoogleTest)
 gtest_discover_tests(run_tests)
+
+# Add factor calculator tests
+add_test(NAME FactorMathTest COMMAND FactorMathTest)
+add_test(NAME FactorCalcTest COMMAND FactorCalcTest)
 
 # Copy test resources to build directory
 file(COPY tests/cpp/sample_tick_seconds.csv DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

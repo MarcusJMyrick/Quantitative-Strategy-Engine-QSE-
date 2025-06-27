@@ -129,7 +129,7 @@ void run_pairs_trading(const std::string& timestamp_suffix) {
 
         // Use aggressive parameters that should generate trades
         auto strat_pairs = std::make_unique<qse::PairsTradingStrategy>(
-            symbol1, symbol2, 1.0, 10, 1.0, 0.2, om_pairs);
+            symbol1, symbol2, 1.0, 20, 2.0, 0.5, om_pairs);
 
         qse::Backtester bt_pairs(
             symbol1 + "_" + symbol2, // Combined symbol name

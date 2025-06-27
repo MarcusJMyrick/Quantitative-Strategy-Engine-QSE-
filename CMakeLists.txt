@@ -107,6 +107,7 @@ add_executable(run_tests
     tests/cpp/test_SmokeTest.cpp
     tests/cpp/test_BarDrivenStrategies.cpp
     tests/cpp/test_BarDrivenIntegration.cpp
+    tests/cpp/test_CSVTimestampUnits.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

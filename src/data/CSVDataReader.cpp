@@ -68,7 +68,13 @@ void CSVDataReader::load_data() {
             if(tokens.size() >= 8) {
                 // Full tick format: timestamp,symbol,price,volume,bid,ask,bid_size,ask_size
                 Tick tick;
-                tick.timestamp = qse::Timestamp(std::chrono::milliseconds(std::stoll(tokens[0])));
+                {
+                    long long raw = std::stoll(tokens[0]);
+                    if (raw < 10'000'000'000LL) {
+                        raw *= 1000; // CSV provides seconds – promote to ms
+                    }
+                    tick.timestamp = qse::Timestamp(std::chrono::milliseconds(raw));
+                }
                 tick.symbol = symbol_override_.empty() ? tokens[1] : symbol_override_;
                 tick.price = std::stod(tokens[2]);
                 tick.volume = std::stoull(tokens[3]);
@@ -80,7 +86,13 @@ void CSVDataReader::load_data() {
             } else if(tokens.size() >= 3) {
                 // Legacy format: timestamp,price,volume
                 Tick tick;
-                tick.timestamp = qse::Timestamp(std::chrono::milliseconds(std::stoll(tokens[0])));
+                {
+                    long long raw = std::stoll(tokens[0]);
+                    if (raw < 10'000'000'000LL) {
+                        raw *= 1000;
+                    }
+                    tick.timestamp = qse::Timestamp(std::chrono::milliseconds(raw));
+                }
                 tick.symbol = symbol_override_.empty() ? "UNKNOWN" : symbol_override_;
                 tick.price = std::stod(tokens[1]);
                 tick.volume = std::stoull(tokens[2]);

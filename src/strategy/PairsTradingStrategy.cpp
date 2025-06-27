@@ -1,5 +1,4 @@
 #include "qse/strategy/PairsTradingStrategy.h"
-#define DEBUG
 
 #include <iostream>
 #include <cmath>
@@ -57,7 +56,11 @@ namespace qse {
             return; // Different buckets – wait until both align
         }
 
-        std::cerr << "[Pairs] aligned bars ts=" << std::chrono::duration_cast<std::chrono::seconds>(bar1.timestamp.time_since_epoch()).count() << " close1=" << bar1.close << " close2=" << bar2.close << std::endl;
+#ifdef DEBUG
+        std::cerr << "[Pairs] aligned bars ts="
+                  << std::chrono::duration_cast<std::chrono::seconds>(bar1.timestamp.time_since_epoch()).count()
+                  << " close1=" << bar1.close << " close2=" << bar2.close << std::endl;
+#endif
 
         // Update latest prices used by the existing trading logic
         latest_prices_[symbol1_] = bar1.close;

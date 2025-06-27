@@ -2,40 +2,40 @@
 
 A high-performance C++ backtesting engine for quantitative trading strategies with comprehensive analysis tools and organized result management. Designed for institutional-grade strategy development and testing.
 
-## 🚀 Overview
+## Overview
 
 The Quantitative Strategy Engine (QSE) is a sophisticated backtesting platform that enables traders and researchers to develop, test, and analyze trading strategies with institutional-level precision. The engine supports multiple strategy types, realistic market simulation, and provides comprehensive analysis tools with automated result organization.
 
-## 🎯 Key Features
+## Key Features
 
-### 🔥 Multi-Strategy Architecture
+###  Multi-Strategy Architecture
 - **PairsTrading Strategy**: Statistical arbitrage between correlated assets
 - **SMA Crossover Strategy**: Moving average-based trend following
 - **FillTracking Strategy**: Order execution and fill analysis
 - **DoNothing Strategy**: Baseline performance measurement
 - **Extensible Framework**: Easy addition of custom strategies
 
-### ⚡ High-Performance Engine
+### High-Performance Engine
 - **Tick-Level Simulation**: Millisecond-precision market data processing
 - **Realistic Order Book**: Top-of-book bid/ask tracking with liquidity consumption
 - **Configurable Slippage**: Per-symbol linear slippage models
 - **Multi-Threading**: Parallel strategy execution for performance
 - **Memory Optimization**: Efficient data structures for large datasets
 
-### 📊 Advanced Analysis Suite
+### Advanced Analysis Suite
 - **Comprehensive Performance Metrics**: Sharpe ratio, max drawdown, volatility analysis
 - **Visual Analytics**: Detailed plots for trade activity, P&L, and position tracking
 - **Strategy Comparison**: Side-by-side performance analysis
 - **Risk Analysis**: Drawdown analysis and risk-adjusted returns
 - **Trade-Level Analysis**: Individual trade examination and pattern recognition
 
-### 🗂️ Organized Result Management
+### Organized Result Management
 - **Automated Organization**: Timestamped runs with structured file hierarchy
 - **Report Generation**: JSON and human-readable analysis reports
 - **Plot Management**: Categorized visualization outputs
 - **Configuration Tracking**: Version control for backtesting parameters
 
-## 🏗️ Architecture
+## Architecture
 
 The engine follows a modular, event-driven architecture optimized for performance and extensibility:
 
@@ -139,7 +139,7 @@ pip install -r requirements.txt
 python3 -c "import pandas, matplotlib, seaborn, numpy; print('All dependencies installed')"
 ```
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### 1. Run Multi-Strategy Backtest
 ```bash
@@ -174,7 +174,7 @@ ls organized_runs/my_backtest/
 cat organized_runs/my_backtest/analysis/summaries/run_summary.txt
 ```
 
-## 📊 Analysis Capabilities
+## Analysis Capabilities
 
 ### Performance Metrics
 - **Returns Analysis**: Total return, annualized return, risk-adjusted returns
@@ -195,7 +195,7 @@ cat organized_runs/my_backtest/analysis/summaries/run_summary.txt
 - **Comparative Analysis**: Multi-strategy performance comparison
 - **Risk Reports**: Detailed risk breakdown and scenario analysis
 
-## 🗂️ Result Organization
+## Result Organization
 
 The engine automatically organizes results into a structured hierarchy:
 
@@ -218,7 +218,7 @@ organized_runs/
     └── config/                     # Configuration files
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Strategy Configuration
 ```yaml
@@ -255,7 +255,7 @@ slippage:
   QQQ: 0.0005
 ```
 
-## 🧪 Testing & Validation
+## Testing & Validation
 
 ### Unit Testing
 ```bash
@@ -286,7 +286,7 @@ valgrind --tool=massif ./engine/multi_strategy_main --config ../config.yaml
 ./scripts/testing/debug_crash.sh PairsTrading
 ```
 
-## 📚 Advanced Usage
+## Advanced Usage
 
 ### Custom Strategy Development
 ```cpp
@@ -322,7 +322,7 @@ create_custom_plots(analysis, "custom_output/")
 ./scripts/analysis/analyze_multi_run.py
 ```
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -351,7 +351,7 @@ python3 scripts/testing/test_with_subset.py --symbols AAPL,GOOG --days 30
 - Enable parallel processing: `make -j$(nproc)`
 - Optimize data loading: Use Parquet format for large datasets
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our contributing guidelines:
 
@@ -371,23 +371,24 @@ pre-commit install
 pre-commit run --all-files
 ```
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+All Rights Reserved License
 
-## 🙏 Acknowledgments
+Copyright (c) 2025 Marcus Myrick  
+All rights reserved.
 
-- **Market Data**: Thanks to data providers for historical market data
-- **Libraries**: Built on excellent open-source libraries (Pandas, Matplotlib, etc.)
-- **Community**: Inspired by the quantitative finance community
+This software and all associated files (the “Software”) are made publicly available **for viewing purposes only**.
 
-## 📞 Support
+You are **not permitted** to:
+- Use the Software for any purpose
+- Copy, modify, or create derivative works based on the Software
+- Distribute, sublicense, or resell the Software
+- Use any part of the code in commercial or non-commercial projects
 
-- **Documentation**: Check the `docs/` directory for detailed guides
-- **Issues**: Report bugs via GitHub issues
-- **Discussions**: Join our community discussions for questions and ideas
+Any unauthorized use, reproduction, or distribution of this Software is strictly prohibited and may be subject to legal action.
 
----
+For inquiries about licensing or usage, please contact:
+**marcusjmyrick@gmail.com**
 
-**Built with ❤️ for the quantitative trading community**
-
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.

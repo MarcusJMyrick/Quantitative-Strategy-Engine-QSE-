@@ -40,11 +40,16 @@ namespace qse {
             return; // Ignore other symbols
         }
 
+        std::cout << "DEBUG: Received bar for " << bar.symbol << " at ts=" 
+                  << std::chrono::duration_cast<std::chrono::seconds>(bar.timestamp.time_since_epoch()).count()
+                  << " close=" << bar.close << std::endl;
+
         // Store the latest bar for this symbol
         latest_bars_[bar.symbol] = bar;
 
         // We need bars for both symbols AND they must belong to the same time bucket
         if (latest_bars_.count(symbol1_) == 0 || latest_bars_.count(symbol2_) == 0) {
+            std::cout << "DEBUG: Waiting for both legs. Have " << latest_bars_.size() << " bars" << std::endl;
             return; // Still waiting for both legs
         }
 
@@ -53,14 +58,15 @@ namespace qse {
 
         // Ensure the bars are from the same timestamp bucket
         if (bar1.timestamp != bar2.timestamp) {
+            std::cout << "DEBUG: Timestamps don't match: " 
+                      << std::chrono::duration_cast<std::chrono::seconds>(bar1.timestamp.time_since_epoch()).count()
+                      << " vs " << std::chrono::duration_cast<std::chrono::seconds>(bar2.timestamp.time_since_epoch()).count() << std::endl;
             return; // Different buckets – wait until both align
         }
 
-#ifdef DEBUG
-        std::cerr << "[Pairs] aligned bars ts="
+        std::cout << "DEBUG: Aligned bars! ts="
                   << std::chrono::duration_cast<std::chrono::seconds>(bar1.timestamp.time_since_epoch()).count()
                   << " close1=" << bar1.close << " close2=" << bar2.close << std::endl;
-#endif
 
         // Update latest prices used by the existing trading logic
         latest_prices_[symbol1_] = bar1.close;
@@ -102,41 +108,31 @@ namespace qse {
         
         // 5. Calculate the z-score of the current spread against the historical data.
         if (std::abs(std_dev) < 1e-7) {
-#ifdef DEBUG
             std::cout << "DEBUG: std_dev too small ("
                       << std_dev << "), skipping z-score calc\n";
-#endif
             return; // Avoid division by zero if history is flat.
         }
         double z_score = (current_spread - mean) / std_dev;
-#ifdef DEBUG
         std::cout << "DEBUG: spread=" << current_spread << ", mean=" << mean << ", stddev=" << std_dev << ", z=" << z_score << std::endl;
-#endif
 
         // 6. Apply trading rules.
         int position_s1 = order_manager_->get_position(symbol1_);
         
         if (position_s1 == 0) {
             if (z_score > entry_threshold_) {
-#ifdef DEBUG
                 std::cout << "DEBUG: Branch=SHORT_ENTRY, z_score=" << z_score << "\n";
-#endif
                 int qty1 = 100;
                 int qty2 = static_cast<int>(qty1 * hedge_ratio_);
                 order_manager_->execute_sell(symbol1_, qty1, latest_prices_[symbol1_]);
                 order_manager_->execute_buy(symbol2_, qty2, latest_prices_[symbol2_]);
             } else if (z_score < -entry_threshold_) {
-#ifdef DEBUG
                 std::cout << "DEBUG: Branch=LONG_ENTRY, z_score=" << z_score << "\n";
-#endif
                 int qty1 = 100;
                 int qty2 = static_cast<int>(qty1 * hedge_ratio_);
                 order_manager_->execute_buy(symbol1_, qty1, latest_prices_[symbol1_]);
                 order_manager_->execute_sell(symbol2_, qty2, latest_prices_[symbol2_]);
             } else {
-#ifdef DEBUG
                 std::cout << "DEBUG: Branch=NO_ENTRY, z_score=" << z_score << " (threshold=" << entry_threshold_ << ")\n";
-#endif
             }
         } else if (std::abs(z_score) < exit_threshold_) {
 #ifdef DEBUG

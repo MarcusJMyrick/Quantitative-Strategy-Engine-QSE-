@@ -3,6 +3,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <sstream>
 
 #include "qse/order/OrderManager.h"
 #include "qse/data/OrderBook.h"
@@ -173,6 +174,11 @@ TEST_F(OrderManagerTest, EquityRecordingWithMultipleSymbols) {
     
     EXPECT_FALSE(line.empty());
     EXPECT_NE(line.find("1234567890"), std::string::npos);
+
+    // Ensure the CSV now contains five columns: timestamp,equity (cash already included)
+    std::stringstream ss(line);
+    std::string item; int col_count=0; while(std::getline(ss,item,',')) ++col_count;
+    EXPECT_EQ(col_count, 2); // timestamp + equity columns
 }
 
 TEST_F(OrderManagerTest, ZeroQuantityTrades) {

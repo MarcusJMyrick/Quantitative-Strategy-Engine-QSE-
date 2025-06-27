@@ -135,3 +135,6 @@ target_link_libraries(direct_test PRIVATE qse)
 enable_testing()
 include(GoogleTest)
 gtest_discover_tests(run_tests)
+
+# Copy test resources to build directory
+file(COPY tests/cpp/sample_tick_seconds.csv DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

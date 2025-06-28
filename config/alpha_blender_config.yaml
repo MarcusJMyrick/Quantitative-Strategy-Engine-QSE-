@@ -1,0 +1,22 @@
+# AlphaBlender Configuration
+# This file configures how factor scores are blended into final alpha scores
+
+# Method 1: YAML-configured weights per factor
+factor_weights:
+  momentum: 0.3
+  value: 0.25
+  quality: 0.2
+  size: 0.15
+  volatility: 0.1
+
+# Method 2: IR-weighted blending (overrides YAML weights when enabled)
+use_ir_weighting: false  # Set to true to use IR-weighted blending
+
+# IR weighting parameters (used when use_ir_weighting is true)
+ir_lookback_period: 252  # Days for IR calculation (typically 1 year)
+min_ir_weight: 0.1       # Minimum weight for any factor
+max_ir_weight: 2.0       # Maximum weight for any factor
+
+# Advanced settings
+# normalize_weights: true  # Always normalize weights to sum to 1.0
+# decay_factor: 0.95       # Exponential decay for historical IR values 

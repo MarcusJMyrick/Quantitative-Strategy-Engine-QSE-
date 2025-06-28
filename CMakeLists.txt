@@ -78,6 +78,7 @@ add_library(qse SHARED
     src/factor/UniverseFilter.cpp
     src/factor/CrossSectionalRegression.cpp
     src/factor/ICMonitor.cpp
+    src/factor/AlphaBlender.cpp
     ${PROTO_SRCS}
 )
 
@@ -119,6 +120,7 @@ add_executable(run_tests
     tests/cpp/test_CSVTimestampUnits.cpp
     tests/cpp/CrossSectionalRegressionTest.cpp
     tests/cpp/ICMonitorTest.cpp
+    tests/cpp/AlphaBlenderTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

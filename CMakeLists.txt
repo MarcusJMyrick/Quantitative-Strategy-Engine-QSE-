@@ -65,6 +65,7 @@ add_library(qse SHARED
     src/factor/AlphaBlender.cpp
     src/factor/RiskModel.cpp
     src/factor/PortfolioBuilder.cpp
+    src/exe/FactorExecutionEngine.cpp
     ${PROTO_SRCS}
 )
 
@@ -123,6 +124,7 @@ add_executable(run_tests
     tests/cpp/CrossSectionalRegressionRobustTest.cpp
     tests/cpp/ICMonitorDistributionTest.cpp
     tests/cpp/PortfolioBuilderTest.cpp
+    tests/cpp/WeightsLoadTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)
@@ -159,7 +161,6 @@ target_link_libraries(multi_strategy_engine PRIVATE qse)
 
 add_executable(direct_test scripts/testing/direct_test.cpp)
 target_link_libraries(direct_test PRIVATE qse)
-
 
 # --- Testing Setup ---
 enable_testing()

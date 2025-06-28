@@ -75,6 +75,9 @@ add_library(qse SHARED
     src/strategy/FillTrackingStrategy.cpp
     src/strategy/MultiFactorStrategy.cpp
     src/factor/MultiFactorCalculator.cpp
+    src/factor/UniverseFilter.cpp
+    src/factor/CrossSectionalRegression.cpp
+    src/factor/ICMonitor.cpp
     ${PROTO_SRCS}
 )
 
@@ -114,6 +117,8 @@ add_executable(run_tests
     tests/cpp/test_BarDrivenStrategies.cpp
     tests/cpp/test_BarDrivenIntegration.cpp
     tests/cpp/test_CSVTimestampUnits.cpp
+    tests/cpp/CrossSectionalRegressionTest.cpp
+    tests/cpp/ICMonitorTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)
@@ -125,6 +130,9 @@ target_link_libraries(FactorMathTest gtest gtest_main qse_math)
 add_executable(FactorCalcTest tests/cpp/FactorCalcTest.cpp)
 target_link_libraries(FactorCalcTest gtest gtest_main yaml-cpp)
 target_include_directories(FactorCalcTest PRIVATE /opt/homebrew/include)
+
+add_executable(UniverseFilterTest tests/cpp/UniverseFilterTest.cpp)
+target_link_libraries(UniverseFilterTest gtest gtest_main qse)
 
 # --- Factor Calculator Tool ---
 add_executable(compute_factors src/tools/compute_factors.cpp)
@@ -157,6 +165,7 @@ gtest_discover_tests(run_tests)
 # Add factor calculator tests
 add_test(NAME FactorMathTest COMMAND FactorMathTest)
 add_test(NAME FactorCalcTest COMMAND FactorCalcTest)
+add_test(NAME UniverseFilterTest COMMAND UniverseFilterTest)
 
 # Copy test resources to build directory
-file(COPY tests/cpp/sample_tick_seconds.csv DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+# file(COPY tests/cpp/sample_tick_seconds.csv DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

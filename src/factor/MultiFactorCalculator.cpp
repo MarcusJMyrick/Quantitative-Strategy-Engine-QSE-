@@ -1,4 +1,5 @@
 #include "qse/factor/MultiFactorCalculator.h"
+#include "qse/factor/UniverseFilter.h"
 #include "qse/math/StatsUtil.h"
 #include <arrow/api.h>
 #include <arrow/csv/api.h>
@@ -20,6 +21,11 @@ double pct_change(double now, double prev) {
 
 }   // anonymous
 
+void MultiFactorCalculator::set_filter_criteria(double min_price, double min_volume, int min_listing_age, double max_price) {
+    FilterCriteria criteria(min_price, min_volume, min_listing_age, max_price);
+    universe_filter_ = std::make_unique<UniverseFilter>(criteria);
+}
+
 void MultiFactorCalculator::compute_factors(const std::string& in_csv,
                                             const std::string& out_parquet,
                                             const std::string& weights_yaml)
@@ -29,14 +35,29 @@ void MultiFactorCalculator::compute_factors(const std::string& in_csv,
     auto nrows = table->num_rows();
     if (nrows == 0) throw std::runtime_error("Empty price file");
 
-    /************ 2. Momentum 12-1 (placeholder) ************/
+    /************ 2. Apply universe filters and data hygiene ************/
+    if (universe_filter_) {
+        std::cout << "Applying universe filters..." << std::endl;
+        table = universe_filter_->filter_universe(table);
+        
+        std::cout << "Cleaning data..." << std::endl;
+        table = universe_filter_->clean_data(table);
+        
+        if (!universe_filter_->validate_no_nan(table)) {
+            throw std::runtime_error("Data validation failed: NaN values found");
+        }
+        
+        std::cout << universe_filter_->get_filter_stats() << std::endl;
+    }
+
+    /************ 3. Momentum 12-1 (placeholder) ************/
     // TODO: replace with real 12-1 logic
     std::vector<double> mom(nrows, 0.0);
     for (int i = 21; i < nrows; ++i)   // 1-month gap, 12-month look-back
         mom[i] = pct_change(col<double>(table,"close", i),
                             col<double>(table,"close", i-252));
 
-    /************ 3. Volatility ************/
+    /************ 4. Volatility ************/
     qse::math::RollingStdDev vol20(20), vol60(60);
     std::vector<double> vol20v(nrows), vol60v(nrows);
     for (int i = 0; i < nrows; ++i) {
@@ -45,14 +66,14 @@ void MultiFactorCalculator::compute_factors(const std::string& in_csv,
         vol60v[i] = vol60(px);
     }
 
-    /************ 4. Value proxy: 1 / P-B (placeholder) ************/
+    /************ 5. Value proxy: 1 / P-B (placeholder) ************/
     std::vector<double> value(nrows);
     for (int i = 0; i < nrows; ++i) {
         double pb = col<double>(table,"pb", i);      // assumes pb column exists
         value[i]  = pb == 0.0 ? 0.0 : 1.0 / pb;
     }
 
-    /************ 5. Winsorise + z-score ************/
+    /************ 6. Winsorise + z-score ************/
     qse::math::winsorize(mom);
     qse::math::winsorize(vol20v);
     qse::math::winsorize(value);
@@ -61,7 +82,7 @@ void MultiFactorCalculator::compute_factors(const std::string& in_csv,
     qse::math::zscore(vol20v);
     qse::math::zscore(value);
 
-    /************ 6. Composite score ************/
+    /************ 7. Composite score ************/
     YAML::Node cfg = YAML::LoadFile(weights_yaml);
     double w_mom   = cfg["momentum"].as<double>();
     double w_vol   = cfg["vol"].as<double>();
@@ -74,7 +95,7 @@ void MultiFactorCalculator::compute_factors(const std::string& in_csv,
     for (int i = 0; i < nrows; ++i)
         composite[i] = w_mom*mom[i] + w_vol*vol20v[i] + w_val*value[i];
 
-    /************ 7. Attach columns and dump Parquet ************/
+    /************ 8. Attach columns and dump Parquet ************/
     append_column(table, "mom_z",   mom);
     append_column(table, "vol20_z", vol20v);
     append_column(table, "val_z",   value);

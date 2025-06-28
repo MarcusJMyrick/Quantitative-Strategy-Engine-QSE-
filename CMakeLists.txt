@@ -6,31 +6,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
 
-# ---
-# FINAL FIX: Manually run pkg-config for all problematic libraries
-# ---
-find_package(PkgConfig REQUIRED)
-
-# This block runs pkg-config and captures the compiler flags (-I...)
-execute_process(
-    COMMAND ${PKG_CONFIG_EXECUTABLE} --cflags libzmq protobuf absl_log
-    OUTPUT_VARIABLE PKG_CONFIG_CFLAGS
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-# This block runs pkg-config and captures the linker flags (-L... -l...)
-execute_process(
-    COMMAND ${PKG_CONFIG_EXECUTABLE} --libs libzmq protobuf absl_log
-    OUTPUT_VARIABLE PKG_CONFIG_LIBS
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-
-# Use standard find_package for libraries that are working correctly
+# Find dependencies
 find_package(Arrow REQUIRED)
 find_package(Parquet REQUIRED)
-find_package(Protobuf REQUIRED) # Still need this for the helper functions
+find_package(Protobuf REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(Threads REQUIRED)
 
+# Find ZeroMQ using pkg-config
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(ZeroMQ REQUIRED libzmq)
+
+# Add Eigen as a subdirectory
+add_subdirectory(third-party/eigen)
 
 # --- Google Test Setup ---
 include(FetchContent)
@@ -41,15 +29,11 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-
 # --- Protocol Buffers Code Generation ---
 set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/messaging)
 file(GLOB PROTO_FILES "${PROTO_DIR}/*.proto")
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILES})
 
-
-# Add Homebrew yaml-cpp library path for linker
-link_directories(/opt/homebrew/opt/yaml-cpp/lib)
 
 # --- Math Library (header-only) ---
 add_library(qse_math INTERFACE)
@@ -79,26 +63,36 @@ add_library(qse SHARED
     src/factor/CrossSectionalRegression.cpp
     src/factor/ICMonitor.cpp
     src/factor/AlphaBlender.cpp
+    src/factor/RiskModel.cpp
+    src/factor/PortfolioBuilder.cpp
     ${PROTO_SRCS}
 )
 
-# Link against the libraries discovered by pkg-config
-target_link_libraries(qse PUBLIC
-    Arrow::arrow_shared
-    Parquet::parquet_shared
-    yaml-cpp
-    # Add the raw linker flags from our pkg-config command
-    ${PKG_CONFIG_LIBS}
-)
-
-# Add the include directories discovered by pkg-config
+# Add the include directories
 target_include_directories(qse PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_BINARY_DIR}
-    # Add the raw include flags from our pkg-config command
-    ${PKG_CONFIG_CFLAGS}
+    ${Arrow_INCLUDE_DIRS}
+    ${Parquet_INCLUDE_DIRS}
+    ${Protobuf_INCLUDE_DIRS}
+    ${ZeroMQ_INCLUDE_DIRS}
 )
 
+# Link the library to its dependencies
+target_link_libraries(qse PUBLIC
+    Arrow::arrow_shared
+    Parquet::parquet_shared
+    yaml-cpp::yaml-cpp
+    Eigen3::Eigen
+    Threads::Threads
+    ${Protobuf_LIBRARIES}
+    GTest::gtest
+    GTest::gmock
+    ${ZeroMQ_LIBRARIES}
+)
+
+# Add ZeroMQ library directories
+target_link_directories(qse PUBLIC ${ZeroMQ_LIBRARY_DIRS})
 
 # --- Executables ---
 add_executable(run_tests
@@ -121,6 +115,14 @@ add_executable(run_tests
     tests/cpp/CrossSectionalRegressionTest.cpp
     tests/cpp/ICMonitorTest.cpp
     tests/cpp/AlphaBlenderTest.cpp
+    tests/cpp/BetaCalcTest.cpp
+    tests/cpp/AlphaBlenderICIntegrationTest.cpp
+    tests/cpp/RiskModelMultiAssetTest.cpp
+    tests/cpp/AlphaBlenderWeightPropertyTest.cpp
+    tests/cpp/UniverseFuzzTest.cpp
+    tests/cpp/CrossSectionalRegressionRobustTest.cpp
+    tests/cpp/ICMonitorDistributionTest.cpp
+    tests/cpp/PortfolioBuilderTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)
@@ -130,7 +132,7 @@ add_executable(FactorMathTest tests/cpp/FactorMathTest.cpp)
 target_link_libraries(FactorMathTest gtest gtest_main qse_math)
 
 add_executable(FactorCalcTest tests/cpp/FactorCalcTest.cpp)
-target_link_libraries(FactorCalcTest gtest gtest_main yaml-cpp)
+target_link_libraries(FactorCalcTest gtest gtest_main yaml-cpp::yaml-cpp)
 target_include_directories(FactorCalcTest PRIVATE /opt/homebrew/include)
 
 add_executable(UniverseFilterTest tests/cpp/UniverseFilterTest.cpp)
@@ -168,6 +170,3 @@ gtest_discover_tests(run_tests)
 add_test(NAME FactorMathTest COMMAND FactorMathTest)
 add_test(NAME FactorCalcTest COMMAND FactorCalcTest)
 add_test(NAME UniverseFilterTest COMMAND UniverseFilterTest)
-
-# Copy test resources to build directory
-# file(COPY tests/cpp/sample_tick_seconds.csv DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -33,6 +33,8 @@ public:
         return std::sqrt(std::max(0.0, (sum2_ / n) - mean * mean));
     }
 
+    std::size_t count() const { return buf_.size(); }
+
 private:
     std::size_t      window_;
     std::deque<double> buf_;
@@ -62,5 +64,73 @@ inline void zscore(std::vector<double>& v) {
     if (sd == 0.0) sd = 1.0;
     for (auto& x : v) x = (x - mean) / sd;
 }
+
+/// ----------------------------------------------
+/// Rolling (windowed) covariance & variance helper
+/// ----------------------------------------------
+class RollingCovariance {
+public:
+    explicit RollingCovariance(std::size_t window) : window_(window) {}
+
+    // Feed paired observations (x, y); returns cov of current window
+    double operator()(double x, double y) {
+        buf_x_.push_back(x);
+        buf_y_.push_back(y);
+        sum_x_  += x;
+        sum_y_  += y;
+        sum_xy_ += x * y;
+
+        if (buf_x_.size() > window_) {
+            double old_x = buf_x_.front(); buf_x_.pop_front();
+            double old_y = buf_y_.front(); buf_y_.pop_front();
+            sum_x_  -= old_x;
+            sum_y_  -= old_y;
+            sum_xy_ -= old_x * old_y;
+        }
+
+        auto n = static_cast<double>(buf_x_.size());
+        if (n < 2) return 0.0;
+        double mean_x = sum_x_ / n;
+        double mean_y = sum_y_ / n;
+        return (sum_xy_ / n) - mean_x * mean_y;
+    }
+
+    std::size_t count() const { return buf_x_.size(); }
+
+private:
+    std::size_t      window_;
+    std::deque<double> buf_x_;
+    std::deque<double> buf_y_;
+    double           sum_x_{0.0}, sum_y_{0.0}, sum_xy_{0.0};
+};
+
+class RollingVariance {
+public:
+    explicit RollingVariance(std::size_t window) : window_(window) {}
+
+    double operator()(double x) {
+        buf_.push_back(x);
+        sum_  += x;
+        sum2_ += x * x;
+        if (buf_.size() > window_) {
+            double old = buf_.front();
+            buf_.pop_front();
+            sum_  -= old;
+            sum2_ -= old * old;
+        }
+        auto n = static_cast<double>(buf_.size());
+        if (n < 2) return 0.0;
+        double mean = sum_ / n;
+        return (sum2_ / n) - mean * mean;
+    }
+
+    std::size_t count() const { return buf_.size(); }
+
+private:
+    std::size_t      window_;
+    std::deque<double> buf_;
+    double           sum_{0.0};
+    double           sum2_{0.0};
+};
 
 }   // namespace qse::math 

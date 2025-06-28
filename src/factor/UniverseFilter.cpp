@@ -45,18 +45,34 @@ namespace qse {
             return table;
         }
 
-        auto cleaned_table = table;
-        
-        // Forward-fill fundamental columns
-        forward_fill_column(cleaned_table, "pb");
-        forward_fill_column(cleaned_table, "pe");
-        forward_fill_column(cleaned_table, "market_cap");
-        
-        // Remove NaN/inf from price and volume columns
-        remove_nan_inf_column(cleaned_table, "close");
-        remove_nan_inf_column(cleaned_table, "volume");
-        
-        return cleaned_table;
+        std::vector<std::shared_ptr<arrow::Field>> fields = table->schema()->fields();
+        std::vector<std::shared_ptr<arrow::Array>> cleaned_arrays;
+
+        for (int col = 0; col < table->num_columns(); ++col) {
+            auto chunked = table->column(col);
+            auto arr = chunked->chunk(0);
+            if (arr->type()->id() != arrow::Type::DOUBLE) {
+                // Keep non-double columns unchanged (simplified)
+                cleaned_arrays.push_back(arr);
+                continue;
+            }
+            auto darray = std::static_pointer_cast<arrow::DoubleArray>(arr);
+            arrow::DoubleBuilder builder;
+            for (int64_t i = 0; i < darray->length(); ++i) {
+                double v = darray->Value(i);
+                if (!is_valid_numeric(v)) {
+                    v = 0.0; // simple replacement
+                    ++nan_removed_;
+                }
+                builder.Append(v);
+            }
+            std::shared_ptr<arrow::Array> new_arr;
+            builder.Finish(&new_arr);
+            cleaned_arrays.push_back(new_arr);
+        }
+
+        auto cleaned_schema = arrow::schema(fields);
+        return arrow::Table::Make(cleaned_schema, cleaned_arrays);
     }
 
     bool UniverseFilter::validate_no_nan(const std::shared_ptr<arrow::Table>& table) {

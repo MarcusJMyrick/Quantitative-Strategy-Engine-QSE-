@@ -52,7 +52,7 @@ struct Tick {
  * Enhanced for tick-level simulation with support for limit orders, IOC, and partial fills.
  */
 struct Order {
-    enum class Type { MARKET, LIMIT, IOC };  // Simplified for initial implementation
+    enum class Type { MARKET, LIMIT, IOC, TARGET_PERCENT };  // Added TARGET_PERCENT
     enum class Side { BUY, SELL };
     enum class Status { PENDING, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED };
     enum class TimeInForce { DAY, IOC, GTC };  // Day, Immediate-or-Cancel, Good-Till-Cancelled
@@ -69,6 +69,7 @@ struct Order {
     Status status;
     Timestamp timestamp;      // When order was placed
     Timestamp expiry_time;    // For IOC orders
+    double target_percent = 0.0; // Only used for TARGET_PERCENT orders
     
     // Helper methods
     bool is_active() const { return status == Status::PENDING || status == Status::PARTIALLY_FILLED; }
@@ -113,6 +114,15 @@ struct Fill {
     
     Fill(OrderId id, const std::string& sym, Volume qty, Price px, Timestamp ts, const std::string& s)
         : order_id(id), symbol(sym), quantity(qty), price(px), timestamp(ts), side(s) {}
+};
+
+// --- NEW: Position structure for portfolio holdings ---
+struct Position {
+    std::string symbol;
+    double quantity;  // Can be negative for short positions
+    
+    Position(const std::string& sym, double qty) : symbol(sym), quantity(qty) {}
+    Position() = default;
 };
 
 // --- Timestamp helpers for ms conversions ---

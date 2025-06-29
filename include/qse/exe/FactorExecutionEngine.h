@@ -26,6 +26,9 @@ struct ExecConfig {
 
     // Rounding lot size (shares)
     int lot_size{1};
+
+    // Minimum quantity for order emission
+    double min_qty{0.0};
 };
 
 /**
@@ -59,17 +62,19 @@ public:
         const std::unordered_map<std::string, double>& prices);
 
     // (H-5) Submit orders to OrderManager – to be implemented
-    void submit_orders(const std::unordered_map<std::string, long long>& target_qty);
+    void submit_orders(const std::vector<qse::Order>& orders);
 
     // (H-6) Rebalance gatekeeping – to be implemented
     bool should_rebalance(std::chrono::system_clock::time_point now) const;
+
+    std::vector<qse::Order> build_orders(const std::unordered_map<std::string, long long>& target_qty, const std::unordered_map<std::string, double>& target_weights);
 
 private:
     ExecConfig cfg_{};
     std::shared_ptr<IOrderManager> order_manager_;
 
     // Track last rebalance date to prevent duplicate runs (H-6)
-    std::chrono::system_clock::time_point last_rebalance_{};
+    mutable std::chrono::system_clock::time_point last_rebalance_{};
 };
 
 } // namespace qse 

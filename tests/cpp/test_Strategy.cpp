@@ -16,6 +16,7 @@ public:
     
     // You must also mock the other pure virtual functions from the interface
     MOCK_METHOD(int, get_position, (const std::string& symbol), (const, override));
+    MOCK_METHOD(std::vector<qse::Position>, get_positions, (), (const, override));
     MOCK_METHOD(double, get_cash, (), (const, override));
     MOCK_METHOD(void, record_equity, (long long timestamp, (const std::map<std::string, double>&) market_prices), (override));
     // --- Tick-level order management mock methods ---

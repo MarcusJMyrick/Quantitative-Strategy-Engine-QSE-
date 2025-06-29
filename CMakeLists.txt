@@ -125,6 +125,8 @@ add_executable(run_tests
     tests/cpp/ICMonitorDistributionTest.cpp
     tests/cpp/PortfolioBuilderTest.cpp
     tests/cpp/WeightsLoadTest.cpp
+    tests/cpp/HoldingsSnapshotTest.cpp
+    tests/cpp/DiffCalcTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)
@@ -161,6 +163,9 @@ target_link_libraries(multi_strategy_engine PRIVATE qse)
 
 add_executable(direct_test scripts/testing/direct_test.cpp)
 target_link_libraries(direct_test PRIVATE qse)
+
+add_executable(factor_exec_demo src/tools/factor_exec_demo.cpp)
+target_link_libraries(factor_exec_demo qse)
 
 # --- Testing Setup ---
 enable_testing()

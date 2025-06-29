@@ -113,6 +113,16 @@ int OrderManager::get_position(const std::string& symbol) const {
     return positions_.at(symbol);
 }
 
+std::vector<Position> OrderManager::get_positions() const {
+    std::vector<Position> result;
+    for (const auto& pair : positions_) {
+        if (pair.second != 0) {  // Only include non-zero positions
+            result.emplace_back(pair.first, static_cast<double>(pair.second));
+        }
+    }
+    return result;
+}
+
 double OrderManager::get_cash() const {
     return cash_;
 }

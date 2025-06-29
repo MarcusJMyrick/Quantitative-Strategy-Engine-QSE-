@@ -34,6 +34,7 @@ namespace qse {
         void execute_buy(const std::string& symbol, int quantity, double price) override;
         void execute_sell(const std::string& symbol, int quantity, double price) override;
         int get_position(const std::string& symbol) const override;
+        std::vector<Position> get_positions() const override;
         double get_cash() const override;
         void record_equity(long long timestamp, const std::map<std::string, double>& market_prices) override;
 

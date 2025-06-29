@@ -66,6 +66,9 @@ public:
      */
     std::string get_results_path() const { return results_path_; }
 
+    std::string order_style = "market"; // or "target_percent"
+    double min_qty = 0.0;
+
 private:
     // Slippage coefficients per symbol
     std::unordered_map<std::string, double> linear_impact_;

@@ -58,6 +58,9 @@ namespace qse {
         // Get the current position for a given symbol.
         virtual int get_position(const std::string& symbol) const = 0;
 
+        // Get all current positions as a vector
+        virtual std::vector<Position> get_positions() const = 0;
+
         // Get the total cash value of the portfolio.
         virtual double get_cash() const = 0;
 

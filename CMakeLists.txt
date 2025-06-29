@@ -58,6 +58,7 @@ add_library(qse SHARED
     src/strategy/PairsTradingStrategy.cpp
     src/strategy/FillTrackingStrategy.cpp
     src/strategy/MultiFactorStrategy.cpp
+    src/strategy/FactorStrategy.cpp
     src/factor/MultiFactorCalculator.cpp
     src/factor/UniverseFilter.cpp
     src/factor/CrossSectionalRegression.cpp
@@ -66,6 +67,7 @@ add_library(qse SHARED
     src/factor/RiskModel.cpp
     src/factor/PortfolioBuilder.cpp
     src/exe/FactorExecutionEngine.cpp
+    src/strategy/WeightsLoader.cpp
     ${PROTO_SRCS}
 )
 
@@ -125,6 +127,7 @@ add_executable(run_tests
     tests/cpp/ICMonitorDistributionTest.cpp
     tests/cpp/PortfolioBuilderTest.cpp
     tests/cpp/WeightsLoadTest.cpp
+    tests/cpp/WeightsLoaderTest.cpp
     tests/cpp/HoldingsSnapshotTest.cpp
     tests/cpp/DiffCalcTest.cpp
 )

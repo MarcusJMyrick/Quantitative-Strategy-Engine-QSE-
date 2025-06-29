@@ -8,11 +8,13 @@ namespace qse {
 FactorStrategy::FactorStrategy(std::shared_ptr<IOrderManager> order_manager,
                                std::string symbol,
                                const std::string& weights_dir,
-                               double min_dollar_threshold)
+                               double min_dollar_threshold,
+                               const ExecConfig& engine_config)
     : order_manager_(std::move(order_manager))
     , symbol_(std::move(symbol))
     , weights_dir_(weights_dir)
     , min_dollar_threshold_(min_dollar_threshold)
+    , engine_(std::make_shared<FactorExecutionEngine>(engine_config, order_manager_))
     , last_rebalance_(std::chrono::system_clock::time_point::min()) {
     if (!order_manager_) {
         throw std::invalid_argument("FactorStrategy requires a valid OrderManager");
@@ -20,8 +22,12 @@ FactorStrategy::FactorStrategy(std::shared_ptr<IOrderManager> order_manager,
 }
 
 void FactorStrategy::on_tick(const Tick& tick) {
-    // TODO: I-3 - Implement delta-to-orders logic
-    // For now, just pass through to engine for potential slippage modeling
+    // I-6: Pass ticks to FactorExecutionEngine for slippage modeling
+    // The engine can use tick data for market impact and slippage calculations
+    if (engine_) {
+        // TODO: Add tick processing method to FactorExecutionEngine if needed
+        // For now, the engine can access tick data through the order manager
+    }
 }
 
 void FactorStrategy::on_bar(const Bar& bar) {

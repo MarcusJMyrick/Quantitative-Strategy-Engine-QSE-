@@ -23,11 +23,13 @@ public:
      * @param symbol The symbol this strategy trades
      * @param weights_dir Directory containing daily weight files
      * @param min_dollar_threshold Minimum dollar amount for rebalancing trades
+     * @param engine_config Configuration for the factor execution engine
      */
     FactorStrategy(std::shared_ptr<IOrderManager> order_manager,
                    std::string symbol,
                    const std::string& weights_dir,
-                   double min_dollar_threshold);
+                   double min_dollar_threshold,
+                   const ExecConfig& engine_config = ExecConfig{});
     
     virtual ~FactorStrategy() = default;
 

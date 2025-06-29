@@ -1,0 +1,32 @@
+# FactorStrategy Configuration
+# This file configures the factor-based portfolio management strategy
+
+# Rebalancing Configuration
+rebalance_time: "15:45"  # Time of day for rebalancing (24h format)
+min_dollar_threshold: 50.0  # Minimum dollar amount for rebalancing trades
+
+# Factor Execution Engine Configuration
+engine:
+  order_style: "market"  # "market" or "target_percent"
+  max_px_impact: 0.01    # Maximum price impact per trade (as fraction of ADV)
+  min_notional: 100.0    # Minimum notional per order to avoid dust orders (USD)
+  lot_size: 1            # Rounding lot size (shares)
+  min_qty: 1.0           # Minimum quantity for order emission
+
+# Portfolio Configuration
+portfolio:
+  initial_cash: 1000000.0  # Starting cash amount
+  max_position_size: 0.20  # Maximum position size as fraction of NAV
+  max_leverage: 1.5        # Maximum leverage allowed
+
+# Data Configuration
+data:
+  weights_directory: "data/weights"  # Directory containing daily weight files
+  price_source: "close"              # Price source for calculations ("close", "vwap", "last")
+  
+# Logging Configuration
+logging:
+  level: "info"           # Log level: debug, info, warn, error
+  equity_curve: true      # Generate equity curve file
+  trade_log: true         # Generate trade log file
+  performance: true       # Generate performance metrics 

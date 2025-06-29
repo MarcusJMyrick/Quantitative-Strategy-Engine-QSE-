@@ -59,6 +59,8 @@ add_library(qse SHARED
     src/strategy/FillTrackingStrategy.cpp
     src/strategy/MultiFactorStrategy.cpp
     src/strategy/FactorStrategy.cpp
+    src/strategy/WeightsLoader.cpp
+    src/strategy/FactorStrategyConfig.cpp
     src/factor/MultiFactorCalculator.cpp
     src/factor/UniverseFilter.cpp
     src/factor/CrossSectionalRegression.cpp
@@ -67,7 +69,6 @@ add_library(qse SHARED
     src/factor/RiskModel.cpp
     src/factor/PortfolioBuilder.cpp
     src/exe/FactorExecutionEngine.cpp
-    src/strategy/WeightsLoader.cpp
     ${PROTO_SRCS}
 )
 
@@ -132,6 +133,8 @@ add_executable(run_tests
     tests/cpp/DiffCalcTest.cpp
     tests/cpp/DeltaOrderTest.cpp
     tests/cpp/RebalanceGuardTest.cpp
+    tests/cpp/FactorIntegrationTest.cpp
+    tests/cpp/ConfigParseTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

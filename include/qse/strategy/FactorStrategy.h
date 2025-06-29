@@ -19,9 +19,15 @@ class FactorStrategy : public IStrategy {
 public:
     /**
      * @brief Constructor
-     * @param engine Shared pointer to the factor execution engine
+     * @param order_manager Shared pointer to the order manager
+     * @param symbol The symbol this strategy trades
+     * @param weights_dir Directory containing daily weight files
+     * @param min_dollar_threshold Minimum dollar amount for rebalancing trades
      */
-    explicit FactorStrategy(std::shared_ptr<FactorExecutionEngine> engine);
+    FactorStrategy(std::shared_ptr<IOrderManager> order_manager,
+                   std::string symbol,
+                   const std::string& weights_dir,
+                   double min_dollar_threshold);
     
     virtual ~FactorStrategy() = default;
 
@@ -53,7 +59,28 @@ public:
      */
     void on_day_close(const Timestamp& timestamp);
 
+    /**
+     * @brief Handle end-of-day processing with provided close prices
+     * @param timestamp End of day timestamp
+     * @param close_prices Map of symbol to close price
+     */
+    void on_day_close_with_prices(const Timestamp& timestamp, 
+                                 const std::unordered_map<std::string, double>& close_prices);
+
 private:
+    struct Delta {
+        std::string symbol;
+        double target_weight;
+        double current_weight;
+        double delta_weight;
+    };
+    void compute_and_submit_delta_orders(const std::unordered_map<std::string, double>& close_prices);
+    bool should_rebalance(const Timestamp& timestamp) const;
+    
+    std::shared_ptr<IOrderManager> order_manager_;
+    std::string symbol_;
+    std::string weights_dir_;
+    double min_dollar_threshold_;
     std::shared_ptr<FactorExecutionEngine> engine_;
     
     // Current holdings cache

@@ -130,6 +130,8 @@ add_executable(run_tests
     tests/cpp/WeightsLoaderTest.cpp
     tests/cpp/HoldingsSnapshotTest.cpp
     tests/cpp/DiffCalcTest.cpp
+    tests/cpp/DeltaOrderTest.cpp
+    tests/cpp/RebalanceGuardTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

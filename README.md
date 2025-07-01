@@ -4,7 +4,7 @@ A high-performance C++ backtesting engine for quantitative trading strategies wi
 
 ## Overview
 
-The Quantitative Strategy Engine (QSE) is a sophisticated backtesting platform that enables traders and researchers to develop, test, and analyze trading strategies with institutional-level precision. The engine supports multiple strategy types, realistic market simulation, and provides comprehensive analysis tools with automated result organization.
+The Quantitative Strategy Engine (QSE) is a sophisticated backtesting platform that enables traders and researchers to develop, test, and analyze trading strategies with institutional-level precision. The engine supports multiple strategy types, realistic market simulation, and provides comprehensive analysis tools with automated result organization. 
 
 ## Key Features
 

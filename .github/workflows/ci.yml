@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout (with Eigen submodule)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -V ca-certificates lsb-release wget pkg-config \
+            build-essential cmake \
+            libprotobuf-dev protobuf-compiler \
+            libzmq3-dev libyaml-cpp-dev
+          # Apache Arrow + Parquet come from the official Arrow apt repository
+          wget -q "https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-dev libparquet-dev
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --timeout 120

@@ -44,6 +44,14 @@ processed_*_data.parquet
 results/
 plots/
 test_output/
+organized_runs/
 *.csv
 *.log
 temp_*.csv
+
+# CTest output
+Testing/
+
+# Locally compiled binaries
+/direct_test
+/test_spearman

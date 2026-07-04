@@ -37,7 +37,7 @@ bottom within a track; tracks are mostly independent of each other.
   (currently 0/8), and the other 30 order-book tests still pass. Then commit
   the whole OrderBookFullDepth feature.
 
-### A2. Route market orders through the full-depth book
+### A2. ✅ Route market orders through the full-depth book (done 2026-07-04)
 - Add an `OrderManager` mode where market-order fills come from
   `OrderBookFullDepth::fill_market` (VWAP + walked depth) instead of the fixed
   slippage constant. Keep the old model behind a config flag for comparison.

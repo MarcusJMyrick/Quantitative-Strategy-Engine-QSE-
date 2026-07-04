@@ -13,7 +13,8 @@ static struct DisableOrderMgrCout { DisableOrderMgrCout(){ std::cout.setstate(st
 namespace qse {
 
 OrderManager::OrderManager(const Config& config, OrderBook& order_book, const std::string& equity_curve_path, const std::string& tradelog_path)
-    : config_(&config), order_book_(&order_book), cash_(config.get_initial_cash()), next_order_id_(1) {
+    : config_(&config), order_book_(&order_book), use_full_depth_(config.use_full_depth_book()),
+      cash_(config.get_initial_cash()), next_order_id_(1) {
 
     equity_curve_file_.open(equity_curve_path);
     if (!equity_curve_file_.is_open()) {
@@ -29,7 +30,8 @@ OrderManager::OrderManager(const Config& config, OrderBook& order_book, const st
 }
 
 OrderManager::OrderManager(const Config& config, const std::string& equity_curve_path, const std::string& tradelog_path)
-    : config_(&config), order_book_(nullptr), cash_(config.get_initial_cash()), next_order_id_(1) {
+    : config_(&config), order_book_(nullptr), use_full_depth_(config.use_full_depth_book()),
+      cash_(config.get_initial_cash()), next_order_id_(1) {
 
     equity_curve_file_.open(equity_curve_path);
     if (!equity_curve_file_.is_open()) {
@@ -221,7 +223,9 @@ bool OrderManager::cancel_order(const OrderId& order_id) {
 
 void OrderManager::process_tick(const Tick& tick) {
     // Update the order book first
-    if (order_book_ != nullptr) {
+    if (use_full_depth_) {
+        depth_books_[tick.symbol].on_tick(tick);
+    } else if (order_book_ != nullptr) {
         order_book_->on_tick(tick);
     }
     
@@ -309,9 +313,14 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
     std::cout << "DEBUG: Found " << order_ids.size() << " orders for symbol " << symbol << std::endl;
     std::vector<OrderId> to_remove;
     
-    // Get current top of book if OrderBook is available
+    // Get current top of book from whichever book model is active
     TopOfBook tob;
-    if (order_book_ != nullptr) {
+    if (use_full_depth_) {
+        auto db_it = depth_books_.find(symbol);
+        if (db_it != depth_books_.end()) {
+            tob = db_it->second.top_of_book();
+        }
+    } else if (order_book_ != nullptr) {
         tob = order_book_->top_of_book(symbol);
     }
     
@@ -331,10 +340,21 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
         
         Volume fill_qty = 0;
         Price fill_price = 0.0;
-        
+        bool depth_fill = false;
+
         if (order.type == Order::Type::MARKET) {
-            // Market orders fill immediately at mid price
-            if (order_book_ != nullptr) {
+            if (use_full_depth_) {
+                // Walk the full-depth book: fill price is the VWAP of the
+                // liquidity consumed, so large orders pay realistic impact
+                auto db_it = depth_books_.find(symbol);
+                if (db_it != depth_books_.end()) {
+                    auto result = db_it->second.fill_market(
+                        order.side, static_cast<std::int64_t>(order.remaining_quantity()));
+                    fill_qty = result.first;
+                    fill_price = result.second;
+                    depth_fill = true;
+                }
+            } else if (order_book_ != nullptr) {
                 // Use OrderBook to consume liquidity
                 fill_qty = order_book_->consume_liquidity(symbol, order.side, order.remaining_quantity());
                 if (fill_qty > 0) {
@@ -347,8 +367,10 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
             }
             std::cout << "DEBUG: Market order fill_qty=" << fill_qty << " at " << fill_price << std::endl;
         } else if (order.type == Order::Type::LIMIT) {
-            // Use OrderBook for limit order fills
-            if (order_book_ != nullptr) {
+            // Use OrderBook for limit order fills (full-depth limit fills with
+            // queue position land in A3; until then full-depth mode uses the
+            // tick-based fallback below)
+            if (!use_full_depth_ && order_book_ != nullptr) {
                 fill_qty = process_limit_order_fill(order, tob);
                 if (fill_qty > 0) {
                     fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
@@ -368,26 +390,28 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
         
         if (fill_qty > 0) {
             std::cout << "DEBUG: Filling order with qty=" << fill_qty << " at price=" << fill_price << std::endl;
-            fill_order(order, fill_qty, fill_price, tick);
-            
+            fill_order(order, fill_qty, fill_price, tick, depth_fill);
+
             if (order.is_filled()) {
                 to_remove.push_back(order_id);
             }
         }
     }
-    
+
     // Remove filled orders from symbol_orders_
     for (const OrderId& order_id : to_remove) {
         remove_order_from_book(order_id);
     }
 }
 
-void OrderManager::fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick) {
+void OrderManager::fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick,
+                              bool price_includes_impact) {
     // Calculate base fill price (before slippage)
     Price base_fill_price = fill_price;
-    
-    // Apply slippage if config is available
-    if (config_ != nullptr) {
+
+    // Apply the linear slippage coefficient only when the fill price does not
+    // already carry impact from walking the depth book
+    if (config_ != nullptr && !price_includes_impact) {
         double k = config_->get_slippage_coeff(order.symbol);
         if (k > 0.0) {
             double slippage = base_fill_price * k * fill_qty;
@@ -501,55 +525,86 @@ Volume OrderManager::process_ioc_order_fill(Order& order, const TopOfBook& tob) 
 
 // --- NEW: Attempt fills against current order book ---
 void OrderManager::attempt_fills() {
-    if (order_book_ == nullptr) {
-        return; // No order book available
+    if (order_book_ == nullptr && !use_full_depth_) {
+        return; // No book model available
     }
-    
-    // Process fills for each symbol that has active orders
+
+    // Snapshot symbols first: removing filled orders can erase entries from
+    // symbol_orders_, which would invalidate an iterator over it
+    std::vector<std::string> symbols;
+    symbols.reserve(symbol_orders_.size());
     for (const auto& symbol_pair : symbol_orders_) {
-        const std::string& symbol = symbol_pair.first;
-        const std::vector<OrderId>& order_ids = symbol_pair.second;
-        
-        if (order_ids.empty()) {
+        symbols.push_back(symbol_pair.first);
+    }
+
+    // Process fills for each symbol that has active orders
+    for (const std::string& symbol : symbols) {
+        auto symbol_it = symbol_orders_.find(symbol);
+        if (symbol_it == symbol_orders_.end() || symbol_it->second.empty()) {
             continue;
         }
-        
-        // Get current top of book for this symbol
-        TopOfBook tob = order_book_->top_of_book(symbol);
+
+        // Get current top of book from whichever book model is active
+        TopOfBook tob;
+        OrderBookFullDepth* depth = nullptr;
+        if (use_full_depth_) {
+            auto db_it = depth_books_.find(symbol);
+            if (db_it == depth_books_.end()) {
+                continue; // No liquidity known for this symbol
+            }
+            depth = &db_it->second;
+            tob = depth->top_of_book();
+        } else {
+            tob = order_book_->top_of_book(symbol);
+        }
         if (!tob.has_bid() && !tob.has_ask()) {
             continue; // No liquidity available
         }
-        
+
         std::vector<OrderId> to_remove;
-        
-        for (const OrderId& order_id : order_ids) {
+
+        for (const OrderId& order_id : symbol_it->second) {
             auto order_it = orders_.find(order_id);
             if (order_it == orders_.end()) {
                 continue;
             }
-            
+
             Order& order = order_it->second;
             if (!order.is_active()) {
                 continue;
             }
-            
+
             Volume fill_qty = 0;
             Price fill_price = 0.0;
-            
+            bool depth_fill = false;
+
             if (order.type == Order::Type::MARKET) {
-                // Market orders fill immediately
-                fill_qty = order_book_->consume_liquidity(symbol, order.side, order.remaining_quantity());
-                if (fill_qty > 0) {
-                    fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
+                if (depth != nullptr) {
+                    // Walk the full-depth book: fill price is the VWAP of the
+                    // liquidity consumed, so large orders pay realistic impact
+                    auto result = depth->fill_market(
+                        order.side, static_cast<std::int64_t>(order.remaining_quantity()));
+                    fill_qty = result.first;
+                    fill_price = result.second;
+                    depth_fill = true;
+                } else {
+                    // Market orders fill immediately at the touch
+                    fill_qty = order_book_->consume_liquidity(symbol, order.side, order.remaining_quantity());
+                    if (fill_qty > 0) {
+                        fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
+                    }
                 }
             } else if (order.type == Order::Type::LIMIT) {
-                // Limit orders fill when price crosses limit
-                fill_qty = process_limit_order_fill(order, tob);
-                if (fill_qty > 0) {
-                    fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
+                // Limit orders fill when price crosses limit (full-depth limit
+                // fills with queue position land in A3)
+                if (!use_full_depth_) {
+                    fill_qty = process_limit_order_fill(order, tob);
+                    if (fill_qty > 0) {
+                        fill_price = (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
+                    }
                 }
             }
-            
+
             if (fill_qty > 0) {
                 // Create a dummy tick for the fill (since we don't have a real tick here)
                 Tick dummy_tick;
@@ -561,22 +616,22 @@ void OrderManager::attempt_fills() {
                 dummy_tick.ask_size = tob.best_ask_size;
                 dummy_tick.price = (tob.best_bid_price + tob.best_ask_price) / 2.0;
                 dummy_tick.volume = fill_qty;
-                
-                fill_order(order, fill_qty, fill_price, dummy_tick);
-                
+
+                fill_order(order, fill_qty, fill_price, dummy_tick, depth_fill);
+
                 // Emit fill callback if registered
                 if (fill_callback_) {
                     std::string side_str = (order.side == Order::Side::BUY) ? "BUY" : "SELL";
                     Fill fill(order.order_id, order.symbol, fill_qty, fill_price, dummy_tick.timestamp, side_str);
                     fill_callback_(fill);
                 }
-                
+
                 if (order.is_filled()) {
                     to_remove.push_back(order_id);
                 }
             }
         }
-        
+
         // Remove filled orders from symbol_orders_
         for (const OrderId& order_id : to_remove) {
             remove_order_from_book(order_id);

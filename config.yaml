@@ -26,6 +26,10 @@ backtester:
   initial_cash: 100000.0
   commission_rate: 0.001
   min_trade_size: 1
+  # Fill model for market orders:
+  #   top_of_book - flat fill at best price plus per-symbol linear slippage (legacy)
+  #   full_depth  - walk the order book; fills pay size-dependent VWAP impact
+  fill_model: top_of_book
 
 # Data Configuration
 data:

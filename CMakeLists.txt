@@ -139,6 +139,7 @@ add_executable(run_tests
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp
     tests/cpp/ImpactTest.cpp
+    tests/cpp/DepthFillTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

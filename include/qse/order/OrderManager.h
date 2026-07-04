@@ -3,6 +3,7 @@
 #include "IOrderManager.h"
 #include "qse/data/Data.h"
 #include "qse/data/OrderBook.h"
+#include "qse/data/OrderBookFullDepth.h"
 #include "qse/core/Config.h"
 
 #include <string>
@@ -54,12 +55,27 @@ namespace qse {
         std::optional<Order> get_order(const OrderId& order_id) const override;
         std::vector<Order> get_active_orders(const std::string& symbol) const override;
 
+        // --- Full-depth fill model (config: backtester.fill_model = full_depth) ---
+        // When enabled, market orders fill by walking a per-symbol full-depth
+        // book (size-dependent VWAP impact) instead of a flat top-of-book price
+        // plus linear slippage coefficient.
+        void set_use_full_depth(bool enabled) { use_full_depth_ = enabled; }
+        bool use_full_depth() const { return use_full_depth_; }
+
+        // Access (creating if needed) the full-depth book for a symbol, so
+        // callers and tests can seed multi-level liquidity directly.
+        OrderBookFullDepth& depth_book(const std::string& symbol) { return depth_books_[symbol]; }
+
     private:
         // Configuration for slippage coefficients
         const Config* config_;
         
         // Order book reference
         OrderBook* order_book_;
+
+        // Full-depth fill model state
+        bool use_full_depth_ = false;
+        std::unordered_map<std::string, OrderBookFullDepth> depth_books_;
         
         // Portfolio state
         double cash_;
@@ -84,7 +100,11 @@ namespace qse {
         void add_order_to_book(const Order& order);
         void remove_order_from_book(const OrderId& order_id);
         void match_orders_for_symbol(const std::string& symbol, const Tick& tick);
-        void fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick);
+        // price_includes_impact: true when fill_price came from walking the
+        // depth book (VWAP), so the linear slippage coefficient must not be
+        // applied on top of it
+        void fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick,
+                        bool price_includes_impact = false);
         void cancel_ioc_orders(const std::string& symbol, const Tick& tick);
         
         // New helper methods for OrderBook integration

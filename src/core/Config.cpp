@@ -36,6 +36,14 @@ bool Config::load_config(const std::string& config_path) {
             if (backtester["min_trade_size"]) {
                 min_trade_size_ = backtester["min_trade_size"].as<int>();
             }
+            if (backtester["fill_model"]) {
+                fill_model_ = backtester["fill_model"].as<std::string>();
+                if (fill_model_ != "top_of_book" && fill_model_ != "full_depth") {
+                    std::cerr << "Unknown fill_model '" << fill_model_
+                              << "', falling back to top_of_book" << std::endl;
+                    fill_model_ = "top_of_book";
+                }
+            }
         }
         
         // Load data paths

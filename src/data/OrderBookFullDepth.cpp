@@ -254,14 +254,17 @@ TopOfBook OrderBookFullDepth::top_of_book() const {
 // --- Legacy Interface (for backward compatibility) ---
 
 void OrderBookFullDepth::on_tick(const Tick& tick) {
-    // For now, this is a placeholder that maintains the old interface
-    // In a real implementation, this would update the order book with market data
-    // For now, we'll just ensure the top levels exist
+    // Rebuild synthetic depth from the tick's quote. Until real L2 data is
+    // replayed, the tick's top-of-book is all the liquidity we know about,
+    // so the book holds one synthetic resting order per side.
+    bids_.clear();
+    asks_.clear();
+    queue_id_to_order_id_.clear();
     if (tick.bid_size > 0) {
-        add_level(Order::Side::BUY, tick.bid);
+        enqueue_order(Order::Side::BUY, tick.bid, "__quote_bid", tick.bid_size);
     }
     if (tick.ask_size > 0) {
-        add_level(Order::Side::SELL, tick.ask);
+        enqueue_order(Order::Side::SELL, tick.ask, "__quote_ask", tick.ask_size);
     }
 }
 

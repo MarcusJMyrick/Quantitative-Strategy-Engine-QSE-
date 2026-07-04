@@ -47,6 +47,19 @@ public:
      * @return Minimum trade size
      */
     int get_min_trade_size() const { return min_trade_size_; }
+
+    /**
+     * @brief Get the fill model name ("top_of_book" or "full_depth")
+     * @return Fill model name
+     */
+    std::string get_fill_model() const { return fill_model_; }
+
+    /**
+     * @brief Whether market orders should fill by walking a full-depth book
+     *        (size-dependent VWAP impact) instead of flat top-of-book price
+     *        plus a linear slippage coefficient
+     */
+    bool use_full_depth_book() const { return fill_model_ == "full_depth"; }
     
     /**
      * @brief Get data base path
@@ -77,6 +90,7 @@ private:
     double initial_cash_ = 100000.0;
     double commission_rate_ = 0.001;
     int min_trade_size_ = 1;
+    std::string fill_model_ = "top_of_book";
     
     // Data paths
     std::string data_base_path_ = "./data";

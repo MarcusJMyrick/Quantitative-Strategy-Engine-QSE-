@@ -1,6 +1,7 @@
 #pragma once
 
 #include "qse/data/Data.h"
+#include "qse/data/OrderBook.h" // for the shared TopOfBook struct
 #include <map>
 #include <deque>
 #include <vector>
@@ -35,25 +36,6 @@ struct Level {
     // Helper methods
     bool empty() const { return queue.empty() && total_size == 0; }
     size_t queue_size() const { return queue.size(); }
-};
-
-/**
- * @brief Represents the top of the order book for a single symbol.
- * Kept for backward compatibility with existing code.
- */
-struct TopOfBook {
-    Price best_bid_price = 0.0;
-    Volume best_bid_size = 0;
-    Price best_ask_price = 0.0;
-    Volume best_ask_size = 0;
-    
-    TopOfBook() = default;
-    
-    // Helper methods
-    bool has_bid() const { return best_bid_size > 0; }
-    bool has_ask() const { return best_ask_size > 0; }
-    Price mid_price() const { return (best_bid_price + best_ask_price) / 2.0; }
-    double spread() const { return best_ask_price - best_bid_price; }
 };
 
 /**

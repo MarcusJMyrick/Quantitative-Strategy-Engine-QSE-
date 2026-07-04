@@ -47,6 +47,7 @@ add_library(qse SHARED
     src/data/BarBuilder.cpp
     src/data/CSVDataReader.cpp
     src/data/OrderBook.cpp
+    src/data/OrderBookFullDepth.cpp
     src/data/ParquetDataReader.cpp
     src/data/ZeroMQDataReader.cpp
     src/messaging/TickPublisher.cpp
@@ -135,6 +136,9 @@ add_executable(run_tests
     tests/cpp/RebalanceGuardTest.cpp
     tests/cpp/FactorIntegrationTest.cpp
     tests/cpp/ConfigParseTest.cpp
+    tests/cpp/PriceLevelTest.cpp
+    tests/cpp/QueuePositionTest.cpp
+    tests/cpp/ImpactTest.cpp
 )
 
 target_link_libraries(run_tests PRIVATE qse gmock gtest_main)

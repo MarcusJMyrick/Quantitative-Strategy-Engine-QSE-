@@ -17,7 +17,7 @@ bottom within a track; tracks are mostly independent of each other.
 | 4.3 Portfolio optimizer | ✅ Mostly done (constrained QP exists); mean-variance extension optional (A5) |
 | **OrderBookFullDepth** | ✅ Committed 2026-07-04: all 38 tests pass (PriceLevel, QueuePosition, Impact) |
 | 5 Data & tearsheet | ❌ analyze.py has only Sharpe + max drawdown; no ffill, no corporate actions, no PDF |
-| 6 CI / format / lint | ❌ Nothing exists (no workflows, no .clang-format, no .clang-tidy) |
+| 6 CI / format / lint | 🟡 CI green as of 2026-07-04 (C1+C4 done); formatting (C2) and clang-tidy (C3) remain |
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
 | Docker | ❌ No Dockerfile |
@@ -97,7 +97,7 @@ bottom within a track; tracks are mostly independent of each other.
 
 ## Track C — DevOps & Hygiene (Phase 6) — do C1 early
 
-### C1. CI with GitHub Actions
+### C1. ✅ CI with GitHub Actions (done 2026-07-04)
 - `.github/workflows/ci.yml`: ubuntu-latest, install deps (arrow, protobuf,
   zeromq, yaml-cpp via apt), configure, build, `ctest --output-on-failure`.
 - **Done when:** green check on a pushed commit; a deliberately broken test on
@@ -114,7 +114,7 @@ bottom within a track; tracks are mostly independent of each other.
   `modernize-use-override`); fix or suppress existing findings; add CI job.
 - **Done when:** `run-clang-tidy` over `src/` exits 0 in CI.
 
-### C4. Repo hygiene (30 min, do alongside C1)
+### C4. ✅ Repo hygiene (done 2026-07-04; root analyze_pairs_trading.py left in place — differs from scripts/analysis copy, needs manual merge)
 - `.gitignore` for `build/`, `venv/`, `Testing/`, `*.log`, `organized_runs/`,
   `test_output/`; `git rm --cached` the tracked `Testing/Temporary/LastTest.log`;
   move stray root files (`bar_debug.log`, `analyze_pairs_trading.py` duplicate,

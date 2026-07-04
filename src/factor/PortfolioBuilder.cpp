@@ -1,4 +1,5 @@
 #include "qse/factor/PortfolioBuilder.h"
+#include <stdexcept>
 #include <arrow/table.h>
 #include <arrow/array.h>
 #include <arrow/builder.h>

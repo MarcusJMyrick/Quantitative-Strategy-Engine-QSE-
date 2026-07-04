@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <stdexcept>
 #include "qse/data/CSVDataReader.h"
 #include <string>
 #include <vector>

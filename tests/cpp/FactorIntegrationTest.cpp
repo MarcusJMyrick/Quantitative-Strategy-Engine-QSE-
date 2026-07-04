@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include <gmock/gmock.h>
 #include "qse/strategy/FactorStrategy.h"
 #include "qse/core/Backtester.h"

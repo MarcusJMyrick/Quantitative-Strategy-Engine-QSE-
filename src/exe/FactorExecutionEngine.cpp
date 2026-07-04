@@ -1,4 +1,6 @@
 #include "qse/exe/FactorExecutionEngine.h"
+#include <cstdint>
+#include <stdexcept>
 
 #include <arrow/io/api.h>
 #include <parquet/arrow/reader.h>
@@ -52,13 +54,13 @@ static WeightMap parse_parquet(const std::string& path) {
     }
     infile = *res;
 
-    std::unique_ptr<parquet::arrow::FileReader> reader;
-    auto st = parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader);
-    if (!st.ok()) {
-        throw std::runtime_error(st.ToString());
+    auto reader_res = parquet::arrow::OpenFile(infile, arrow::default_memory_pool());
+    if (!reader_res.ok()) {
+        throw std::runtime_error(reader_res.status().ToString());
     }
+    std::unique_ptr<parquet::arrow::FileReader> reader = std::move(*reader_res);
     std::shared_ptr<arrow::Table> table;
-    st = reader->ReadTable(&table);
+    auto st = reader->ReadTable(&table);
     if (!st.ok()) {
         throw std::runtime_error(st.ToString());
     }

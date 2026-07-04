@@ -1,4 +1,5 @@
 #include "qse/factor/AlphaBlender.h"
+#include <cstdint>
 #include <arrow/array.h>
 #include <arrow/array/array_primitive.h>
 #include <arrow/array/array_binary.h>

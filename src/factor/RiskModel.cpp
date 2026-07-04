@@ -1,4 +1,5 @@
 #include "qse/factor/RiskModel.h"
+#include <cmath>
 #include "qse/math/StatsUtil.h"
 #include <arrow/array.h>
 #include <arrow/builder.h>

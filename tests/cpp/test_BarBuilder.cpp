@@ -1,4 +1,5 @@
 #include "gtest/gtest.h"
+#include <algorithm>
 #include "qse/data/BarBuilder.h"
 #include "qse/data/Data.h"
 

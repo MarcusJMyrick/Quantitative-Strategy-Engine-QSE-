@@ -1,4 +1,5 @@
 #include "qse/data/OrderBookFullDepth.h"
+#include <cstdint>
 #include <iostream>
 #include <algorithm>
 

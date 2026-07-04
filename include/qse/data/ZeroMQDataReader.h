@@ -1,6 +1,7 @@
 #pragma once
 
 #include "qse/data/IDataReader.h"
+#include <cstdint>
 #include <zmq.hpp>
 #include <string>
 #include <memory>

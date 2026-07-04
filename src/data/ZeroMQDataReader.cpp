@@ -1,4 +1,6 @@
 #include "qse/data/ZeroMQDataReader.h"
+#include <cstdint>
+#include <stdexcept>
 #include <iostream>
 #include <chrono>
 #include <thread>

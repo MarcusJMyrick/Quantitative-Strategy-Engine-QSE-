@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include <stdexcept>
+#include <fstream>
 #include <gmock/gmock.h>
 #include "qse/core/Backtester.h"
 
@@ -131,7 +133,21 @@ TEST_F(BacktesterTest, CanCreateBacktesterAndRun) {
 }
 
 TEST_F(BacktesterTest, CanRunBacktestWithRealComponents) {
-    auto data_reader = std::make_unique<qse::CSVDataReader>("../test_data/test_data.csv");
+    // Self-contained fixture: a repo-relative path like ../test_data breaks
+    // whenever the build directory is out of tree (e.g. CI containers)
+    const std::string data_path = "backtester_real_components.csv";
+    {
+        std::ofstream out(data_path);
+        out << "timestamp,open,high,low,close,volume\n";
+        double price = 100.0;
+        for (int i = 0; i < 30; ++i) {
+            price += (i % 7 < 4) ? 0.8 : -1.1; // wiggle so the SMAs cross
+            out << (1704067200 + i * 3600) << "," << price << "," << (price + 0.5)
+                << "," << (price - 0.5) << "," << price << ",1000\n";
+        }
+    }
+
+    auto data_reader = std::make_unique<qse::CSVDataReader>(data_path);
     auto real_order_manager = std::make_unique<qse::OrderManager>(100000.0, "test_equity.csv", "test_tradelog.csv");
 
     // FIX: Add a bar_duration (e.g., 24 hours) as the fourth argument
@@ -157,6 +173,7 @@ TEST_F(BacktesterTest, CanRunBacktestWithRealComponents) {
     // Clean up test files
     std::filesystem::remove("test_equity.csv");
     std::filesystem::remove("test_tradelog.csv");
+    std::filesystem::remove(data_path);
 }
 
 class BacktesterTickIntegrationTest : public ::testing::Test {

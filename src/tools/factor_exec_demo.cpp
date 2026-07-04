@@ -1,4 +1,5 @@
 #include "qse/exe/FactorExecutionEngine.h"
+#include <stdexcept>
 #include "qse/data/Data.h"
 #include <iostream>
 #include <memory>

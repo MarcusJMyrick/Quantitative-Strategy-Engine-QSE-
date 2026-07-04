@@ -139,15 +139,17 @@ void BarBuilder::start_new_bar(const Tick& tick) {
     std::cout << "Starting new bar at: " << current_bar_start_time_.time_since_epoch().count() 
               << " for tick at: " << tick.timestamp.time_since_epoch().count() << std::endl;
 
-    current_bar_.emplace( Bar{
-      .symbol    = tick.symbol,
-      .timestamp = current_bar_start_time_,
-      .open      = tick.price,
-      .high      = tick.price,
-      .low       = tick.price,
-      .close     = tick.price,
-      .volume    = tick.volume
-    } );
+    // Bar has a user-declared constructor, so it is not an aggregate and
+    // designated initializers are not portable here (GCC rejects them)
+    Bar bar;
+    bar.symbol    = tick.symbol;
+    bar.timestamp = current_bar_start_time_;
+    bar.open      = tick.price;
+    bar.high      = tick.price;
+    bar.low       = tick.price;
+    bar.close     = tick.price;
+    bar.volume    = tick.volume;
+    current_bar_.emplace(std::move(bar));
 }
 
 } // namespace qse

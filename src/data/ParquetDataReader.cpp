@@ -1,4 +1,5 @@
 #include "qse/data/ParquetDataReader.h"
+#include <cstdint>
 #include <filesystem>
 #include <stdexcept>
 #include <chrono>

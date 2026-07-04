@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <stdexcept>
 #include "qse/exe/FactorExecutionEngine.h"
 #include <unordered_map>
 #include <cmath>

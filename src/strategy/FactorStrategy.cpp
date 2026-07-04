@@ -1,4 +1,6 @@
 #include "qse/strategy/FactorStrategy.h"
+#include <cmath>
+#include <stdexcept>
 #include "qse/strategy/WeightsLoader.h"
 #include "qse/order/IOrderManager.h"
 #include <iostream>

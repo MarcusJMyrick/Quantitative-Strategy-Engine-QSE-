@@ -1,4 +1,5 @@
 #include "qse/factor/UniverseFilter.h"
+#include <cstdint>
 #include <arrow/api.h>
 #include <arrow/compute/api.h>
 #include <cmath>

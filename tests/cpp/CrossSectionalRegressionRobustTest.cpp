@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include "qse/factor/CrossSectionalRegression.h"
 #include <arrow/array.h>
 #include <arrow/table.h>

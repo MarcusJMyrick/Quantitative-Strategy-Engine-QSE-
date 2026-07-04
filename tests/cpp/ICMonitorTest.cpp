@@ -1,4 +1,5 @@
 #include "qse/factor/ICMonitor.h"
+#include <cmath>
 #include <gtest/gtest.h>
 #include <arrow/api.h>
 #include <memory>

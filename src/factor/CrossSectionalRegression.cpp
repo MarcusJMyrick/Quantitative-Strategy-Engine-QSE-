@@ -1,4 +1,5 @@
 #include "qse/factor/CrossSectionalRegression.h"
+#include <cstdint>
 #include "qse/math/StatsUtil.h"
 #include <arrow/table.h>
 #include <arrow/array.h>

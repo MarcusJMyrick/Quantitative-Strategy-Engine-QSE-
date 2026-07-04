@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <cmath>
 #include "qse/factor/PortfolioBuilder.h"
 #include <vector>
 #include <string>

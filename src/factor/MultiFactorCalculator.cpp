@@ -1,4 +1,6 @@
 #include "qse/factor/MultiFactorCalculator.h"
+#include <cmath>
+#include <stdexcept>
 #include "qse/factor/UniverseFilter.h"
 #include "qse/math/StatsUtil.h"
 #include <arrow/api.h>

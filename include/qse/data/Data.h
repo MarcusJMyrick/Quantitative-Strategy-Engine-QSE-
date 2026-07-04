@@ -25,7 +25,8 @@ struct Bar {
     Price close;          // Closing price
     Volume volume;        // Total volume traded during the bar
 
-    Bar() = default; // Default constructor
+    // No user-declared constructors: Bar must stay an aggregate so positional
+    // brace-initialization works under both C++17 and C++20 rules
 };
 
 /**
@@ -40,9 +41,10 @@ struct Tick {
     Volume bid_size;     // Best bid size
     Volume ask_size;     // Best ask size
     Volume volume;       // Volume of the trade
-    
-    Tick() = default; // Default constructor
-    
+
+    // No user-declared constructors: Tick must stay an aggregate so positional
+    // brace-initialization works under both C++17 and C++20 rules
+
     // Helper method to get mid price
     Price mid_price() const { return (bid + ask) / 2.0; }
 };

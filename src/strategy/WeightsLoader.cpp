@@ -1,4 +1,6 @@
 #include "qse/strategy/WeightsLoader.h"
+#include <cmath>
+#include <cstdint>
 #include <arrow/io/api.h>
 #include <arrow/csv/api.h>
 #include <arrow/table.h>

@@ -1,5 +1,6 @@
 #include "qse/strategy/MovingStandardDeviation.h"
 #include <cmath>
+#include <stdexcept>
 
 namespace qse {
 

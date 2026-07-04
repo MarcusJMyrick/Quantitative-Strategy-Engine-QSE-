@@ -45,7 +45,7 @@ bottom within a track; tracks are mostly independent of each other.
 - **Done when:** new gtest proves a large order pays more per share than a
   small one against the same book, and the config flag toggles between models.
 
-### A3. Queue-position-aware limit order fills
+### A3. ✅ Queue-position-aware limit order fills (done 2026-07-04)
 - Limit orders join the back of the queue at their level; they fill only after
   the queue ahead is consumed by trades at that price. Uses the existing
   `queue_position` machinery.

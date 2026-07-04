@@ -76,6 +76,9 @@ namespace qse {
         // Full-depth fill model state
         bool use_full_depth_ = false;
         std::unordered_map<std::string, OrderBookFullDepth> depth_books_;
+
+        // QueueId of each strategy limit order resting in a depth book
+        std::unordered_map<OrderId, QueueId> limit_queue_ids_;
         
         // Portfolio state
         double cash_;
@@ -110,6 +113,19 @@ namespace qse {
         // New helper methods for OrderBook integration
         Volume process_limit_order_fill(Order& order, const TopOfBook& tob);
         Volume process_ioc_order_fill(Order& order, const TopOfBook& tob);
+
+        // --- Full-depth fill model helpers ---
+        // Walks the opposite side of the depth book while the taker's price
+        // allows (unbounded for market orders, capped at limit_price for
+        // limit orders), fills the taker at the VWAP of consumed liquidity,
+        // and credits any strategy maker orders that were consumed.
+        Volume take_liquidity(Order& taker, OrderBookFullDepth& book, const Tick& tick);
+        // A trade print consumes the FIFO queue at its price level; strategy
+        // orders reached by the print are filled at that price.
+        void consume_trade_print(const Tick& tick);
+        // Credits a maker fill to a strategy order consumed from the book
+        // (order ids not tracked in orders_ are synthetic/seeded liquidity).
+        void apply_maker_fill(const OrderId& maker_id, Volume qty, Price price, const Tick& tick);
         
         // Legacy helper methods
         void log_trade(long long timestamp, const std::string& symbol, const std::string& type, int quantity, double price);

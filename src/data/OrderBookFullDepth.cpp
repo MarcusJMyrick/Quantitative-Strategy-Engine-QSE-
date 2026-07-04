@@ -91,6 +91,77 @@ QueueId OrderBookFullDepth::enqueue_order(Order::Side side, Price price, OrderId
     return queue_id;
 }
 
+QueueId OrderBookFullDepth::enqueue_order_front(Order::Side side, Price price, OrderId order_id, Volume size) {
+    add_level(side, price);
+
+    Level& level = (side == Order::Side::BUY) ? get_bids()[price] : get_asks()[price];
+
+    // Reject duplicate OrderId at the same price level
+    if (level.position_map.find(order_id) != level.position_map.end()) {
+        return 0;
+    }
+
+    QueueId queue_id = allocate_queue_id();
+    queue_id_to_order_id_[queue_id] = order_id;
+
+    // Everyone already queued moves one position back
+    for (auto& pos_pair : level.position_map) {
+        pos_pair.second++;
+    }
+    level.queue.push_front(order_id);
+    level.total_size += size;
+    level.order_sizes[order_id] = size;
+    level.position_map[order_id] = 1;
+
+    return queue_id;
+}
+
+std::vector<std::pair<OrderId, Volume>> OrderBookFullDepth::consume_at_price(Order::Side side, Price price, Volume quantity) {
+    std::vector<std::pair<OrderId, Volume>> consumed;
+
+    auto process = [&](auto& levels) {
+        auto it = levels.find(price);
+        if (it == levels.end()) {
+            return;
+        }
+        Level& level = it->second;
+        Volume remaining = quantity;
+
+        while (!level.queue.empty() && remaining > 0) {
+            const OrderId& head_id = level.queue.front();
+            auto size_it = level.order_sizes.find(head_id);
+            Volume head_size = (size_it != level.order_sizes.end()) ? size_it->second : 0;
+
+            if (head_size <= remaining) {
+                // Fully consume the head order (skip zero-size stragglers)
+                if (head_size > 0) {
+                    consumed.emplace_back(head_id, head_size);
+                }
+                remaining -= head_size;
+                dequeue_head(side, price);
+            } else {
+                // Partially consume the head order; it keeps its queue position
+                consumed.emplace_back(head_id, remaining);
+                size_it->second -= remaining;
+                level.total_size -= remaining;
+                remaining = 0;
+            }
+        }
+
+        if (level.queue.empty()) {
+            levels.erase(it);
+        }
+    };
+
+    if (side == Order::Side::BUY) {
+        process(get_bids());
+    } else {
+        process(get_asks());
+    }
+
+    return consumed;
+}
+
 OrderId OrderBookFullDepth::dequeue_head(Order::Side side, Price price) {
     if (side == Order::Side::BUY) {
         auto& bids = get_bids();
@@ -254,17 +325,32 @@ TopOfBook OrderBookFullDepth::top_of_book() const {
 // --- Legacy Interface (for backward compatibility) ---
 
 void OrderBookFullDepth::on_tick(const Tick& tick) {
-    // Rebuild synthetic depth from the tick's quote. Until real L2 data is
-    // replayed, the tick's top-of-book is all the liquidity we know about,
-    // so the book holds one synthetic resting order per side.
-    bids_.clear();
-    asks_.clear();
-    queue_id_to_order_id_.clear();
+    // Refresh synthetic displayed liquidity from the tick's quote while
+    // preserving resting strategy orders and their FIFO positions. Displayed
+    // size is re-inserted at the FRONT of its level: with L1 data we cannot
+    // see the real queue, so displayed liquidity is conservatively assumed to
+    // be ahead of strategy orders resting at the same price. Queue progress
+    // within a quote interval comes from trade prints consuming the level.
+    remove_synthetic(Order::Side::BUY);
+    remove_synthetic(Order::Side::SELL);
     if (tick.bid_size > 0) {
-        enqueue_order(Order::Side::BUY, tick.bid, "__quote_bid", tick.bid_size);
+        synthetic_bid_qid_ = enqueue_order_front(Order::Side::BUY, tick.bid, "__quote_bid", tick.bid_size);
+        synthetic_bid_price_ = tick.bid;
     }
     if (tick.ask_size > 0) {
-        enqueue_order(Order::Side::SELL, tick.ask, "__quote_ask", tick.ask_size);
+        synthetic_ask_qid_ = enqueue_order_front(Order::Side::SELL, tick.ask, "__quote_ask", tick.ask_size);
+        synthetic_ask_price_ = tick.ask;
+    }
+}
+
+void OrderBookFullDepth::remove_synthetic(Order::Side side) {
+    QueueId& qid = (side == Order::Side::BUY) ? synthetic_bid_qid_ : synthetic_ask_qid_;
+    Price price = (side == Order::Side::BUY) ? synthetic_bid_price_ : synthetic_ask_price_;
+    if (qid != 0) {
+        // May already be gone if a trade print fully consumed it
+        cancel_order(qid);
+        remove_level_if_empty(side, price);
+        qid = 0;
     }
 }
 

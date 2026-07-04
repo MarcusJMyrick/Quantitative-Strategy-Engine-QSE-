@@ -94,7 +94,23 @@ public:
      * @return The queue ID assigned to this order
      */
     QueueId enqueue_order(Order::Side side, Price price, OrderId order_id, Volume size);
-    
+
+    /**
+     * @brief Adds an order to the FRONT of a price level's queue.
+     * Used to model displayed quote liquidity as being ahead of strategy
+     * orders resting at the same price (conservative queue assumption).
+     * @return The queue ID assigned, or 0 if the order ID already rests there
+     */
+    QueueId enqueue_order_front(Order::Side side, Price price, OrderId order_id, Volume size);
+
+    /**
+     * @brief Consumes up to `quantity` from the FIFO queue at one price level
+     * (e.g. a trade print at that price) and reports which resting orders
+     * were consumed and by how much. Removes the level if it empties.
+     * @return Pairs of (order_id, consumed_size) in FIFO order
+     */
+    std::vector<std::pair<OrderId, Volume>> consume_at_price(Order::Side side, Price price, Volume quantity);
+
     /**
      * @brief Removes and returns the order ID at the front of a price level's queue.
      * @param side The side (BUY/SELL)
@@ -179,7 +195,16 @@ private:
     
     // Mapping from QueueId to OrderId for position lookups
     std::unordered_map<QueueId, OrderId> queue_id_to_order_id_;
-    
+
+    // Synthetic displayed liquidity from the latest quote (one per side)
+    QueueId synthetic_bid_qid_ = 0;
+    QueueId synthetic_ask_qid_ = 0;
+    Price synthetic_bid_price_ = 0.0;
+    Price synthetic_ask_price_ = 0.0;
+
+    // Removes the synthetic quote order for a side, if it still rests
+    void remove_synthetic(Order::Side side);
+
     // Helper methods
     const std::map<Price, Level, std::greater<Price>>& get_bids() const { return bids_; }
     const std::map<Price, Level, std::less<Price>>& get_asks() const { return asks_; }

@@ -136,6 +136,7 @@ add_executable(run_tests
     tests/cpp/RebalanceGuardTest.cpp
     tests/cpp/FactorIntegrationTest.cpp
     tests/cpp/ConfigParseTest.cpp
+    tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp
     tests/cpp/ImpactTest.cpp

@@ -5,8 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** B1 → B2 → D1 → C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1
+**Remaining work, recommended order:** B2 → D1 → C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1
 
 ---
 
@@ -19,7 +19,7 @@ to this checklist — full phase descriptions including completed work — is
 | 4.2 Factor model | ✅ Done **far beyond spec**: MultiFactorCalculator, UniverseFilter, CrossSectionalRegression, ICMonitor, AlphaBlender, RiskModel, PortfolioBuilder (QP), FactorExecutionEngine, rebalance guard, YAML config |
 | 4.3 Portfolio optimizer | ✅ Mostly done (constrained QP exists); mean-variance extension optional (A5) |
 | **OrderBookFullDepth** | ✅ Committed 2026-07-04: all 38 tests pass (PriceLevel, QueuePosition, Impact) |
-| 5 Data & tearsheet | 🟡 B3 tearsheet done 2026-07-05; B1 (ffill) and B2 (corporate actions) remain |
+| 5 Data & tearsheet | 🟡 B3 tearsheet + B1 missing-data done 2026-07-05; B2 (corporate actions) remains |
 | 6 CI / format / lint | 🟡 CI green as of 2026-07-04 (C1+C4 done); formatting (C2) and clang-tidy (C3) remain |
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
@@ -76,12 +76,14 @@ to this checklist — full phase descriptions including completed work — is
 
 ## Track B — Data Quality & Analysis (Phase 5)
 
-### B1. Missing-data handling (forward-fill)
-- Python: `process_data.py` gains ffill + gap report. C++: `CSVDataReader` /
-  `ParquetDataReader` tolerate and flag missing bars instead of silently
-  misbehaving.
-- **Done when:** pytest on a synthetic gappy CSV verifies filled values, and a
-  gtest confirms the reader surfaces the gap count.
+### B1. ✅ Missing-data handling (done 2026-07-05)
+- Python: `forward_fill_ticks` in `process_data.py` — ffill prices, zero
+  missing volumes, drop unfillable leading rows, report every repair
+  (7 pytest cases). C++: `CSVDataReader` counts unparseable rows instead of
+  crashing and surfaces time-grid holes via `gap_count()` (median-spacing
+  inference; 4 gtest cases); a data-quality warning prints on load.
+- ParquetDataReader left as-is (Arrow handles nulls upstream) — revisit if it
+  becomes a primary ingest path.
 
 ### B2. Corporate actions handler
 - `CorporateActionsHandler` (C++ or Python — pick one layer, don't do both)

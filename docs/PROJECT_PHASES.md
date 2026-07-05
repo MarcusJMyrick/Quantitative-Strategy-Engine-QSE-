@@ -176,9 +176,11 @@ market impact — implemented, not just cited.
   curves were never recorded, three failbit hacks silenced stdout in every
   qse binary (now opt-in `QSE_DEBUG=1` via `qse/core/Debug.h`), and the
   strategy engine never tagged ticks with a symbol.
-- **6.2 Missing-data handling ⏳ (B1).** Forward-fill with gap reporting in
-  the Python pipeline; C++ readers surface gap counts instead of silently
-  mis-parsing.
+- **6.2 Missing-data handling ✅ (B1).** `forward_fill_ticks` in the Python
+  pipeline forward-fills prices, zeroes missing volumes, and reports every
+  repair instead of silently dropping rows; `CSVDataReader` counts
+  unparseable rows (one bad row no longer aborts a load) and surfaces
+  time-grid holes via `gap_count()`, with a data-quality warning at load.
 - **6.3 Corporate actions ⏳ (B2).** Split/dividend back-adjustment from an
   actions file, verified against a known event (AAPL 4:1, 2020-08-31): prices
   ÷4, volumes ×4, and a buy-and-hold equity curve that does **not** jump

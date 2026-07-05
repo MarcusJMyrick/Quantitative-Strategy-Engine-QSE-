@@ -1,9 +1,12 @@
 # QSE Task Breakdown — Roadmap to a Thesis-Grade System
 
 Each chunk is independently completable and has an explicit **Done when** test. Work top to
-bottom within a track; tracks are mostly independent of each other.
+bottom within a track; tracks are mostly independent of each other. The narrative companion
+to this checklist — full phase descriptions including completed work — is
+[PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Recommended order:** A1 → C1 → C4 → A2 → B3 → A3 → A4 → B1 → B2 → D1 → C2 → C3 → E1 → E2 → E3 → F1 → F2 → F3 → F4
+**Remaining work, recommended order:** H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3
 
 ---
 
@@ -21,6 +24,8 @@ bottom within a track; tracks are mostly independent of each other.
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
 | Docker | ❌ No Dockerfile |
+| G Low-latency engineering (arena, SPSC) | ❌ New track (added 2026-07-05) — not started |
+| H A/B slippage audit | ❌ New track (added 2026-07-05) — unblocked: needs only A2+A3+B3, all done |
 
 ---
 
@@ -161,6 +166,72 @@ bottom within a track; tracks are mostly independent of each other.
   the resulting Alpaca paper fills reconcile with the local trade log.
 
 ---
+
+## Track G — Low-Latency Engineering 🎓
+
+*Hardware-level engineering: heap jitter, cache locality, false sharing, atomic
+memory ordering. Each chunk produces a committed benchmark artifact, not just code.*
+
+### G1. Arena (bump) allocator for the hot path
+- Implement `qse::Arena`: one large contiguous block requested up front, a
+  single offset pointer "bumped" per allocation, **no per-object deallocation**
+  — the whole arena resets in one operation at end of session/backtest. Either
+  a custom bump allocator or `std::pmr::monotonic_buffer_resource` wrapped
+  with instrumentation (bytes used, high-water mark, allocation count).
+- Adopt in the hot path: back `OrderBookFullDepth`'s per-level containers with
+  `std::pmr` equivalents so resting orders pack contiguously — the point is
+  L1/L2 cache locality, and the fill benchmark must show it.
+- Files: new `include/qse/core/Arena.h`, `OrderBookFullDepth.h/.cpp`,
+  new `tests/cpp/ArenaTest.cpp`, microbenchmark tool in `src/tools/`
+- **Done when:** gtest covers alignment guarantees, bump arithmetic,
+  exhaustion policy, and reset semantics; an allocation microbenchmark (≥1M
+  allocations, arena vs `new`/`delete`) plus a before/after full-depth fill
+  benchmark are committed to `docs/benchmarks/04_arena_allocator.md`; full
+  suite still green on mac and CI.
+
+### G2. SPSC lock-free ring buffer
+- Implement `qse::SPSCRingBuffer<T>`: fixed power-of-two capacity; the
+  producer owns an atomic `write_index`, the consumer owns an atomic
+  `read_index`; **`alignas(64)` on each index** so the two cores never share a
+  cache line (false sharing kills exactly this structure); acquire/release
+  ordering on the hand-off, relaxed loads on the owner's own index.
+- Integrate: the ZeroMQ subscriber (network thread, producer) hands ticks to
+  the strategy thread (consumer) through the ring instead of any locked
+  structure — this is the prerequisite for live mode (E3), where a blocked
+  network thread means dropped market data.
+- Files: new `include/qse/core/SPSCRingBuffer.h`, the subscriber/live-feed
+  path, new `tests/cpp/SPSCRingBufferTest.cpp`
+- **Done when:** unit tests cover empty/full/wraparound/ordering; a two-thread
+  stress test moves ≥10M items with a checksum match and runs clean under
+  ThreadSanitizer (`-fsanitize=thread`); a throughput benchmark vs a
+  `std::mutex`+`std::queue` baseline is committed to
+  `docs/benchmarks/05_spsc_ring_buffer.md`.
+
+## Track H — The Business Proof: A/B Slippage Audit 🎓
+
+*The thesis experiment operationalized: identical strategy and data through two
+fill models; the gap between the equity curves is the "phantom profit" a naive
+backtester hallucinates.*
+
+### H1. A/B slippage audit
+- **Engine A (naive):** instant fills at close/mid with fixed slippage —
+  infinite-liquidity assumption. **Engine B (institutional):** the full-depth
+  book — market orders walk levels and pay VWAP (A2), limit orders join the
+  back of the FIFO queue and wait (A3). Both already exist behind the
+  `fill_model` config flag; this chunk builds the paired harness and audit.
+- Harness runs the same strategy + data through both configurations at several
+  order-size regimes (e.g. 1×, 10×, 50× base size), writing paired equity
+  curves and tradelogs. `scripts/analysis/slippage_audit.py` overlays the
+  curves, computes **phantom profit** ($ and % of naive PnL), naive-vs-real
+  Sharpe inflation, and a per-trade slippage distribution, and emits a PDF
+  through the tearsheet machinery (B3).
+- Files: new `src/tools/ab_audit.cpp`, new `scripts/analysis/slippage_audit.py`,
+  artifacts to `docs/research/microstructure/`
+- **Done when:** `python scripts/analysis/slippage_audit.py` produces
+  `slippage_audit.pdf` + `ab_audit_summary.md` reporting phantom profit and
+  Sharpe inflation per order-size regime, reproducible run-to-run; the
+  headline number ("naive backtest overstates Sharpe by X% at size Y") is
+  stated in the summary.
 
 ## Track F — Presentation & Thesis (Phase 8)
 

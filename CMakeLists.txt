@@ -181,6 +181,9 @@ target_link_libraries(direct_test PRIVATE qse)
 add_executable(factor_exec_demo src/tools/factor_exec_demo.cpp)
 target_link_libraries(factor_exec_demo qse)
 
+add_executable(impact_sweep src/tools/impact_sweep.cpp)
+target_link_libraries(impact_sweep PRIVATE qse)
+
 # --- Testing Setup ---
 enable_testing()
 include(GoogleTest)

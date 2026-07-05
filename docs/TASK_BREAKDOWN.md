@@ -54,7 +54,7 @@ bottom within a track; tracks are mostly independent of each other.
   small trade prints, (b) fills after queue ahead is exhausted, (c) cancel
   removes it from the queue.
 
-### A4. Empirical impact study (research artifact)
+### A4. ✅ Empirical impact study (done 2026-07-05; fitted b: uniform 1.017 / linear 0.569, artifacts in docs/research/microstructure/)
 - Script that sweeps order sizes through a replayed book and plots realized
   slippage vs size; compare against the square-root impact law.
 - Files: new `scripts/analysis/impact_study.py`, output to `docs/research/microstructure/`

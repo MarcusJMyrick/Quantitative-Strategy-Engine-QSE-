@@ -1,4 +1,5 @@
 #include "qse/strategy/SMACrossoverStrategy.h"
+#include "qse/core/Debug.h"
 #include <iostream>
 #include <fstream>
 
@@ -36,7 +37,7 @@ void SMACrossoverStrategy::on_bar(const qse::Bar& bar) {
     double current_short_val = short_ma_.get_value();
     double current_long_val = long_ma_.get_value();
 
-    std::cerr << "[SMACrossoverStrategy] " << symbol_ 
+    if (qse_debug_enabled()) std::cerr << "[SMACrossoverStrategy] " << symbol_
               << " | Close: " << bar.close
               << " | PrevShort: " << prev_short_val << " | PrevLong: " << prev_long_val
               << " | CurrShort: " << current_short_val << " | CurrLong: " << current_long_val << std::endl;

@@ -1,11 +1,8 @@
 #include "qse/messaging/TickPublisher.h"
+#include "qse/core/Debug.h"
 #include <iostream>
 #include <sstream>
 #include <chrono>
-
-#ifndef QSE_ENABLE_VERBOSE
-static struct DisablePublisherCout { DisablePublisherCout(){ std::cout.setstate(std::ios_base::failbit); } } _disable_pub_cout;
-#endif
 
 constexpr int ZMQ_HWM       = 100000;
 constexpr int ZMQ_BUF_SIZE  = 4 * 1024 * 1024;
@@ -20,7 +17,7 @@ TickPublisher::TickPublisher(const std::string& endpoint)
         socket_->set(zmq::sockopt::sndhwm,  ZMQ_HWM);
         socket_->set(zmq::sockopt::sndbuf, ZMQ_BUF_SIZE);
         socket_->bind(endpoint_);
-        std::cout << "TickPublisher bound to: " << endpoint_ << std::endl;
+        if (qse_debug_enabled()) std::cout << "TickPublisher bound to: " << endpoint_ << std::endl;
     } catch (const zmq::error_t& e) {
         std::cerr << "Failed to initialize TickPublisher: " << e.what() << std::endl;
         throw;
@@ -40,8 +37,8 @@ void TickPublisher::publish_tick(const std::string& topic, const Tick& tick) {
     try {
         std::string serialized = serialize_tick(tick);
         
-        std::cout << "[PUBLISHER] Sending " << topic.size() << "-byte topic: '" << topic << "'" << std::endl;
-        std::cout << "[PUBLISHER] Sending " << serialized.size() << "-byte payload." << std::endl;
+        if (qse_debug_enabled()) std::cout << "[PUBLISHER] Sending " << topic.size() << "-byte topic: '" << topic << "'" << std::endl;
+        if (qse_debug_enabled()) std::cout << "[PUBLISHER] Sending " << serialized.size() << "-byte payload." << std::endl;
         
         zmq::message_t topic_msg(topic.data(), topic.size());
         zmq::message_t data_msg(serialized.data(), serialized.size());
@@ -49,7 +46,7 @@ void TickPublisher::publish_tick(const std::string& topic, const Tick& tick) {
         socket_->send(topic_msg, zmq::send_flags::sndmore);
         socket_->send(data_msg, zmq::send_flags::none);
         
-        std::cout << "Published tick: price=" << tick.price 
+        if (qse_debug_enabled()) std::cout << "Published tick: price=" << tick.price 
                   << ", volume=" << tick.volume << std::endl;
     } catch (const zmq::error_t& e) {
         std::cerr << "Failed to publish tick: " << e.what() << std::endl;
@@ -60,8 +57,8 @@ void TickPublisher::publish_bar(const std::string& topic, const Bar& bar) {
     try {
         std::string serialized = serialize_bar(bar);
         
-        std::cout << "[PUBLISHER] Sending " << topic.size() << "-byte topic: '" << topic << "'" << std::endl;
-        std::cout << "[PUBLISHER] Sending " << serialized.size() << "-byte payload." << std::endl;
+        if (qse_debug_enabled()) std::cout << "[PUBLISHER] Sending " << topic.size() << "-byte topic: '" << topic << "'" << std::endl;
+        if (qse_debug_enabled()) std::cout << "[PUBLISHER] Sending " << serialized.size() << "-byte payload." << std::endl;
         
         zmq::message_t topic_msg(topic.data(), topic.size());
         zmq::message_t data_msg(serialized.data(), serialized.size());
@@ -69,7 +66,7 @@ void TickPublisher::publish_bar(const std::string& topic, const Bar& bar) {
         socket_->send(topic_msg, zmq::send_flags::sndmore);
         socket_->send(data_msg, zmq::send_flags::none);
         
-        std::cout << "Published bar: " << bar.symbol 
+        if (qse_debug_enabled()) std::cout << "Published bar: " << bar.symbol 
                   << " O:" << bar.open << " H:" << bar.high 
                   << " L:" << bar.low << " C:" << bar.close << std::endl;
     } catch (const zmq::error_t& e) {
@@ -86,7 +83,7 @@ void TickPublisher::publish_order(const std::string& topic, const Order& order) 
         socket_->send(topic_msg, zmq::send_flags::sndmore);
         socket_->send(data_msg, zmq::send_flags::none);
         
-        std::cout << "Published order: " << order.order_id 
+        if (qse_debug_enabled()) std::cout << "Published order: " << order.order_id 
                   << " " << order.symbol << std::endl;
     } catch (const zmq::error_t& e) {
         std::cerr << "Failed to publish order: " << e.what() << std::endl;

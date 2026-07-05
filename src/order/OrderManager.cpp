@@ -1,14 +1,11 @@
 #include "qse/order/OrderManager.h"
+#include "qse/core/Debug.h"
 #include "qse/data/Data.h" // Required for the Trade struct
 
 #include <iostream>
 #include <stdexcept>
 #include <chrono>
 #include <algorithm>
-
-#ifndef QSE_ENABLE_VERBOSE
-static struct DisableOrderMgrCout { DisableOrderMgrCout(){ std::cout.setstate(std::ios_base::failbit);} } _disable_om_cout;
-#endif
 
 namespace qse {
 
@@ -274,7 +271,7 @@ void OrderManager::process_tick(const Tick& tick) {
     // Use the tick's symbol for order matching
     std::string symbol = tick.symbol;
     
-    std::cout << "DEBUG: Processing tick for " << symbol << " bid=" << tick.bid << " ask=" << tick.ask << " mid=" << tick.mid_price() << std::endl;
+    if (qse_debug_enabled()) std::cout << "DEBUG: Processing tick for " << symbol << " bid=" << tick.bid << " ask=" << tick.ask << " mid=" << tick.mid_price() << std::endl;
     
     // Match orders for this symbol first
     match_orders_for_symbol(symbol, tick);
@@ -347,14 +344,14 @@ void OrderManager::remove_order_from_book(const OrderId& order_id) {
 void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick& tick) {
     auto symbol_it = symbol_orders_.find(symbol);
     if (symbol_it == symbol_orders_.end()) {
-        std::cout << "DEBUG: No orders found for symbol " << symbol << std::endl;
+        if (qse_debug_enabled()) std::cout << "DEBUG: No orders found for symbol " << symbol << std::endl;
         return;
     }
     
     // Iterate a copy: maker fills triggered inside the loop can remove
     // entries from symbol_orders_ and invalidate references into it
     std::vector<OrderId> order_ids = symbol_it->second;
-    std::cout << "DEBUG: Found " << order_ids.size() << " orders for symbol " << symbol << std::endl;
+    if (qse_debug_enabled()) std::cout << "DEBUG: Found " << order_ids.size() << " orders for symbol " << symbol << std::endl;
     std::vector<OrderId> to_remove;
     
     // Get current top of book from whichever book model is active
@@ -376,11 +373,11 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
         
         Order& order = order_it->second;
         if (!order.is_active()) {
-            std::cout << "DEBUG: Order " << order_id << " is not active, status=" << static_cast<int>(order.status) << std::endl;
+            if (qse_debug_enabled()) std::cout << "DEBUG: Order " << order_id << " is not active, status=" << static_cast<int>(order.status) << std::endl;
             continue;
         }
         
-        std::cout << "DEBUG: Processing order " << order_id << " type=" << static_cast<int>(order.type) << " side=" << static_cast<int>(order.side) << " qty=" << order.quantity << std::endl;
+        if (qse_debug_enabled()) std::cout << "DEBUG: Processing order " << order_id << " type=" << static_cast<int>(order.type) << " side=" << static_cast<int>(order.side) << " qty=" << order.quantity << std::endl;
         
         Volume fill_qty = 0;
         Price fill_price = 0.0;
@@ -416,7 +413,7 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
                 fill_qty = std::min(order.remaining_quantity(), tick.volume);
                 fill_price = tick.mid_price();
             }
-            std::cout << "DEBUG: Market order fill_qty=" << fill_qty << " at " << fill_price << std::endl;
+            if (qse_debug_enabled()) std::cout << "DEBUG: Market order fill_qty=" << fill_qty << " at " << fill_price << std::endl;
         } else if (order.type == Order::Type::LIMIT) {
             // Use OrderBook for limit order fills
             if (order_book_ != nullptr) {
@@ -434,11 +431,11 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
                     fill_price = order.limit_price;
                 }
             }
-            std::cout << "DEBUG: Limit order fill_qty=" << fill_qty << " at " << fill_price << std::endl;
+            if (qse_debug_enabled()) std::cout << "DEBUG: Limit order fill_qty=" << fill_qty << " at " << fill_price << std::endl;
         }
         
         if (fill_qty > 0) {
-            std::cout << "DEBUG: Filling order with qty=" << fill_qty << " at price=" << fill_price << std::endl;
+            if (qse_debug_enabled()) std::cout << "DEBUG: Filling order with qty=" << fill_qty << " at price=" << fill_price << std::endl;
             fill_order(order, fill_qty, fill_price, tick, depth_fill);
 
             if (order.is_filled()) {
@@ -469,8 +466,8 @@ void OrderManager::fill_order(Order& order, Volume fill_qty, Price fill_price, c
             } else { // SELL
                 base_fill_price -= slippage;
             }
-            std::cout << "DEBUG: Applied slippage for " << order.symbol 
-                      << " - base: " << fill_price << ", slippage: " << slippage 
+            if (qse_debug_enabled()) std::cout << "DEBUG: Applied slippage for " << order.symbol
+                      << " - base: " << fill_price << ", slippage: " << slippage
                       << ", final: " << base_fill_price << std::endl;
         }
     }

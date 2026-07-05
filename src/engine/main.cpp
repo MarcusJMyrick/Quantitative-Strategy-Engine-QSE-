@@ -22,7 +22,7 @@ int main() {
         
         // --- Create Components ---
         std::cout << "Initializing components..." << std::endl;
-        auto data_reader = std::make_unique<qse::CSVDataReader>(data_file);
+        auto data_reader = std::make_unique<qse::CSVDataReader>(data_file, symbol);
         auto order_manager = std::make_unique<qse::OrderManager>(
             initial_capital, 
             "equity_curve.csv", 

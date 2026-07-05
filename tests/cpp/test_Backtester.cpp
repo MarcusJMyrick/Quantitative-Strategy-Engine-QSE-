@@ -225,7 +225,11 @@ TEST_F(BacktesterTickIntegrationTest, TickStreamIntegration) {
     // Expect attempt_fills to be called after each tick
     EXPECT_CALL(*mock_order_manager, attempt_fills())
         .Times(test_ticks_.size());
-    
+
+    // Expect the equity curve to be marked to market after each tick
+    EXPECT_CALL(*mock_order_manager, record_equity(_, _))
+        .Times(test_ticks_.size());
+
     // Expect strategy to receive bars when they're completed
     // The BarBuilder will create bars and call on_bar
     EXPECT_CALL(*mock_strategy, on_bar(_))
@@ -335,7 +339,9 @@ TEST_F(BacktesterTickIntegrationTest, TickProcessingOrder) {
         .Times(test_ticks_.size());
     EXPECT_CALL(*mock_order_manager, attempt_fills())
         .Times(test_ticks_.size());
-    
+    EXPECT_CALL(*mock_order_manager, record_equity(_, _))
+        .Times(test_ticks_.size());
+
     // Expect strategy to receive bars when they're completed
     EXPECT_CALL(*mock_strategy, on_bar(_))
         .Times(::testing::AtLeast(1));
@@ -388,7 +394,9 @@ TEST_F(BacktesterTickIntegrationTest, LargeTickStream) {
         .Times(1000);
     EXPECT_CALL(*mock_order_manager, attempt_fills())
         .Times(1000);
-    
+    EXPECT_CALL(*mock_order_manager, record_equity(_, _))
+        .Times(1000);
+
     // Expect strategy to receive bars when they're completed
     EXPECT_CALL(*mock_strategy, on_bar(_))
         .Times(::testing::AtLeast(1));

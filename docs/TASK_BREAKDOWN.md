@@ -16,7 +16,7 @@ bottom within a track; tracks are mostly independent of each other.
 | 4.2 Factor model | ✅ Done **far beyond spec**: MultiFactorCalculator, UniverseFilter, CrossSectionalRegression, ICMonitor, AlphaBlender, RiskModel, PortfolioBuilder (QP), FactorExecutionEngine, rebalance guard, YAML config |
 | 4.3 Portfolio optimizer | ✅ Mostly done (constrained QP exists); mean-variance extension optional (A5) |
 | **OrderBookFullDepth** | ✅ Committed 2026-07-04: all 38 tests pass (PriceLevel, QueuePosition, Impact) |
-| 5 Data & tearsheet | ❌ analyze.py has only Sharpe + max drawdown; no ffill, no corporate actions, no PDF |
+| 5 Data & tearsheet | 🟡 B3 tearsheet done 2026-07-05; B1 (ffill) and B2 (corporate actions) remain |
 | 6 CI / format / lint | 🟡 CI green as of 2026-07-04 (C1+C4 done); formatting (C2) and clang-tidy (C3) remain |
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
@@ -85,13 +85,14 @@ bottom within a track; tracks are mostly independent of each other.
   shows pre-split prices ÷4, volumes ×4, and an equity curve unchanged across
   the split date for a buy-and-hold backtest.
 
-### B3. Institutional tearsheet
-- Extend `scripts/analysis/analyze.py`: Calmar, annualized turnover, rolling
-  Sharpe (63d window) plot, benchmark-relative plot vs SPY with alpha/beta
-  regression, PDF export (matplotlib `PdfPages` is enough).
-- **Done when:** pytest feeds a synthetic equity curve with hand-computed
-  Sharpe/Calmar/turnover and asserts each metric to 4 decimals; running on a
-  real backtest emits `tearsheet.pdf`.
+### B3. ✅ Institutional tearsheet (done 2026-07-05)
+- Landed as `scripts/analysis/tearsheet.py` (new module instead of extending
+  analyze.py): Calmar, annualized turnover, rolling Sharpe, alpha/beta
+  regression vs benchmark, 3-page PDF via PdfPages; 16 pytest cases with
+  hand-computed metrics in `tests/python/test_tearsheet.py`.
+- Fixed along the way: Backtester never called `record_equity` (all equity
+  CSVs were header-only), and three failbit hacks suppressed stdout in every
+  qse binary — debug logging is now opt-in via `QSE_DEBUG=1` (Debug.h).
 
 ---
 

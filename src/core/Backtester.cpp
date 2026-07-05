@@ -71,6 +71,7 @@ void Backtester::run() {
     });
 
     bool abort_due_to_error = false;
+    std::map<std::string, double> last_prices;
     for (const auto& tick : all_ticks) {
         if (abort_due_to_error) break;
 
@@ -103,6 +104,14 @@ void Backtester::run() {
         if (order_manager_) {
             order_manager_->process_tick(tick);
             order_manager_->attempt_fills();
+
+            // Mark the portfolio to market so the equity curve gets a point
+            // per tick (valued at the latest price seen for each symbol)
+            last_prices[tick.symbol] = tick.price;
+            auto ts_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                             tick.timestamp.time_since_epoch())
+                             .count();
+            order_manager_->record_equity(ts_ms, last_prices);
         }
     }
     

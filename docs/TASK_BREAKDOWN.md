@@ -5,8 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3
+**Remaining work, recommended order:** B1 → B2 → D1 → C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1
 
 ---
 
@@ -25,7 +25,7 @@ to this checklist — full phase descriptions including completed work — is
 | 8 Presentation | ❌ Not started |
 | Docker | ❌ No Dockerfile |
 | G Low-latency engineering (arena, SPSC) | ❌ New track (added 2026-07-05) — not started |
-| H A/B slippage audit | ❌ New track (added 2026-07-05) — unblocked: needs only A2+A3+B3, all done |
+| H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
 
 ---
 
@@ -213,7 +213,7 @@ memory ordering. Each chunk produces a committed benchmark artifact, not just co
 fill models; the gap between the equity curves is the "phantom profit" a naive
 backtester hallucinates.*
 
-### H1. A/B slippage audit
+### H1. ✅ A/B slippage audit (done 2026-07-05; headline: at 25,000 sh/signal naive reports +$153k / Sharpe 1.93, real engine −$661k / Sharpe −5.26 — $814k phantom profit)
 - **Engine A (naive):** instant fills at close/mid with fixed slippage —
   infinite-liquidity assumption. **Engine B (institutional):** the full-depth
   book — market orders walk levels and pay VWAP (A2), limit orders join the

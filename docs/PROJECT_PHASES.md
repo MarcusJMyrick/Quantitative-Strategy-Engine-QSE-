@@ -263,7 +263,7 @@ prerequisite for Phase 10's live feed.
 **Proves:** cache lines, atomics, and allocation behavior — the exact
 territory of a C++ trading-systems interview.
 
-## Phase 9 — The Business Proof: A/B Slippage Audit ⏳ (new, Track H)
+## Phase 9 — The Business Proof: A/B Slippage Audit ✅ (Track H)
 
 **Goal:** convert all the infrastructure above into one financial number.
 
@@ -286,6 +286,21 @@ the dollar amount the naive backtest hallucinated. The report (built on the
 Phase 6 tearsheet machinery) states it as the headline: *"the naive backtest
 overstates this strategy's Sharpe by X% at size Y because it ignores queue
 position and depth."*
+
+*The result (measured 2026-07-05).* Identical SMA signals (455 per run),
+deterministic and reproducible:
+
+| Shares/signal | Naive PnL | Real PnL | Phantom $ | Phantom $/share | Naive Sharpe | Real Sharpe |
+|---|---|---|---|---|---|---|
+| 1,000 | −$10,011 | −$18,033 | $8,000 | $0.018 | −2.12 | −3.71 |
+| 5,000 | −$7,887 | −$112,856 | $105,000 | $0.046 | −0.50 | −4.59 |
+| 25,000 | **+$152,866** | **−$660,831** | **$813,700** | $0.072 | **+1.93** | **−5.26** |
+
+At scale, the naive backtester reports a Sharpe-1.9 *winner*; the realistic
+engine shows a heavy loser. Per-share phantom cost grows with size, so the
+distortion is superlinear — worst exactly where a profitable-looking strategy
+would scale into. Artifacts: `docs/research/microstructure/slippage_audit.pdf`
++ `ab_audit_summary.md`.
 
 **Proves:** the intersection the whole project aims at — quantitative
 research claims, validated or destroyed by systems engineering. This is the
@@ -342,6 +357,6 @@ a live brokerage session.
 | C++ tests | 207 (ctest, mac + Linux CI) | tests/cpp |
 | Python tests | 16 (pytest, hand-computed metrics) | tests/python |
 | CI wall time | ~2.5 min per push | GitHub Actions |
-| Phantom profit / Sharpe inflation | *pending H1* | — |
+| Phantom profit at 25k sh/signal | $813,700 (naive Sharpe +1.93 vs real −5.26) | docs/research/microstructure |
 | Arena vs heap allocation | *pending G1* | — |
 | SPSC vs mutex throughput | *pending G2* | — |

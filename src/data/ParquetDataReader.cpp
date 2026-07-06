@@ -25,9 +25,17 @@ void ParquetDataReader::load_data() {
         PARQUET_THROW_NOT_OK(result.status());
         reader = std::move(result).ValueOrDie();
 
-        // Read the entire file into a Table
+        // Read the entire file into a Table. Arrow 24 deprecated the
+        // out-parameter ReadTable in favour of a Result-returning overload,
+        // which does not exist before 24 (CI is Arrow 24, local brew is 20)
         std::shared_ptr<arrow::Table> table;
+#if ARROW_VERSION_MAJOR >= 24
+        auto table_result = reader->ReadTable();
+        PARQUET_THROW_NOT_OK(table_result.status());
+        table = std::move(table_result).ValueOrDie();
+#else
         PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
+#endif
 
         // Check for bar columns
         if (table->GetColumnByName("close")) {

@@ -62,10 +62,20 @@ static WeightMap parse_parquet(const std::string& path) {
     }
     std::unique_ptr<parquet::arrow::FileReader> reader = std::move(*reader_res);
     std::shared_ptr<arrow::Table> table;
+#if ARROW_VERSION_MAJOR >= 24
+    // Arrow 24 deprecated the out-parameter ReadTable; the Result-returning
+    // overload does not exist on Arrow 20 (local brew)
+    auto table_res = reader->ReadTable();
+    if (!table_res.ok()) {
+        throw std::runtime_error(table_res.status().ToString());
+    }
+    table = std::move(*table_res);
+#else
     auto st = reader->ReadTable(&table);
     if (!st.ok()) {
         throw std::runtime_error(st.ToString());
     }
+#endif
 
     auto sym_col = table->GetColumnByName("symbol");
     auto w_col = table->GetColumnByName("weight");

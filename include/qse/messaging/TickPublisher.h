@@ -17,7 +17,7 @@ class TickPublisher {
 public:
     /**
      * @brief Constructor
-     * @param endpoint ZeroMQ endpoint (e.g., "tcp://*:5555")
+     * @param endpoint ZeroMQ endpoint (e.g., "tcp://0.0.0.0:5555")
      */
     explicit TickPublisher(const std::string& endpoint);
 

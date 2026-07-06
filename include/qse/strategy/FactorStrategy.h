@@ -29,7 +29,7 @@ public:
                    const std::string& weights_dir, double min_dollar_threshold,
                    const ExecConfig& engine_config = ExecConfig{});
 
-    virtual ~FactorStrategy() = default;
+    ~FactorStrategy() override = default;
 
     // --- IStrategy interface implementation ---
 

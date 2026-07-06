@@ -16,7 +16,7 @@ Backtester::Backtester(const std::string& symbol, std::unique_ptr<IDataReader> d
                        std::unique_ptr<IStrategy> strategy,
                        std::shared_ptr<IOrderManager> order_manager,
                        const std::chrono::seconds& bar_interval)
-    : symbol_(symbol), strategy_(std::move(strategy)), order_manager_(order_manager),
+    : symbol_(symbol), strategy_(std::move(strategy)), order_manager_(std::move(order_manager)),
       bar_builders_(), bar_router_(), order_book_(), bar_interval_(bar_interval) {
     if (data_reader) {
         data_readers_.push_back(std::move(data_reader));

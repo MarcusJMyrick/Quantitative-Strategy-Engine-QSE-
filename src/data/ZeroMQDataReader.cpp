@@ -89,13 +89,16 @@ void ZeroMQDataReader::start_receiving() const {
         zmq::pollitem_t pi{*socket_, 0, ZMQ_POLLIN, 0};
 
         while (!reception_complete_) {
-            zmq::poll(&pi, 1, 1); // 1 ms poll
+            zmq::poll(&pi, 1, std::chrono::milliseconds(1)); // 1 ms poll
             if (!(pi.revents & ZMQ_POLLIN)) {
                 continue; // nothing ready
             }
 
             zmq::message_t message;
-            socket_->recv(message, zmq::recv_flags::none);
+            auto recv_result = socket_->recv(message, zmq::recv_flags::none);
+            if (!recv_result) {
+                continue; // spurious wakeup with nothing to read
+            }
 
             // Extract message data (zero-copy string view)
             std::string data(static_cast<char*>(message.data()), message.size());

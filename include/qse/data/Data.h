@@ -118,7 +118,7 @@ struct Fill {
 
     Fill(OrderId id, const std::string& sym, Volume qty, Price px, Timestamp ts,
          const std::string& s)
-        : order_id(id), symbol(sym), quantity(qty), price(px), timestamp(ts), side(s) {}
+        : order_id(std::move(id)), symbol(sym), quantity(qty), price(px), timestamp(ts), side(s) {}
 };
 
 // --- NEW: Position structure for portfolio holdings ---

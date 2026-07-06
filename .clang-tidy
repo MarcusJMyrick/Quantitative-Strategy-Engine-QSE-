@@ -1,0 +1,22 @@
+# Static-analysis gate (C3), enforced in CI with clang-tidy 18 (pinned via
+# pip so local and CI agree). Deliberately narrow to high-signal checks:
+# bug-prone patterns, performance, and missing override. Disabled checks:
+#   bugprone-easily-swappable-parameters - fires on every (price, qty) pair
+#   bugprone-exception-escape            - main()/destructors log and exit
+#   bugprone-narrowing-conversions       - double<->int64 money math is
+#       pervasive; burning this class down is future work, not a v1 gate
+#   performance-avoid-endl               - logging style, not a hot path
+#   performance-enum-size                - shrinking public data-model enums
+#       is churn without a measured win
+Checks: >
+  bugprone-*,
+  performance-*,
+  modernize-use-override,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-exception-escape,
+  -bugprone-narrowing-conversions,
+  -performance-avoid-endl,
+  -performance-enum-size
+WarningsAsErrors: '*'
+HeaderFilterRegex: 'include/qse/.*'
+FormatStyle: file

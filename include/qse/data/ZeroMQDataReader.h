@@ -27,7 +27,7 @@ public:
     /**
      * @brief Destructor
      */
-    ~ZeroMQDataReader();
+    ~ZeroMQDataReader() override;
 
     /**
      * @brief Read all ticks from the ZeroMQ stream

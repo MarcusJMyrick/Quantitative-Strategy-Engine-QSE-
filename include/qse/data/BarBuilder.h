@@ -8,10 +8,6 @@
 
 namespace qse {
 
-static_assert(sizeof(Timestamp) > 0, "Timestamp type not defined");
-static_assert(sizeof(Tick) > 0, "Tick type not defined");
-static_assert(sizeof(Bar) > 0, "Bar type not defined");
-
 /**
  * @brief A utility class to construct time-based bars from a stream of ticks.
  * Handles out-of-order ticks by buffering and sorting them before processing.

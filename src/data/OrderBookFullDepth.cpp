@@ -60,7 +60,7 @@ bool OrderBookFullDepth::has_level(Order::Side side, Price price) const {
 
 // --- Order Queue Management ---
 
-QueueId OrderBookFullDepth::enqueue_order(Order::Side side, Price price, OrderId order_id,
+QueueId OrderBookFullDepth::enqueue_order(Order::Side side, Price price, const OrderId& order_id,
                                           Volume size) {
     // Ensure the price level exists
     add_level(side, price);
@@ -92,8 +92,8 @@ QueueId OrderBookFullDepth::enqueue_order(Order::Side side, Price price, OrderId
     return queue_id;
 }
 
-QueueId OrderBookFullDepth::enqueue_order_front(Order::Side side, Price price, OrderId order_id,
-                                                Volume size) {
+QueueId OrderBookFullDepth::enqueue_order_front(Order::Side side, Price price,
+                                                const OrderId& order_id, Volume size) {
     add_level(side, price);
 
     Level& level = (side == Order::Side::BUY) ? get_bids()[price] : get_asks()[price];
@@ -232,7 +232,8 @@ OrderId OrderBookFullDepth::dequeue_head(Order::Side side, Price price) {
     return ""; // Empty string if not found
 }
 
-size_t OrderBookFullDepth::queue_position(Order::Side side, Price price, OrderId order_id) const {
+size_t OrderBookFullDepth::queue_position(Order::Side side, Price price,
+                                          const OrderId& order_id) const {
     if (side == Order::Side::BUY) {
         const auto& bids = get_bids();
         auto it = bids.find(price);

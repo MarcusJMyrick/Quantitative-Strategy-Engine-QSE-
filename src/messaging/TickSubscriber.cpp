@@ -39,15 +39,15 @@ TickSubscriber::~TickSubscriber() {
 }
 
 void TickSubscriber::set_tick_callback(TickCallback callback) {
-    tick_callback_ = callback;
+    tick_callback_ = std::move(callback);
 }
 
 void TickSubscriber::set_bar_callback(BarCallback callback) {
-    bar_callback_ = callback;
+    bar_callback_ = std::move(callback);
 }
 
 void TickSubscriber::set_order_callback(OrderCallback callback) {
-    order_callback_ = callback;
+    order_callback_ = std::move(callback);
 }
 
 void TickSubscriber::listen() {

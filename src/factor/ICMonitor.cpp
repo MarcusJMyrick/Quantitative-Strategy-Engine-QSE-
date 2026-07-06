@@ -86,6 +86,7 @@ ICMonitor::ICResult ICMonitor::compute_ic(const std::shared_ptr<arrow::Table>& t
 
     // Convert map to vectors for processing
     std::vector<std::string> unique_dates;
+    unique_dates.reserve(date_groups.size());
     for (const auto& [date, _] : date_groups) {
         unique_dates.push_back(date);
     }

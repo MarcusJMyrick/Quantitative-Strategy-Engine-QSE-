@@ -147,6 +147,10 @@ WeightsLoader::load_weights_from_file(const std::string& file_path) {
             return weights;
         }
 
+        // Arrow parsing populated the map, so the fallback was skipped;
+        // without this return the success path fell off the end (UB)
+        return weights;
+
     } catch (const std::exception& e) {
         std::cerr << "[ERROR] Failed to load weights from " << file_path << ": " << e.what()
                   << std::endl;

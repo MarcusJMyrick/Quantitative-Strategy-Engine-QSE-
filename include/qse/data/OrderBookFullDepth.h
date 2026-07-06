@@ -93,7 +93,7 @@ public:
      * @param size The order size
      * @return The queue ID assigned to this order
      */
-    QueueId enqueue_order(Order::Side side, Price price, OrderId order_id, Volume size);
+    QueueId enqueue_order(Order::Side side, Price price, const OrderId& order_id, Volume size);
 
     /**
      * @brief Adds an order to the FRONT of a price level's queue.
@@ -101,7 +101,8 @@ public:
      * orders resting at the same price (conservative queue assumption).
      * @return The queue ID assigned, or 0 if the order ID already rests there
      */
-    QueueId enqueue_order_front(Order::Side side, Price price, OrderId order_id, Volume size);
+    QueueId enqueue_order_front(Order::Side side, Price price, const OrderId& order_id,
+                                Volume size);
 
     /**
      * @brief Consumes up to `quantity` from the FIFO queue at one price level
@@ -134,7 +135,7 @@ public:
      * @param order_id The order ID
      * @return The position (1 = head, 0 = not found)
      */
-    size_t queue_position(Order::Side side, Price price, OrderId order_id) const;
+    size_t queue_position(Order::Side side, Price price, const OrderId& order_id) const;
 
     /**
      * @brief Gets the queue position of an order by QueueId (1-based).

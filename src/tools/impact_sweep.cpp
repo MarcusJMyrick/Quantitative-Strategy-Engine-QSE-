@@ -32,6 +32,7 @@ std::vector<TradeTick> load_trade_prices(const std::string& path) {
         throw std::runtime_error("Could not open tick file: " + path);
     }
     std::vector<TradeTick> ticks;
+    std::size_t skipped = 0;
     std::string line;
     std::getline(in, line); // header
     while (std::getline(in, line)) {
@@ -47,8 +48,11 @@ std::vector<TradeTick> load_trade_prices(const std::string& path) {
                 ticks.push_back(t);
             }
         } catch (const std::exception&) {
-            // Skip malformed rows
+            ++skipped;
         }
+    }
+    if (skipped > 0) {
+        std::cerr << "Skipped " << skipped << " malformed tick row(s)\n";
     }
     return ticks;
 }

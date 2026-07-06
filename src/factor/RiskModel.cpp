@@ -1,4 +1,5 @@
 #include "qse/factor/RiskModel.h"
+#include "qse/core/ArrowUtil.h"
 #include <cmath>
 #include "qse/math/StatsUtil.h"
 #include <arrow/array.h>
@@ -76,11 +77,11 @@ std::shared_ptr<arrow::Table> RiskModel::append_beta(const std::shared_ptr<arrow
 
     // Build Arrow arrays
     arrow::DoubleBuilder beta_bld, sigma_bld;
-    beta_bld.AppendValues(beta);
-    sigma_bld.AppendValues(resid_sigma);
+    qse::throw_if_not_ok(beta_bld.AppendValues(beta));
+    qse::throw_if_not_ok(sigma_bld.AppendValues(resid_sigma));
     std::shared_ptr<arrow::Array> beta_arr, sigma_arr;
-    beta_bld.Finish(&beta_arr);
-    sigma_bld.Finish(&sigma_arr);
+    qse::throw_if_not_ok(beta_bld.Finish(&beta_arr));
+    qse::throw_if_not_ok(sigma_bld.Finish(&sigma_arr));
 
     auto beta_field = arrow::field("beta", arrow::float64());
     auto sigma_field = arrow::field("resid_sigma", arrow::float64());
@@ -91,6 +92,7 @@ std::shared_ptr<arrow::Table> RiskModel::append_beta(const std::shared_ptr<arrow
 
     std::vector<std::shared_ptr<arrow::ChunkedArray>> chunks = table->columns();
     std::vector<std::shared_ptr<arrow::Array>> arrays;
+    arrays.reserve(chunks.size() + 2);
     for (auto& ca : chunks)
         arrays.push_back(ca->chunk(0));
     arrays.push_back(beta_arr);

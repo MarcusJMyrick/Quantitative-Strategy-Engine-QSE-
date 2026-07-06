@@ -13,7 +13,8 @@ PairsTradingStrategy::PairsTradingStrategy(const std::string& symbol1, const std
                                            std::shared_ptr<IOrderManager> order_manager)
     : symbol1_(symbol1), symbol2_(symbol2), hedge_ratio_(hedge_ratio),
       entry_threshold_(entry_threshold), exit_threshold_(exit_threshold),
-      order_manager_(order_manager), spread_mean_(spread_window), spread_std_dev_(spread_window) {
+      order_manager_(std::move(order_manager)), spread_mean_(spread_window),
+      spread_std_dev_(spread_window) {
     latest_prices_[symbol1_] = -1.0;
     latest_prices_[symbol2_] = -1.0;
 }

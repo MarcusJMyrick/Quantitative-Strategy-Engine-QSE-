@@ -15,7 +15,7 @@ MultiFactorStrategy::MultiFactorStrategy(const std::vector<std::string>& symbols
     : symbols_(symbols), momentum_window_(momentum_window),
       momentum_short_window_(momentum_short_window), volatility_window_(volatility_window),
       value_window_(value_window), rebalance_frequency_(rebalance_frequency), top_n_(top_n),
-      bottom_n_(bottom_n), days_since_rebalance_(0), order_manager_(order_manager) {
+      bottom_n_(bottom_n), days_since_rebalance_(0), order_manager_(std::move(order_manager)) {
 
     // Initialize moving average utilities for each symbol
     for (const auto& symbol : symbols_) {
@@ -290,6 +290,7 @@ std::vector<PortfolioWeights> MultiFactorStrategy::construct_portfolio() {
 
     // Sort symbols by composite score
     std::vector<std::pair<std::string, double>> sorted_symbols;
+    sorted_symbols.reserve(current_factors_.size());
     for (const auto& pair : current_factors_) {
         sorted_symbols.push_back({pair.first, pair.second.composite_score});
     }

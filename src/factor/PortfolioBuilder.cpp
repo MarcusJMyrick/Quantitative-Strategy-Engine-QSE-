@@ -1,4 +1,5 @@
 #include "qse/factor/PortfolioBuilder.h"
+#include "qse/core/ArrowUtil.h"
 #include <stdexcept>
 #include <arrow/table.h>
 #include <arrow/array.h>
@@ -233,8 +234,8 @@ void PortfolioBuilder::save_weights(const OptimizationResult& result,
     arrow::DoubleBuilder weight_builder;
 
     for (size_t i = 0; i < symbols.size(); ++i) {
-        symbol_builder.Append(symbols[i]);
-        weight_builder.Append(result.weights[i]);
+        qse::throw_if_not_ok(symbol_builder.Append(symbols[i]));
+        qse::throw_if_not_ok(weight_builder.Append(result.weights[i]));
     }
 
     std::shared_ptr<arrow::Array> symbol_array, weight_array;

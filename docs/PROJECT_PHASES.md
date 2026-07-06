@@ -190,7 +190,7 @@ market impact — implemented, not just cited.
 
 **Proves:** results you can hand to a PM, from inputs you can trust.
 
-## Phase 7 — DevOps & Reproducibility 🟡
+## Phase 7 — DevOps & Reproducibility ✅
 
 **Goal:** engineering hygiene that survives other people's machines.
 
@@ -206,8 +206,11 @@ market impact — implemented, not just cited.
 - **7.3 Formatting ✅ (C2).** `.clang-format` + `black`/`flake8` enforced by a
   dedicated CI job with pip-pinned tool versions (identical output local and
   CI); one-time mechanical reformat of the whole tree, all suites green after.
-- **7.4 Static analysis ⏳ (C3).** `clang-tidy` (bugprone/performance/modernize)
-  as a CI gate.
+- **7.4 Static analysis ✅ (C3).** `clang-tidy` gate (bugprone/performance/
+  modernize-use-override, warnings-as-errors) over every built TU, pinned
+  version, dedicated CI job. The clean-up fixed 49 findings including a real
+  bug — a missing return on `WeightsLoader`'s Arrow-success path (UB) — and
+  17 silently ignored Arrow `Status` returns.
 - **7.5 Docker ✅ (D1).** Multi-stage `Dockerfile`: stage 1 compiles on the
   same ubuntu:24.04 + Arrow toolchain as CI, stage 2 ships binaries + runtime
   libs + the Python analysis stack. `docker run -v "$PWD/out:/results" qse`

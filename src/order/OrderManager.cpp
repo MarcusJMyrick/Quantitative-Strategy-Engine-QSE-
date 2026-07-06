@@ -449,11 +449,11 @@ void OrderManager::match_orders_for_symbol(const std::string& symbol, const Tick
                         (order.side == Order::Side::BUY) ? tob.best_ask_price : tob.best_bid_price;
                 }
             } else {
-                // Fallback to old logic
-                if (order.side == Order::Side::BUY && tick.ask <= order.limit_price) {
-                    fill_qty = std::min(order.remaining_quantity(), tick.volume);
-                    fill_price = order.limit_price;
-                } else if (order.side == Order::Side::SELL && tick.bid >= order.limit_price) {
+                // Fallback to old logic: the order crosses when the touch
+                // reaches its limit price on the relevant side
+                bool crosses = (order.side == Order::Side::BUY && tick.ask <= order.limit_price) ||
+                               (order.side == Order::Side::SELL && tick.bid >= order.limit_price);
+                if (crosses) {
                     fill_qty = std::min(order.remaining_quantity(), tick.volume);
                     fill_price = order.limit_price;
                 }

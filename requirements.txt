@@ -6,3 +6,4 @@ pytest>=8.4.0
 black==25.1.0
 flake8==7.2.0
 clang-format==18.1.8
+clang-tidy==18.1.8

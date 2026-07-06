@@ -1,4 +1,5 @@
 #include "qse/factor/UniverseFilter.h"
+#include "qse/core/ArrowUtil.h"
 #include <cstdint>
 #include <arrow/api.h>
 #include <arrow/compute/api.h>
@@ -67,10 +68,10 @@ UniverseFilter::clean_data(const std::shared_ptr<arrow::Table>& table) {
                 v = 0.0; // simple replacement
                 ++nan_removed_;
             }
-            builder.Append(v);
+            qse::throw_if_not_ok(builder.Append(v));
         }
         std::shared_ptr<arrow::Array> new_arr;
-        builder.Finish(&new_arr);
+        qse::throw_if_not_ok(builder.Finish(&new_arr));
         cleaned_arrays.push_back(new_arr);
     }
 

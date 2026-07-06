@@ -1,4 +1,5 @@
 #include "qse/factor/MultiFactorCalculator.h"
+#include "qse/core/ArrowUtil.h"
 #include <cmath>
 #include <stdexcept>
 #include "qse/factor/UniverseFilter.h"
@@ -110,8 +111,6 @@ void MultiFactorCalculator::compute_factors(const std::string& in_csv,
 std::shared_ptr<arrow::Table> MultiFactorCalculator::load_arrow_table(const std::string& csv_path) {
     // For now, create a simple mock table
     // In practice, you'd use Arrow's CSV reader
-    arrow::MemoryPool* pool = arrow::default_memory_pool();
-
     // Create schema
     std::vector<std::shared_ptr<arrow::Field>> fields = {
         arrow::field("date", arrow::utf8()),     arrow::field("open", arrow::float64()),
@@ -136,27 +135,27 @@ std::shared_ptr<arrow::Table> MultiFactorCalculator::load_arrow_table(const std:
     arrow::DoubleBuilder pb_builder;
 
     for (const auto& date : dates) {
-        date_builder.Append(date);
+        qse::throw_if_not_ok(date_builder.Append(date));
     }
     for (double close : closes) {
-        close_builder.Append(close);
+        qse::throw_if_not_ok(close_builder.Append(close));
     }
     for (double pb : pbs) {
-        pb_builder.Append(pb);
+        qse::throw_if_not_ok(pb_builder.Append(pb));
     }
 
     std::shared_ptr<arrow::Array> date_array, close_array, pb_array;
-    date_builder.Finish(&date_array);
-    close_builder.Finish(&close_array);
-    pb_builder.Finish(&pb_array);
+    qse::throw_if_not_ok(date_builder.Finish(&date_array));
+    qse::throw_if_not_ok(close_builder.Finish(&close_array));
+    qse::throw_if_not_ok(pb_builder.Finish(&pb_array));
 
     // Create a simple volume array with zeros
     arrow::Int64Builder volume_builder;
     for (size_t i = 0; i < dates.size(); ++i) {
-        volume_builder.Append(1000); // Mock volume
+        qse::throw_if_not_ok(volume_builder.Append(1000)); // Mock volume
     }
     std::shared_ptr<arrow::Array> volume_array;
-    volume_builder.Finish(&volume_array);
+    qse::throw_if_not_ok(volume_builder.Finish(&volume_array));
 
     arrays = {date_array,  close_array,  close_array, close_array,
               close_array, volume_array, pb_array};

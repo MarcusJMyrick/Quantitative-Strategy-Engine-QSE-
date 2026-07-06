@@ -27,6 +27,39 @@ jobs:
       - name: flake8 (Python error classes)
         run: flake8 scripts tests/python
 
+  tidy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout (with Eigen submodule)
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y -V ca-certificates lsb-release wget pkg-config \
+            build-essential cmake \
+            libprotobuf-dev protobuf-compiler \
+            libzmq3-dev libyaml-cpp-dev
+          wget -q "https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get install -y -V "./apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb"
+          sudo apt-get update
+          sudo apt-get install -y -V libarrow-dev libparquet-dev
+
+      - name: Install pinned clang-tidy
+        run: pip install clang-tidy==18.1.8
+
+      - name: Configure and build (generates protobuf headers)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake --build build --target qse -j"$(nproc)"
+
+      - name: Run clang-tidy gate
+        run: scripts/run_clang_tidy.sh
+
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 45

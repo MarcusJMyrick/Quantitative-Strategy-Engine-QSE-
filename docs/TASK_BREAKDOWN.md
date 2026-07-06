@@ -5,7 +5,7 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Remaining work, recommended order:** G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
 **Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1
 
 ---
@@ -20,7 +20,7 @@ to this checklist — full phase descriptions including completed work — is
 | 4.3 Portfolio optimizer | ✅ Mostly done (constrained QP exists); mean-variance extension optional (A5) |
 | **OrderBookFullDepth** | ✅ Committed 2026-07-04: all 38 tests pass (PriceLevel, QueuePosition, Impact) |
 | 5 Data & tearsheet | ✅ Track B complete 2026-07-05 (B1 ffill, B2 corporate actions, B3 tearsheet) |
-| 6 CI / format / lint | 🟡 C1+C4+C2 done (CI, hygiene, format gates); clang-tidy (C3) remains |
+| 6 CI / format / lint | ✅ Track C complete 2026-07-05 (CI, hygiene, format, clang-tidy gates) |
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
@@ -127,10 +127,22 @@ to this checklist — full phase descriptions including completed work — is
   deliberately unformatted file. Full suites re-run after reformat: 211/211
   ctest, 33/33 pytest.
 
-### C3. Static analysis
-- `.clang-tidy` (start narrow: `bugprone-*`, `performance-*`,
-  `modernize-use-override`); fix or suppress existing findings; add CI job.
-- **Done when:** `run-clang-tidy` over `src/` exits 0 in CI.
+### C3. ✅ Static analysis (done 2026-07-05)
+- `.clang-tidy` gate (bugprone-*, performance-*, modernize-use-override;
+  WarningsAsErrors) driven by `scripts/run_clang_tidy.sh` over every TU in
+  compile_commands.json — dead files and generated protobuf code are
+  automatically out of scope. Pinned clang-tidy 18.1.8 via pip; new CI `tidy`
+  job. Suppressed with rationale: swappable-params, narrowing-conversions
+  (money-math burn-down is future work), avoid-endl, enum-size.
+- 49 findings fixed, including a **real bug**: `WeightsLoader::load_weights`
+  fell off the end without a return on the Arrow-success path (UB). Plus 17
+  ignored Arrow Status (now `throw_if_not_ok`), hot-path `OrderId` copies →
+  const&, shared_ptr moves, missing overrides, deprecated zmq poll, dead
+  stores, branch clones, reserve-before-push_back.
+- Done-when verified: gate exits 0 over 38 TUs locally (and in the CI job),
+  exits 1 with a planted finding. 211/211 ctest after fixes.
+- Found but out of scope: `src/engine/CLI.cpp` and `src/main.cpp` are dead
+  files not built by any target and do not compile — candidates for deletion.
 
 ### C4. ✅ Repo hygiene (done 2026-07-04; root analyze_pairs_trading.py left in place — differs from scripts/analysis copy, needs manual merge)
 - `.gitignore` for `build/`, `venv/`, `Testing/`, `*.log`, `organized_runs/`,

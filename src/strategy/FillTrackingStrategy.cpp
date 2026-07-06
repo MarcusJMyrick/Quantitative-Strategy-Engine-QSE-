@@ -4,7 +4,7 @@
 namespace qse {
 
 FillTrackingStrategy::FillTrackingStrategy(std::shared_ptr<IOrderManager> order_manager)
-    : order_manager_(order_manager) {}
+    : order_manager_(std::move(order_manager)) {}
 
 void FillTrackingStrategy::on_tick(const Tick& tick) {
     // Submit a test market order on the first tick

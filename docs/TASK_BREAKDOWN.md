@@ -5,8 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2
+**Remaining work, recommended order:** E1 → E2 → E3 → F2 → F3 → F4 (A5 optional)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1
 
 ---
 
@@ -261,10 +261,15 @@ backtester hallucinates.*
 
 ## Track F — Presentation & Thesis (Phase 8)
 
-### F1. Whitepaper README
-- Architecture diagram (Mermaid), headline benchmark numbers, tearsheet
-  screenshot, quickstart, link to this file.
-- **Done when:** a reader can build + run a backtest using only the README.
+### F1. ✅ Whitepaper README (done 2026-07-06)
+- Full rewrite for the dual audience: "60-second version" findings table
+  (phantom profit, impact exponents, arena/SPSC numbers, determinism), the
+  flagship A/B audit section with the committed figures, Mermaid architecture
+  diagram, engineering-quality section (gates + the real bugs they caught),
+  Docker + native + reproduce-the-research quickstarts, repo map, and links
+  to PROJECT_PHASES / TASK_BREAKDOWN / benchmarks / research artifacts.
+- Done-when satisfied: a reader can build and run a backtest (and reproduce
+  every research artifact) using only the README.
 
 ### F2. Jupyter walkthrough
 - Notebook: run C++ engine via subprocess → load results → inline tearsheet.

@@ -1,424 +1,225 @@
-# Quantitative Strategy Engine (QSE)
+# QSE — Quantitative Strategy Engine
 
-A high-performance C++ backtesting engine for quantitative trading strategies with comprehensive analysis tools and organized result management. Designed for institutional-grade strategy development and testing.
+[![CI](https://github.com/MarcusJMyrick/Quantitative-Strategy-Engine-QSE-/actions/workflows/ci.yml/badge.svg)](https://github.com/MarcusJMyrick/Quantitative-Strategy-Engine-QSE-/actions)
 
-## Overview
+A C++ event-driven backtesting and execution-research engine built around one
+question: **how much of a backtest's profit is real, and how much is an
+artifact of ignoring market microstructure?**
 
-The Quantitative Strategy Engine (QSE) is a sophisticated backtesting platform that enables traders and researchers to develop, test, and analyze trading strategies with institutional-level precision. The engine supports multiple strategy types, realistic market simulation, and provides comprehensive analysis tools with automated result organization. 
+Most backtesters fill orders instantly at the quoted price. QSE simulates a
+full-depth limit order book — FIFO queues at every price level, VWAP-priced
+market orders that walk the book, limit orders that wait in queue behind
+displayed liquidity — and then **measures the difference**. The engine is
+paired with the low-latency machinery real trading systems use (arena
+allocation, lock-free queues) and the software discipline they demand
+(227 C++ / 33 Python tests, three CI gates, cross-platform determinism).
 
-## Key Features
+---
 
-###  Multi-Strategy Architecture
-- **PairsTrading Strategy**: Statistical arbitrage between correlated assets
-- **SMA Crossover Strategy**: Moving average-based trend following
-- **FillTracking Strategy**: Order execution and fill analysis
-- **DoNothing Strategy**: Baseline performance measurement
-- **Extensible Framework**: Easy addition of custom strategies
+## The 60-second version
 
-### High-Performance Engine
-- **Tick-Level Simulation**: Millisecond-precision market data processing
-- **Realistic Order Book**: Top-of-book bid/ask tracking with liquidity consumption
-- **Configurable Slippage**: Per-symbol linear slippage models
-- **Multi-Threading**: Parallel strategy execution for performance
-- **Memory Optimization**: Efficient data structures for large datasets
+| Finding | Number | Where |
+|---|---|---|
+| **Phantom profit** a naive backtester hallucinates at 25k shares/signal | **$813,700** (naive says +$153k & Sharpe **+1.93**; realistic engine says −$661k & Sharpe **−5.26**) | [A/B slippage audit](docs/research/microstructure/ab_audit_summary.md) |
+| Execution cost grows **superlinearly** with order size | 1.8¢ → 4.6¢ → 7.2¢ per share at 1k/5k/25k | same |
+| Simulated market impact matches theory | fitted exponent **b = 0.569** vs square-root law 0.5 (R² = 0.999); linear-impact profile b = 1.017 vs 1.0 | [impact study](docs/research/microstructure/results_summary.md) |
+| Arena allocator vs `new`/`delete` | **3.5 ns vs 57–70 ns per allocation (16–20×)**; 2.4× on the order-book workload | [benchmark 04](docs/benchmarks/04_arena_allocator.md) |
+| Lock-free SPSC ring vs locked queue (producer push, working consumer) | p99 **42 ns vs 16,334 ns (389×)**; worst case 71 µs vs **1.15 ms**; ThreadSanitizer-clean | [benchmark 05](docs/benchmarks/05_spsc_ring_buffer.md) |
+| Tick replay throughput | 19,184 ticks in **24 ms** (~800k ticks/s) | `strategy_engine` |
+| Cross-platform determinism | Docker (GCC/x86-64) reproduces native (clang/arm64) metrics **exactly** — Sharpe −2.404, 456 trades | [Dockerfile](Dockerfile) |
 
-### Advanced Analysis Suite
-- **Comprehensive Performance Metrics**: Sharpe ratio, max drawdown, volatility analysis
-- **Visual Analytics**: Detailed plots for trade activity, P&L, and position tracking
-- **Strategy Comparison**: Side-by-side performance analysis
-- **Risk Analysis**: Drawdown analysis and risk-adjusted returns
-- **Trade-Level Analysis**: Individual trade examination and pattern recognition
+---
 
-### Organized Result Management
-- **Automated Organization**: Timestamped runs with structured file hierarchy
-- **Report Generation**: JSON and human-readable analysis reports
-- **Plot Management**: Categorized visualization outputs
-- **Configuration Tracking**: Version control for backtesting parameters
+## The flagship result: the A/B slippage audit
+
+The same 455 SMA-crossover signals, the same data, the same cash — run through
+two fill models that differ in nothing else:
+
+- **Engine A (naive):** orders fill instantly at the mid. No spread, no
+  impact, no queue. The standard tutorial-backtester assumption.
+- **Engine B (institutional):** orders go through the full-depth book — they
+  pay the touch, walk the seeded depth profile, and receive the true VWAP of
+  the liquidity they consume.
+
+![A/B slippage audit](docs/research/microstructure/slippage_audit.png)
+
+| Shares/signal | Naive PnL | Real PnL | Phantom $ | Naive Sharpe | Real Sharpe |
+|---|---|---|---|---|---|
+| 1,000 | −$10,011 | −$18,033 | $8,000 | −2.12 | −3.71 |
+| 5,000 | −$7,887 | −$112,856 | $105,000 | −0.50 | −4.59 |
+| 25,000 | **+$152,866** | **−$660,831** | **$813,700** | **+1.93** | **−5.26** |
+
+At scale, the naive backtester reports a fundable Sharpe-1.9 strategy; the
+realistic engine shows a heavy loser. Per-share cost grows with size, so the
+distortion is worst at exactly the size a profitable-looking strategy would
+scale into. Fully deterministic — rerunning the C++ driver and the Python
+audit reproduces these numbers bit-for-bit.
+
+The impact model behind Engine B isn't hand-tuned: sweeping order sizes
+through the book recovers the theoretical impact exponent of each depth
+profile, including the **square-root law** (b ≈ 0.5, R² > 0.998) that
+empirical market studies consistently report:
+
+<p align="center"><img src="docs/research/microstructure/impact_curve.png" width="560"></p>
+
+---
 
 ## Architecture
 
-The engine follows a modular, event-driven architecture optimized for performance and extensibility:
-
 ```mermaid
-graph TD;
-    subgraph "Data Layer"
-        A[CSV/Parquet Data] --> B[Data Reader];
-        B --> C[Tick Processing];
-        C --> D[Bar Builder];
+flowchart LR
+    subgraph ingest [Data layer]
+        CSV["CSV / Parquet readers<br/>(malformed-row tolerance,<br/>time-grid gap detection)"]
+        PY["Python pipeline<br/>(forward-fill, corporate actions)"]
+        ZMQ["ZeroMQ tick feed"]
     end
-
-    subgraph "Strategy Layer"
-        D --> E[PairsTrading];
-        D --> F[SMA Crossover];
-        D --> G[FillTracking];
-        D --> H[DoNothing];
+    subgraph core [C++ engine]
+        RING["SPSC lock-free ring<br/>(network thread hand-off)"]
+        BB["BarBuilder"]
+        STRAT["Strategies<br/>SMA / Pairs / Multi-factor"]
+        OM["OrderManager"]
+        BOOK["Full-depth order book<br/>FIFO queues - VWAP walks<br/>queue-position limit fills<br/>arena-backed containers"]
     end
-
-    subgraph "Execution Layer"
-        E --> I[Order Manager];
-        F --> I;
-        G --> I;
-        H --> I;
-        I --> J[Order Book];
-        J --> K[Fill Generation];
+    subgraph out [Analysis layer]
+        LOGS["equity + tradelog CSVs"]
+        TEAR["tearsheet.py<br/>(Sharpe, Calmar, turnover,<br/>alpha/beta, PDF)"]
+        RES["research artifacts<br/>(impact study, A/B audit)"]
     end
-
-    subgraph "Analysis Layer"
-        K --> L[Result Collection];
-        L --> M[Performance Analysis];
-        L --> N[Trade Analysis];
-        L --> O[Risk Analysis];
-    end
-
-    subgraph "Output Layer"
-        M --> P[Organized Results];
-        N --> P;
-        O --> P;
-        P --> Q[Reports & Plots];
-    end
+    PY --> CSV --> BB --> STRAT
+    ZMQ --> RING --> STRAT
+    STRAT --> OM --> BOOK --> LOGS --> TEAR --> RES
 ```
 
-## 📈 Strategy Showcase: PairsTrading
+**The microstructure core** (the thesis differentiator):
+- `OrderBookFullDepth` — price levels with FIFO order queues, O(1) queue-position
+  lookups, market orders that walk levels and return `(filled, VWAP)`,
+  per-order fill attribution so strategy orders consumed as makers get credited
+- **Queue-position-aware limit fills** — limit orders join the back of the
+  queue at their level; trade prints consume the FIFO ahead of them before
+  they fill; displayed L1 liquidity is conservatively modeled as always ahead
+- Both fill models live behind one config flag, which is what makes the A/B
+  audit a controlled experiment
 
-Our PairsTrading strategy demonstrates sophisticated statistical arbitrage capabilities. Here's a detailed analysis of AAPL-GOOG pair trading:
+**The quant stack** (beyond the microstructure work): a full cross-sectional
+factor pipeline — `UniverseFilter → MultiFactorCalculator →
+CrossSectionalRegression → ICMonitor → AlphaBlender → RiskModel →
+PortfolioBuilder (constrained QP: net/gross exposure, beta neutrality) →
+FactorExecutionEngine` — plus pairs trading and SMA-crossover strategies, all
+YAML-configured and unit-tested.
 
-### Individual Asset Analysis
+**The low-latency layer:**
+- [`qse::Arena`](include/qse/core/Arena.h) — fixed-capacity bump allocator
+  exposed as a `std::pmr::memory_resource`; one contiguous block up front, a
+  pointer bump per allocation, O(1) wholesale reset, instrumented
+  (high-water mark, allocation counts). The order book's containers are
+  pmr-backed, so a book built on an arena packs its nodes contiguously for
+  cache locality. Measured: **16–20× faster allocation**, 2.4× on the real
+  book-building workload.
+- [`qse::SPSCRingBuffer`](include/qse/core/SPSCRingBuffer.h) — lock-free
+  single-producer/single-consumer ring with `alignas(64)` on both indices
+  *and* each side's cached view of the opposite index (false-sharing defense),
+  acquire/release hand-off, and a batched `consume_all` drain.
+  [`LiveTickPipeline`](include/qse/messaging/LiveTickPipeline.h) wires it
+  between the ZeroMQ network thread and the strategy thread with visible
+  drop-counting backpressure. The benchmark reports the honest result:
+  throughput parity with a mutexed queue in chase mode (both are bound by the
+  same cache-line round-trip) — the win is **tail latency**, where the locked
+  design's p99 is 389× worse and its worst case tops a millisecond
+  (lock-holder preemption). Market-data hand-off is a tail-latency problem.
 
-**AAPL Trading Activity:**
-![AAPL Trade Prices](organized_runs/first_run/analysis/pairs_trading/AAPL_trade_prices_AAPL_GOOG.png)
+---
 
-**GOOG Trading Activity:**
-![GOOG Trade Prices](organized_runs/first_run/analysis/pairs_trading/GOOG_trade_prices_AAPL_GOOG.png)
+## Engineering quality
 
-### Combined Strategy Performance
+- **227 C++ tests** (GoogleTest, includes two 10M-item lock-free stress tests
+  with strict ordering + checksum) and **33 Python tests** (pytest, metrics
+  asserted to 4 decimals against hand-computed values)
+- **Three CI gates on every push:** build + full test suite, `clang-format`/
+  `black`/`flake8`, and a `clang-tidy` static-analysis gate
+  (warnings-as-errors) — all tool versions pip-pinned so local == CI
+- **Two compilers, two standards, two Arrow versions:** every push builds on
+  Apple clang (C++17, Arrow 20) and GCC 13 (C++20, Arrow 24), which has
+  caught real portability bugs including API deprecations invisible locally
+- **ThreadSanitizer** certifies the lock-free ring race-free over 10M items
+  on both consumer paths
+- **Determinism as a feature:** the Docker image reproduces native results
+  exactly, and every research artifact is reproducible run-to-run
+- **The gates caught real bugs**, including undefined behavior (a missing
+  return on `WeightsLoader`'s success path), 17 silently ignored Arrow
+  `Status` returns, an equity-recording path that had never been wired (every
+  historical equity CSV was header-only), and three `failbit` hacks that
+  silenced stdout in every binary
 
-**Synchronized Trading Activity:**
-![Combined Trade Activity](organized_runs/first_run/analysis/pairs_trading/combined_trade_activity_AAPL_GOOG.png)
+---
 
-**Price Distribution Analysis:**
-![Price Distributions](organized_runs/first_run/analysis/pairs_trading/price_distributions_AAPL_GOOG.png)
+## Run it
 
-### Strategy Insights
-- **Mean Reversion**: The strategy identifies when AAPL and GOOG prices deviate from their historical correlation
-- **Market Neutral**: Simultaneous long/short positions minimize market exposure
-- **Risk Management**: Position sizing based on volatility and correlation strength
-- **Performance**: Consistent returns with controlled drawdowns
-
-## 🐳 Running with Docker (zero setup)
-
-The fastest way to run the engine on any OS — no compiler, no libraries, just
-Docker:
+### Docker (zero setup, any OS)
 
 ```bash
-# Clone the repository (with the Eigen submodule)
 git clone --recurse-submodules <repository-url>
 cd Quantitative-Strategy-Engine-QSE-
-
-# Build the image and run a sample backtest
 docker build -t qse .
 docker run -v "$PWD/out:/results" qse
 ```
 
-That single `docker run` executes an SMA 20/50 crossover backtest over the
-bundled AAPL minute-tick data (~19k ticks in ~25 ms) and writes
-`equity_curve.csv`, `tradelog.csv`, and a full performance `tearsheet.pdf`
-into `./out/` on your machine.
+That single run executes the SMA 20/50 backtest over the bundled AAPL
+minute-tick data and writes `equity_curve.csv`, `tradelog.csv`, and a 3-page
+performance `tearsheet.pdf` into `./out/`.
 
-The image is a multi-stage build: stage 1 compiles the C++20 engine on the
-same `ubuntu:24.04` + Apache Arrow toolchain as CI; stage 2 ships only the
-binaries, runtime libraries, sample data, and the Python analysis stack.
-Other bundled tools are available too:
+### Native build (macOS / Linux)
 
 ```bash
-docker run -v "$PWD/out:/results" qse /app/bin/impact_sweep --out /results/impact.csv
-docker run -v "$PWD/out:/results" qse /app/bin/ab_audit --out-dir /results
+# deps: cmake, a C++17 compiler, arrow+parquet, protobuf, zeromq, yaml-cpp
+git clone --recurse-submodules <repository-url>
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j8
+cd build && ctest              # 227 tests
+./strategy_engine              # sample backtest (from repo root)
 ```
 
-## 🛠️ Installation & Setup
+### Reproduce the research
 
-### Prerequisites
 ```bash
-# Required dependencies
-- C++17 compatible compiler
-- CMake 3.15+
-- Python 3.8+
-- Required libraries: pandas, matplotlib, seaborn, numpy
+python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
+./venv/bin/python scripts/analysis/impact_study.py     # impact exponents
+./venv/bin/python scripts/analysis/slippage_audit.py   # phantom-profit audit
+./venv/bin/python scripts/analysis/tearsheet.py --equity equity_curve.csv \
+    --tradelog tradelog.csv --benchmark data/raw_AAPL.csv --out tearsheet.pdf
+./build/arena_bench && ./build/spsc_bench               # latency benchmarks
+./build/spsc_tsan_stress                                # TSan certification
 ```
 
-### Build Process
-```bash
-# Clone the repository
-git clone <repository-url>
-cd Quantitative-Strategy-Engine-QSE-
+---
 
-# Build the engine
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
-
-# Run tests
-ctest --verbose
-```
-
-### Python Environment Setup
-```bash
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Verify installation
-python3 -c "import pandas, matplotlib, seaborn, numpy; print('All dependencies installed')"
-```
-
-## Quick Start Guide
-
-### 1. Run Multi-Strategy Backtest
-```bash
-# From build directory
-cd build
-./engine/multi_strategy_main --config ../config.yaml
-```
-
-### 2. Organize Results
-```bash
-# Quick organization with timestamp
-./scripts/quick_organize.sh my_backtest
-
-# Full organization with analysis
-./scripts/organize_and_analyze.sh -n my_backtest -a
-```
-
-### 3. Analyze PairsTrading Strategy
-```bash
-# Comprehensive PairsTrading analysis
-python3 scripts/analysis/analyze_pairs_trading.py \
-    --organized-dir organized_runs/my_backtest \
-    --output-dir organized_runs/my_backtest/analysis/pairs_trading
-```
-
-### 4. View Results
-```bash
-# Check organized structure
-ls organized_runs/my_backtest/
-
-# View analysis reports
-cat organized_runs/my_backtest/analysis/summaries/run_summary.txt
-```
-
-## Analysis Capabilities
-
-### Performance Metrics
-- **Returns Analysis**: Total return, annualized return, risk-adjusted returns
-- **Risk Metrics**: Maximum drawdown, volatility, Value at Risk (VaR)
-- **Efficiency Ratios**: Sharpe ratio, Sortino ratio, Calmar ratio
-- **Trading Statistics**: Win rate, average trade P&L, trade frequency
-
-### Visualization Suite
-- **Equity Curves**: Portfolio value progression over time
-- **Trade Activity**: Buy/sell signal visualization with price context
-- **Performance Heatmaps**: Strategy comparison across multiple metrics
-- **Distribution Analysis**: Return and trade size distributions
-- **Position Tracking**: Real-time position and exposure monitoring
-
-### Report Generation
-- **JSON Reports**: Machine-readable performance data
-- **Executive Summaries**: Human-readable strategy analysis
-- **Comparative Analysis**: Multi-strategy performance comparison
-- **Risk Reports**: Detailed risk breakdown and scenario analysis
-
-## Result Organization
-
-The engine automatically organizes results into a structured hierarchy:
+## Repository map
 
 ```
-organized_runs/
-└── my_backtest_20241227_143022/
-    ├── README.md                    # Run documentation
-    ├── data/
-    │   ├── equity_curves/          # Portfolio value over time
-    │   ├── trade_logs/             # Detailed trade records
-    │   └── raw_data/               # Original input data
-    ├── plots/
-    │   ├── strategy_comparisons/   # Performance comparisons
-    │   ├── performance_heatmaps/   # Metric visualizations
-    │   └── individual_strategies/  # Strategy-specific plots
-    ├── analysis/
-    │   ├── reports/                # Detailed analysis reports
-    │   └── summaries/              # Executive summaries
-    ├── logs/                       # Execution logs
-    └── config/                     # Configuration files
+include/qse/, src/       C++17/20 engine: core, data, order, strategy, factor,
+                         messaging, exe + tools (impact_sweep, ab_audit, benches)
+tests/cpp/               227 GoogleTest cases incl. mocks and stress tests
+scripts/analysis/        tearsheet, impact study, slippage audit
+scripts/data/            download/process pipeline, forward-fill, corporate actions
+tests/python/            33 pytest cases with hand-computed expected values
+docs/research/           committed research artifacts (plots, summaries, PDFs)
+docs/benchmarks/         benchmark write-ups with reproduction commands
+docs/PROJECT_PHASES.md   full narrative: every phase, design rationale, results
+docs/TASK_BREAKDOWN.md   execution checklist with per-task done-when criteria
+config/                  YAML strategy configs + real corporate-actions history
 ```
 
-## Configuration
+## Documentation
 
-### Strategy Configuration
-```yaml
-strategies:
-  - name: PairsTrading
-    symbols: [AAPL, GOOG]
-    lookback_window: 20
-    entry_threshold: 2.0
-    exit_threshold: 0.5
-    position_size: 1000
-    
-  - name: SMACrossover
-    symbols: [SPY, QQQ]
-    short_window: 20
-    long_window: 50
-    position_size: 500
-```
+- **[PROJECT_PHASES.md](docs/PROJECT_PHASES.md)** — the whitepaper: all eleven
+  phases in detail, including the design rationale for every component above
+- **[TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md)** — the engineering log:
+  testable chunks, each with an explicit done-when criterion and its outcome
+- **[Benchmarks](docs/benchmarks/)** · **[Research artifacts](docs/research/microstructure/)**
 
-### Risk Management
-```yaml
-risk_management:
-  max_position_size: 10000
-  max_portfolio_exposure: 0.8
-  stop_loss: -0.05
-  take_profit: 0.10
-```
+## Status
 
-### Slippage Configuration
-```yaml
-slippage:
-  AAPL: 0.001
-  GOOG: 0.001
-  SPY: 0.0005
-  QQQ: 0.0005
-```
-
-## Testing & Validation
-
-### Unit Testing
-```bash
-# Run all tests
-cd build && ctest
-
-# Run specific test categories
-ctest -R "Strategy"     # Strategy tests
-ctest -R "OrderBook"    # Order book tests
-ctest -R "Integration"  # Integration tests
-```
-
-### Performance Testing
-```bash
-# Performance benchmarks
-./scripts/testing/performance_test.sh
-
-# Memory profiling
-valgrind --tool=massif ./engine/multi_strategy_main --config ../config.yaml
-```
-
-### Strategy Validation
-```bash
-# Validate strategy implementations
-./scripts/verify_strategies.sh
-
-# Debug specific strategy
-./scripts/testing/debug_crash.sh PairsTrading
-```
-
-## Advanced Usage
-
-### Custom Strategy Development
-```cpp
-class MyStrategy : public IStrategy {
-public:
-    void on_bar(const Bar& bar) override {
-        // Strategy logic here
-        if (should_enter_position(bar)) {
-            order_manager_->submit_order(create_entry_order(bar));
-        }
-    }
-    
-private:
-    bool should_enter_position(const Bar& bar);
-    Order create_entry_order(const Bar& bar);
-};
-```
-
-### Custom Analysis Scripts
-```python
-# Load organized results
-equity_data, trade_data = load_pairs_trading_data("organized_runs/my_run")
-
-# Custom analysis
-analysis = analyze_pairs_trading_trades(trade_data)
-create_custom_plots(analysis, "custom_output/")
-```
-
-### Distributed Execution
-```bash
-# Run multiple configurations in parallel
-./scripts/execution/run_multi_symbol.sh
-./scripts/analysis/analyze_multi_run.py
-```
-
-## Troubleshooting
-
-### Common Issues
-
-**Build Errors:**
-```bash
-# Clean build
-rm -rf build && mkdir build && cd build
-cmake .. && make clean && make -j
-```
-
-**Missing Dependencies:**
-```bash
-# Install missing packages
-sudo apt-get install cmake build-essential python3-dev
-pip3 install --upgrade -r requirements.txt
-```
-
-**Memory Issues:**
-```bash
-# Reduce data size for testing
-python3 scripts/testing/test_with_subset.py --symbols AAPL,GOOG --days 30
-```
-
-### Performance Optimization
-- Use Release build for production: `cmake -DCMAKE_BUILD_TYPE=Release ..`
-- Enable parallel processing: `make -j$(nproc)`
-- Optimize data loading: Use Parquet format for large datasets
-
-## Contributing
-
-We welcome contributions! Please see our contributing guidelines:
-
-1. **Fork the repository**
-2. **Create feature branch**: `git checkout -b feature/amazing-strategy`
-3. **Add tests**: Ensure your code is well-tested
-4. **Update documentation**: Include README updates for new features
-5. **Submit pull request**: Provide detailed description of changes
-
-### Development Setup
-```bash
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run pre-commit hooks
-pre-commit install
-pre-commit run --all-files
-```
-
-## License
-
-All Rights Reserved License
-
-Copyright (c) 2025 Marcus Myrick  
-All rights reserved.
-
-This software and all associated files (the “Software”) are made publicly available **for viewing purposes only**.
-
-You are **not permitted** to:
-- Use the Software for any purpose
-- Copy, modify, or create derivative works based on the Software
-- Distribute, sublicense, or resell the Software
-- Use any part of the code in commercial or non-commercial projects
-
-Any unauthorized use, reproduction, or distribution of this Software is strictly prohibited and may be subject to legal action.
-
-For inquiries about licensing or usage, please contact:
-**marcusjmyrick@gmail.com**
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+Complete: microstructure engine, factor stack, data-quality pipeline,
+research artifacts, low-latency layer, CI/format/lint gates, Docker.
+In progress: live paper-trading integration (Alpaca) on top of the
+lock-free tick pipeline, and the thesis write-up. The full plan and its
+state live in [TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).

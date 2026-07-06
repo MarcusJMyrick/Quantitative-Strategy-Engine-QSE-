@@ -353,8 +353,10 @@ a live brokerage session.
 
 **Goal:** make the work legible to recruiters, professors, and hiring managers.
 
-- **11.1 Whitepaper README (F1).** Architecture diagram, headline benchmarks,
-  tearsheet and audit figures, quickstart that works from a fresh clone.
+- **11.1 Whitepaper README ✅ (F1, done 2026-07-06).** Full rewrite: findings
+  table with every measured number, the A/B audit as the flagship section
+  with committed figures, Mermaid architecture, engineering-quality evidence,
+  and three quickstart paths (Docker, native, reproduce-the-research).
 - **11.2 Notebook walkthrough (F2).** Jupyter demo: run the C++ engine,
   load results, render the tearsheet inline — executes clean via
   `nbconvert --execute`.

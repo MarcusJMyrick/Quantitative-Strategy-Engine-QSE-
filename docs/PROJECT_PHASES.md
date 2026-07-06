@@ -354,9 +354,9 @@ thesis.
   venue. The engine is venue-agnostic (any drain source, any
   IExecutionHandler), so the strategy logic is identical between backtest and
   live — the entire point of event-driven design. Verified with mock-venue
-  unit tests both ways (match and mismatch) plus a clean live session against
-  production endpoints; the market-hours fill-reconciliation session is the
-  remaining manual step.
+  unit tests both ways (match and mismatch) plus a live market-hours
+  session (2026-07-06): five crossover signals, five real paper fills, and a
+  5/5 per-order reconciliation match against the venue.
 
 **Proves:** full-stack capability — the same code path from historical CSV to
 a live brokerage session.

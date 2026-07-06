@@ -205,7 +205,7 @@ to this checklist — full phase descriptions including completed work — is
   limit, verifiable in the dashboard (guards confirmed: refuses without
   --paper or keys).
 
-### E3. ✅ Live mode (done 2026-07-06; market-hours fill session pending)
+### E3. ✅ Live mode (done 2026-07-06; VERIFIED LIVE: 5 signals, 5 fills, 5/5 orders reconciled local==venue in a 15-min market-hours session)
 - Built as the `live_engine` tool: `AlpacaMarketDataFeed` (REST latest-quote
   polling on a producer thread — chosen over a websocket dependency; same
   ring architecture, transport swappable later) → **G2 SPSC ring** →

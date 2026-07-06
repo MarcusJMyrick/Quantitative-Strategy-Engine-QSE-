@@ -50,6 +50,11 @@ public:
 
     /// Registers the asynchronous fill stream.
     virtual void set_fill_callback(FillCallback callback) = 0;
+
+    /// Venues where fills arrive by polling (REST) override this and emit
+    /// any new fills through the callback; venues with synchronous or push
+    /// fills keep the no-op. Returns the number of fills emitted.
+    virtual std::size_t poll_fills() { return 0; }
 };
 
 } // namespace qse

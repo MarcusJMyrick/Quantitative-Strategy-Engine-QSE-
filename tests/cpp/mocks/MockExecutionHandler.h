@@ -18,6 +18,7 @@ public:
                 (const OrderId& order_id, Volume new_quantity, Price new_limit_price), (override));
     MOCK_METHOD(std::optional<Order>, get_order, (const OrderId& order_id), (const, override));
     MOCK_METHOD(void, set_fill_callback, (FillCallback callback), (override));
+    MOCK_METHOD(std::size_t, poll_fills, (), (override));
 };
 
 } // namespace qse

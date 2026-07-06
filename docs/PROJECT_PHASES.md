@@ -346,11 +346,17 @@ thesis.
   zero network in CI). Credentials only from the official APCA_* environment
   variables; the `alpaca_smoke --paper` tool performs the manual
   place-and-cancel dashboard verification.
-- **10.3 Live mode (E3).** `--mode live`: Alpaca market-data websocket →
-  **SPSC ring buffer (Phase 8)** → the existing `BarBuilder`/strategy
-  pipeline → `AlpacaExecutionHandler`. The tick-driven architecture from
-  Phase 3 means the strategy code does not change between backtest and live —
-  which is the entire point of event-driven design.
+- **10.3 Live mode ✅ (E3, done 2026-07-06).** The `live_engine` tool:
+  Alpaca REST quote feed (producer thread; chosen over a websocket dependency
+  — same architecture, transport swappable) → **SPSC ring buffer (Phase 8)**
+  → `BarBuilder`/SMA strategy → `AlpacaExecutionHandler`, with local
+  order/fill logs and an end-of-session per-order reconciliation against the
+  venue. The engine is venue-agnostic (any drain source, any
+  IExecutionHandler), so the strategy logic is identical between backtest and
+  live — the entire point of event-driven design. Verified with mock-venue
+  unit tests both ways (match and mismatch) plus a clean live session against
+  production endpoints; the market-hours fill-reconciliation session is the
+  remaining manual step.
 
 **Proves:** full-stack capability — the same code path from historical CSV to
 a live brokerage session.

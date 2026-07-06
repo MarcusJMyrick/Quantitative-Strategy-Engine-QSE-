@@ -5,8 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** E3 → F2 → F3 → F4 (A5 optional)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2
+**Remaining work, recommended order:** F2 → F3 → F4 (A5 optional)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3
 
 ---
 
@@ -21,7 +21,7 @@ to this checklist — full phase descriptions including completed work — is
 | **OrderBookFullDepth** | ✅ Committed 2026-07-04: all 38 tests pass (PriceLevel, QueuePosition, Impact) |
 | 5 Data & tearsheet | ✅ Track B complete 2026-07-05 (B1 ffill, B2 corporate actions, B3 tearsheet) |
 | 6 CI / format / lint | ✅ Track C complete 2026-07-05 (CI, hygiene, format, clang-tidy gates) |
-| 7 Live trading | ❌ Not started |
+| 7 Live trading | ✅ Track E complete 2026-07-06 (IExecutionHandler, Alpaca REST handler, live_engine with reconciliation) |
 | 8 Presentation | ❌ Not started |
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
@@ -205,12 +205,25 @@ to this checklist — full phase descriptions including completed work — is
   limit, verifiable in the dashboard (guards confirmed: refuses without
   --paper or keys).
 
-### E3. Live mode
-- `qse_app --mode live`: Alpaca market-data websocket → existing `BarBuilder`
-  → strategy → `AlpacaExecutionHandler`. Reuses the tick pipeline you already
-  built for ZeroMQ.
-- **Done when:** SMA strategy runs against live paper data for a session and
-  the resulting Alpaca paper fills reconcile with the local trade log.
+### E3. ✅ Live mode (done 2026-07-06; market-hours fill session pending)
+- Built as the `live_engine` tool: `AlpacaMarketDataFeed` (REST latest-quote
+  polling on a producer thread — chosen over a websocket dependency; same
+  ring architecture, transport swappable later) → **G2 SPSC ring** →
+  `LiveEngine` (BarBuilder → SMA crossover → any `IExecutionHandler`,
+  venue-agnostic via a drain function) → `AlpacaExecutionHandler` with
+  `poll_fills` (now a default-no-op on the interface). Local orders/fills
+  CSVs + `reconcile()` compares per-order venue fill quantity against the
+  local log; SIGINT-clean; PAPER-only guard.
+- Verified: 6 new tests (golden cross submits exactly one buy through the
+  mock venue, fills recorded, reconciliation match AND mismatch paths, symbol
+  filtering, feed parsing/dedup vs a fake HTTP client) — 249/249 ctest, tidy
+  clean. A 1-minute live session against production endpoints ran the full
+  loop cleanly (market closed: quotes correctly deduped, 0 bars, vacuous
+  reconcile, exit 0).
+- Remaining half of done-when (needs market hours):
+  `set -a; source .env; set +a && ./build/live_engine --paper --minutes 10`
+  during US trading hours — expect crossover orders, fills, and
+  `RECONCILED: local log matches the venue`.
 
 ---
 

@@ -83,6 +83,8 @@ add_library(qse SHARED
     src/exe/FactorExecutionEngine.cpp
     src/exe/CurlHttpClient.cpp
     src/exe/AlpacaExecutionHandler.cpp
+    src/live/AlpacaMarketDataFeed.cpp
+    src/live/LiveEngine.cpp
     ${PROTO_SRCS}
 )
 
@@ -158,6 +160,7 @@ add_executable(run_tests
     tests/cpp/SPSCRingBufferTest.cpp
     tests/cpp/ExecutionHandlerTest.cpp
     tests/cpp/AlpacaExecutionHandlerTest.cpp
+    tests/cpp/LiveEngineTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp
@@ -219,6 +222,10 @@ target_link_libraries(spsc_bench PRIVATE qse_math Threads::Threads)
 # Manual Alpaca paper-trading smoke test (E2) - never run in CI
 add_executable(alpaca_smoke src/tools/alpaca_smoke.cpp)
 target_link_libraries(alpaca_smoke PRIVATE qse)
+
+# Live paper-trading session runner (E3) - never run in CI
+add_executable(live_engine src/tools/live_engine.cpp)
+target_link_libraries(live_engine PRIVATE qse)
 
 # ThreadSanitizer harness for the lock-free ring buffer (G2): a clean run
 # certifies the acquire/release protocol has no data race

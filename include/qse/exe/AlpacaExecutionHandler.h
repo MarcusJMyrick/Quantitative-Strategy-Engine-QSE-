@@ -53,7 +53,7 @@ public:
 
     /// Polls every tracked (non-terminal) order and emits a Fill for newly
     /// executed quantity. Returns the number of fills emitted.
-    std::size_t poll_fills();
+    std::size_t poll_fills() override;
 
 private:
     std::vector<std::string> auth_headers() const;

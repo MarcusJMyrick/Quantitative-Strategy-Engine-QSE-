@@ -1,0 +1,22 @@
+{
+  "generated": "2026-07-06",
+  "window": 60,
+  "n_assets": 15,
+  "mode": "mp",
+  "lambda_plus": 2.25,
+  "windows_evaluated": 1432,
+  "span": [
+    "2020-10-20",
+    "2026-07-06"
+  ],
+  "mp_count": {
+    "min": 1,
+    "median": 1.0,
+    "max": 2
+  },
+  "top_eigenvalue": {
+    "median": 7.1132734337129,
+    "median_variance_share": 0.4742182289141933
+  },
+  "as_of_alignment": "The window ending at date t covers r_{t-60+1}..r_t; eigenvalues, weights, and the date-t factor return use data <= t only. Consumers must not execute before t+1."
+}

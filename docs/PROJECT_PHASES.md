@@ -500,10 +500,15 @@ mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
   zero NaNs; the as-of alignment (trailing window, warm-up dropped, trade
   ≥ t+1) is documented in docs/research/statarb/ and enforced by a
   causality test — appending future data leaves emitted rows bit-identical.
-- **12.2 Rolling PCA + principled factor count (QR4.2).** Eigendecomposition
-  of the rolling correlation matrix; retained-factor count from the
-  **Marchenko-Pastur cutoff** `λ+ = (1 + √q)²` (random-matrix theory), not an
-  arbitrary constant; eigenportfolio weights and factor returns.
+- **12.2 Rolling PCA + principled factor count ✅ (QR4.2, done 2026-07-06).**
+  Eigendecomposition of the rolling correlation matrix; retained-factor
+  count from the **Marchenko-Pastur cutoff** `λ+ = (1 + √q)² = 2.25`, not an
+  arbitrary constant. On the real universe the market eigenvalue clears the
+  noise edge in every window (median 47.4% of variance); MP retains 1
+  factor in 86% of windows and 2 in 14%, while the explain-55%-variance
+  comparison rule wobbles between 1 and 4 — the arbitrariness MP removes.
+  Block-matrix eigenvector recovery, pure-noise rejection, and causality
+  all unit-tested; spectrum plot committed to docs/research/statarb/.
 - **12.3 Idiosyncratic residuals (QR4.3).** Regress each name on the retained
   factor returns; the cumulative residual is the tradeable process, verified
   orthogonal to the factors in-window.

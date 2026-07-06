@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1 universe done 2026-07-06 (1,432×15 standardized matrix, zero NaNs) |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1 universe + QR4.2 rolling PCA done 2026-07-06 (MP retains 1–2 factors; market mode 47% of variance) |
 
 ---
 
@@ -358,17 +358,30 @@ edge — the one item in the track with a real shot at net-positive PnL.
   (AAPL split day +3.4% adjusted vs −75% raw). 46/46 pytest;
   black/flake8 gates clean.
 
-#### QR4.2 Rolling PCA + eigenvalue count
-- On each rolling window (start ~60 trading days), compute the correlation
-  matrix of `Y` and its eigendecomposition. Retained-factor count is
-  **principled, not arbitrary**: Marchenko-Pastur cutoff — for ratio
-  `q = N/T`, noise eigenvalues fall below `λ+ = (1 + √q)²`; keep eigenvalues
-  above it. Also support a fixed-count mode for comparison (e.g.
-  Avellaneda-Lee's 15 or "explain ~55% variance"). Form eigenportfolio weights
-  `Q_i^(j) = v_i^(j)/σ_i` and their returns (the factor returns).
-- **Done when:** a unit test recovers the known top eigenvector of a synthetic
-  block-correlated matrix; the MP cutoff drops pure-noise columns on a
-  simulated noise matrix.
+#### QR4.2 ✅ Rolling PCA + eigenvalue count (done 2026-07-06)
+- Landed as `scripts/research/statarb/rolling_pca.py`: per trailing 60-day
+  window, eigendecomposition of the window correlation matrix (within-window
+  standardization is implicit — the corr matrix of raw returns IS the
+  covariance of standardized returns), retained-factor count via the
+  **Marchenko-Pastur cutoff** `λ+ = (1+√(N/T))² = 2.25`, with fixed-count and
+  explain-X%-variance comparison modes. Eigenportfolio weights `Q = v/σ`
+  (deterministic eigenvector sign convention; residuals are sign-invariant),
+  factor returns emitted long-format with no NaN padding. Same as-of contract
+  as QR4.1 (window trailing-inclusive, consumers trade ≥ t+1), plus
+  `pca_for_window` exposing everything QR4.3's residual regression needs.
+- Measured on the real universe (1,432 windows): the market eigenvalue
+  clears the noise edge in **every** window (median λ₁ = 7.11 = 47.4% of
+  variance); **MP retains 1 factor in 86% of windows, 2 in 14%**, while the
+  explain-55% rule wobbles 1–4 — the arbitrariness MP removes, demonstrated.
+  Committed plot: `docs/research/statarb/eigen_spectrum.png`.
+- Done-when verified: 11 pytest cases — the top eigenvector of a synthetic
+  block-correlated matrix recovered analytically (equicorrelated block ⇒
+  uniform eigenvector, λ₁ = 1+(N−1)ρ) and structurally (loads on the
+  correlated block, ~0 on the noise block); the MP cutoff retains **0**
+  factors on pure noise and exactly 1 on a planted factor; inverse-vol
+  weights + factor returns in closed form on a perfect-correlation pair;
+  causality (future data leaves emitted windows bit-identical). 57/57
+  pytest; black/flake8 clean.
 
 #### QR4.3 Idiosyncratic residuals
 - Regress each name's returns on the retained factor returns to get betas;

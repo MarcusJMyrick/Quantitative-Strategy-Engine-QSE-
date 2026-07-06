@@ -33,12 +33,17 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 # --- nlohmann/json (header-only, for the Alpaca REST handler) ---
-FetchContent_Declare(
-    nlohmann_json
-    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(nlohmann_json)
+# On Ubuntu, Arrow's CMake config already finds the system nlohmann_json and
+# creates the imported target; fetching it again would collide. Fetch only
+# when nothing has provided the target yet (e.g. macOS/homebrew Arrow 20).
+if(NOT TARGET nlohmann_json::nlohmann_json)
+    FetchContent_Declare(
+        nlohmann_json
+        URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(nlohmann_json)
+endif()
 
 # --- Protocol Buffers Code Generation ---
 set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/messaging)

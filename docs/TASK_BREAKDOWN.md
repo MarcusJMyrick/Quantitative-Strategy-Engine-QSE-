@@ -142,7 +142,8 @@ to this checklist — full phase descriptions including completed work — is
 - Done-when verified: gate exits 0 over 38 TUs locally (and in the CI job),
   exits 1 with a planted finding. 211/211 ctest after fixes.
 - Found but out of scope: `src/engine/CLI.cpp` and `src/main.cpp` are dead
-  files not built by any target and do not compile — candidates for deletion.
+  files not built by any target and do not compile — deleted 2026-07-05 after
+  verifying no references in CMakeLists.txt, scripts/, docs/, or CI.
 
 ### C4. ✅ Repo hygiene (done 2026-07-04; root analyze_pairs_trading.py left in place — differs from scripts/analysis copy, needs manual merge)
 - `.gitignore` for `build/`, `venv/`, `Testing/`, `*.log`, `organized_runs/`,

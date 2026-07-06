@@ -17,6 +17,9 @@ find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZeroMQ REQUIRED libzmq)
 
+# libcurl for the Alpaca REST execution handler (E2)
+find_package(CURL REQUIRED)
+
 # Add Eigen as a subdirectory
 add_subdirectory(third-party/eigen)
 
@@ -28,6 +31,14 @@ FetchContent_Declare(
     GIT_TAG release-1.12.1
 )
 FetchContent_MakeAvailable(googletest)
+
+# --- nlohmann/json (header-only, for the Alpaca REST handler) ---
+FetchContent_Declare(
+    nlohmann_json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
 # --- Protocol Buffers Code Generation ---
 set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/messaging)
@@ -70,6 +81,8 @@ add_library(qse SHARED
     src/factor/RiskModel.cpp
     src/factor/PortfolioBuilder.cpp
     src/exe/FactorExecutionEngine.cpp
+    src/exe/CurlHttpClient.cpp
+    src/exe/AlpacaExecutionHandler.cpp
     ${PROTO_SRCS}
 )
 
@@ -93,6 +106,11 @@ target_link_libraries(qse PUBLIC
     ${Protobuf_LIBRARIES}
     GTest::gtest
     GTest::gmock
+    # Link the curl library only (not CURL::libcurl): the imported target
+    # injects the macOS SDK include dir ahead of the C++ standard headers,
+    # which breaks libc++; curl headers are on default paths everywhere
+    ${CURL_LIBRARIES}
+    nlohmann_json::nlohmann_json
     ${ZeroMQ_LIBRARIES}
 )
 
@@ -139,6 +157,7 @@ add_executable(run_tests
     tests/cpp/ArenaTest.cpp
     tests/cpp/SPSCRingBufferTest.cpp
     tests/cpp/ExecutionHandlerTest.cpp
+    tests/cpp/AlpacaExecutionHandlerTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp
@@ -196,6 +215,10 @@ target_link_libraries(arena_bench PRIVATE qse)
 
 add_executable(spsc_bench src/tools/spsc_bench.cpp)
 target_link_libraries(spsc_bench PRIVATE qse_math Threads::Threads)
+
+# Manual Alpaca paper-trading smoke test (E2) - never run in CI
+add_executable(alpaca_smoke src/tools/alpaca_smoke.cpp)
+target_link_libraries(alpaca_smoke PRIVATE qse)
 
 # ThreadSanitizer harness for the lock-free ring buffer (G2): a clean run
 # certifies the acquire/release protocol has no data race

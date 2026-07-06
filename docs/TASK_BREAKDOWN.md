@@ -5,8 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** E2 → E3 → F2 → F3 → F4 (A5 optional)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1
+**Remaining work, recommended order:** E3 → F2 → F3 → F4 (A5 optional)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2
 
 ---
 
@@ -187,12 +187,23 @@ to this checklist — full phase descriptions including completed work — is
   handler-vs-direct equivalence check on cash+position). 235/235 ctest;
   tidy/format gates clean.
 
-### E2. `AlpacaExecutionHandler`
-- REST calls to Alpaca paper API (libcurl + nlohmann/json); API keys from
-  `.env`/environment, never committed.
-- **Done when:** unit tests run against a mock HTTP layer (no network in CI);
-  a manual `--paper` smoke test places and cancels one order in the Alpaca
-  dashboard.
+### E2. ✅ `AlpacaExecutionHandler` (done 2026-07-06; manual dashboard smoke pending user's keys)
+- Implements the E1 interface over the Alpaca paper REST API: submit
+  market/limit (POST /v2/orders), cancel (DELETE), replace (PATCH, new-id
+  fill-count carryover), get_order with full status/field mapping (Alpaca's
+  stringified numbers and nulls handled), and a polling fill stream
+  (`poll_fills` emits deltas once, untracks terminal orders). HTTP behind an
+  `IHttpClient` seam: `CurlHttpClient` (libcurl) in production, gmock in
+  tests — zero network in CI. Credentials only from APCA_API_KEY_ID /
+  APCA_API_SECRET_KEY env (`from_env` throws if missing; .env.example
+  documents them). Deps wired everywhere: CMake (curl lib + FetchContent
+  nlohmann 3.11.3), both CI jobs, both Docker stages — Linux builder verified.
+- Done-when: 8 mock-HTTP unit tests green (endpoints, auth headers, payloads,
+  rejection, status mapping, no-duplicate fill polling); 243/243 ctest.
+  Manual half: run `APCA_API_KEY_ID=... APCA_API_SECRET_KEY=...
+  ./build/alpaca_smoke --paper` — places and cancels a 1-share $1.00 AAPL
+  limit, verifiable in the dashboard (guards confirmed: refuses without
+  --paper or keys).
 
 ### E3. Live mode
 - `qse_app --mode live`: Alpaca market-data websocket → existing `BarBuilder`

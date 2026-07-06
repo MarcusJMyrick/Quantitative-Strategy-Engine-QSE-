@@ -339,9 +339,13 @@ thesis.
   1:1 onto Alpaca's REST API; `SimulatedExecutionHandler` puts the real
   backtest fill engine behind it, verified equivalent to direct OrderManager
   use; gmock contract tests prove callers need only the interface.
-- **10.2 Alpaca paper trading (E2).** `AlpacaExecutionHandler` speaks REST to
-  the free Alpaca paper API (keys from `.env`, never committed); unit tests
-  run against a mocked HTTP layer so CI needs no network.
+- **10.2 Alpaca paper trading ✅ (E2, done 2026-07-06).**
+  `AlpacaExecutionHandler` implements the E1 contract over the Alpaca paper
+  REST API — submit/cancel/replace/query plus a polling fill stream —
+  behind an injected `IHttpClient` (libcurl in production, gmock in tests,
+  zero network in CI). Credentials only from the official APCA_* environment
+  variables; the `alpaca_smoke --paper` tool performs the manual
+  place-and-cancel dashboard verification.
 - **10.3 Live mode (E3).** `--mode live`: Alpaca market-data websocket →
   **SPSC ring buffer (Phase 8)** → the existing `BarBuilder`/strategy
   pipeline → `AlpacaExecutionHandler`. The tick-driven architecture from

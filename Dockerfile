@@ -17,6 +17,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y -V \
         ca-certificates lsb-release wget pkg-config build-essential cmake git \
         libprotobuf-dev protobuf-compiler libzmq3-dev libyaml-cpp-dev \
+        libcurl4-openssl-dev \
     && wget -q "https://packages.apache.org/artifactory/arrow/$(lsb_release --id --short | tr 'A-Z' 'a-z')/apache-arrow-apt-source-latest-$(lsb_release --codename --short).deb" \
     && apt-get install -y -V ./apache-arrow-apt-source-latest-*.deb \
     && rm ./apache-arrow-apt-source-latest-*.deb \
@@ -41,6 +42,7 @@ RUN apt-get update && apt-get install -y -V ca-certificates lsb-release wget \
     && rm ./apache-arrow-apt-source-latest-*.deb \
     && apt-get update && apt-get install -y -V \
         libarrow-dev libparquet-dev libprotobuf-dev libzmq3-dev libyaml-cpp-dev \
+        libcurl4-openssl-dev \
         python3 python3-pandas python3-numpy python3-matplotlib \
     && rm -rf /var/lib/apt/lists/*
 

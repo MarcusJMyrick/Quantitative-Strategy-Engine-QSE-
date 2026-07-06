@@ -5,7 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** F2 → F3 → F4
+**Remaining work, recommended order:** F2 → F3 → Track QR (QR-P1 → QR-P2 → QR-P3 → QR-P4 → QR-P5) → F4
+(F4 deliberately moves last: the QR track supplies its sharpened research question, methodology, and results.)
 **Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5
 
 ---
@@ -26,6 +27,7 @@ to this checklist — full phase descriptions including completed work — is
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | ❌ Not started — Track QR added 2026-07-06 |
 
 ---
 
@@ -300,6 +302,299 @@ backtester hallucinates.*
   headline number ("naive backtest overstates Sharpe by X% at size Y") is
   stated in the summary.
 
+## Track QR — Quantitative Research & Signal Intelligence 🎓
+
+*The research half of the artifact: from a systems-and-execution engine to a
+strategy-discovery stack with the statistical guardrails to trust its own
+results. Narrative companion: [PROJECT_PHASES.md](PROJECT_PHASES.md)
+Phases 12–16.*
+
+**The rule that governs this whole track:** "Profitable in Alpaca paper" is
+not a result — paper fills are near-mid, instant, effectively infinite
+liquidity, and H1 already proved what that hides: identical SMA signals went
+from +$153k / Sharpe 1.93 (naive) to −$661k / Sharpe −5.26 once orders walk
+the book at 25k shares/signal. A strategy is *viable* only if it survives
+**Engine B** (VWAP-walk market orders + FIFO queue-position limit fills)
+**and** clears a Sharpe **deflated for the number of configurations tried**
+(QR-P2). Everything else is a candidate, not a result. Work the phases in
+order — they are sequenced by expected value: the profit candidate first
+(QR-P1), the honesty layer before tuning anything (QR-P2), then the risk
+overlay (QR-P3), execution timing (QR-P4), and the ML capstone last, gated
+behind QR-P2 by design (QR-P5).
+
+### QR-P1 — Alpha Discovery: eigen stat arb + baselines (QR4) 🎓
+
+*Avellaneda-Lee residual reversion: rolling PCA on a liquid universe, model
+each name's idiosyncratic residual as a mean-reverting Ornstein-Uhlenbeck
+process, trade the standardized deviation (s-score), stay dollar-neutral.
+Market-neutral, daily frequency (inside what Alpaca can execute), documented
+edge — the one item in the track with a real shot at net-positive PnL.
+**Prove it on 10–15 names before scaling to 100.***
+
+#### QR4.1 Universe + returns matrix
+- Pick 10–15 liquid names in one sector first (correlated → PCA has structure
+  to find). Pull adjusted daily bars through the existing corporate-actions
+  (B2) + ffill (B1) pipeline. Build a returns matrix `R` (T×N), standardize
+  per name `Y_i = (R_i − mean_i)/std_i` over the rolling window.
+- Files: new `scripts/research/statarb/build_universe.py`
+- **Done when:** the script emits a clean standardized-returns Parquet with no
+  NaNs and a documented as-of alignment (no forward-looking bars in any
+  window).
+
+#### QR4.2 Rolling PCA + eigenvalue count
+- On each rolling window (start ~60 trading days), compute the correlation
+  matrix of `Y` and its eigendecomposition. Retained-factor count is
+  **principled, not arbitrary**: Marchenko-Pastur cutoff — for ratio
+  `q = N/T`, noise eigenvalues fall below `λ+ = (1 + √q)²`; keep eigenvalues
+  above it. Also support a fixed-count mode for comparison (e.g.
+  Avellaneda-Lee's 15 or "explain ~55% variance"). Form eigenportfolio weights
+  `Q_i^(j) = v_i^(j)/σ_i` and their returns (the factor returns).
+- **Done when:** a unit test recovers the known top eigenvector of a synthetic
+  block-correlated matrix; the MP cutoff drops pure-noise columns on a
+  simulated noise matrix.
+
+#### QR4.3 Idiosyncratic residuals
+- Regress each name's returns on the retained factor returns to get betas;
+  the residual `ε_i` is the idiosyncratic return. Form the cumulative residual
+  `X_i(t) = Σ ε_i` — this is the process you trade.
+- **Done when:** residuals are (approximately) orthogonal to the retained
+  factors in-window (test the max abs correlation is below tolerance).
+
+#### QR4.4 OU fit + s-score
+- Fit AR(1) to the discrete cumulative residual `X_{n+1} = a + b·X_n + ζ`
+  (OLS). Back out, with step `Δt` (e.g. 1/252): mean-reversion speed
+  `κ = −ln(b)/Δt`, equilibrium level `m = a/(1−b)`, equilibrium std
+  `σ_eq = √( Var(ζ)/(1−b²) )`, and **s-score** `s_i = (X_i − m_i)/σ_eq,i`.
+- **Speed filter (critical):** require mean-reversion time `τ = 1/κ` short vs
+  the window — reject names where reversion is slower than ~half the
+  estimation window (`b` too close to 1). Slow reversion = spurious signal.
+- **Done when:** on a simulated OU path with known `(κ, m, σ)`, the estimator
+  recovers them within tolerance; names with `b→1` are filtered out.
+
+#### QR4.5 Signals + dollar-neutral weights
+- Avellaneda-Lee default rules (**starting points only — these thresholds are
+  exactly the overfitting-prone knobs QR-P2 must protect**): open long if
+  `s < −1.25`; open short if `s > +1.25`; close long if `s > −0.50`; close
+  short if `s < +0.75` (asymmetric = drift-aware). Convert active positions
+  into **dollar-neutral daily target weights** (gross cap, net ≈ 0), written
+  to the same weight-file format `WeightsLoader` / `FactorExecutionEngine`
+  already consume.
+- **Done when:** the Python pipeline emits daily target-weight files the C++
+  engine loads unchanged; net exposure ≈ 0 each day within tolerance.
+
+#### QR4.6 Cheap baselines (the floor)
+- Add two baselines to `MultiFactorCalculator` for honest comparison:
+  cross-sectional short-term reversal (buy losers / sell winners) and 12-1
+  momentum. If the eigen stat arb can't beat *reversal* net of Engine B
+  costs, that's a finding — the fancy version isn't earning its complexity.
+- **Done when:** all three (stat arb, reversal, momentum) run through the
+  same harness and produce comparable tearsheets.
+
+#### QR4.7 Survive Engine B
+- Run QR4 through `ab_audit` at 1×/10×/50× size regimes (Engine A naive vs
+  Engine B full-depth). Generate the tearsheet.
+- **Done when:** `ab_audit` + `tearsheet.py` run clean; the summary states the
+  net Sharpe under **Engine B** at each size. (Positive-but-modest is the
+  win; a clean negative with the phantom-cost decomposition is still a
+  result.)
+
+### QR-P2 — The Truth Serum: CPCV + Deflated Sharpe (QR2) 🎓
+
+*Financial time series have heavy serial correlation, so vanilla k-fold CV
+leaks the future into the past — and if you test 1,000 threshold
+combinations, the best is almost always a fluke. CPCV produces a distribution
+of out-of-sample Sharpes; the DSR consumes that distribution's variance plus
+the trial count. Build before tuning anything: it judges QR4 and everything
+after, including the ML layer. This is the section a skeptical PM checks
+first.*
+
+#### QR2.1 Purge + embargo primitives
+- Purging: drop training samples whose label/evaluation window overlaps the
+  test window. Embargo: drop a fraction of training samples immediately
+  *after* each test block, to stop forward leakage from serial correlation.
+- **Done when:** `pytest` proves no training index's evaluation window
+  overlaps any test window, and the embargo removes exactly the configured
+  fraction.
+
+#### QR2.2 Combinatorial path generation (CPCV)
+- Partition the series into `N` blocks; choose `k` as test, rest as train →
+  `C(N,k)` splits. Reconstruct the `C(N−1,k−1)` full out-of-sample **backtest
+  paths** from the recombined test blocks. Each path is a complete equity
+  curve → a *distribution* of Sharpes, not a single point estimate.
+- **Done when:** a test confirms the correct number of splits/paths for small
+  `(N,k)` and that every observation appears in the test set the expected
+  number of times.
+
+#### QR2.3 Trial registry
+- Every backtest variation (each s-score threshold set, window length, factor
+  count, etc.) logs its params **and its return series** to a registry, so
+  the variance of Sharpe across trials is computable. This is infrastructure
+  — the DSR is only meaningful if trial count and dispersion are real.
+- **Done when:** running a parameter sweep populates a registry directory; a
+  loader reconstructs `{params → return series}` for all trials.
+
+#### QR2.4 PSR → DSR
+- **PSR** (Probabilistic Sharpe Ratio), the building block:
+  `PSR(SR*) = Z[ (SR − SR*)·√(n−1) / √(1 − skew·SR + ((kurt−1)/4)·SR²) ]`
+  where `n` = number of returns, `skew`/`kurt` from the return distribution,
+  `Z` the standard-normal CDF — probability the true Sharpe exceeds `SR*`.
+- **DSR** = `PSR(SR*₀)` with the benchmark set to the **expected max Sharpe
+  under the null** across `N` trials:
+  `SR*₀ = √(V[SR]) · [ (1−γ)·Z⁻¹(1 − 1/N) + γ·Z⁻¹(1 − 1/(N·e)) ]`
+  where `V[SR]` = variance of Sharpes across trials, `γ ≈ 0.5772`
+  (Euler-Mascheroni), `Z⁻¹` inverse normal, `e` Euler's number.
+- Files: new `scripts/research/validation/deflated_sharpe.py`
+- **Done when:** the script takes the trial registry and computes DSR, and a
+  `pytest` shows **100 random-noise strategy variations severely deflate**
+  the final DSR vs a single-hypothesis run — the penalty for multiple testing
+  is visible and correct.
+
+#### QR2.5 Wire QR4 through it
+- Run QR4's parameter search under CPCV; report the DSR of the chosen config
+  from the path distribution.
+- **Done when:** QR4's tearsheet carries a DSR line and the number of trials
+  it was deflated against.
+
+### QR-P3 — Risk Architecture: HMM regime overlay (QR3)
+
+*Honest expectation: regime models detect the regime after it's underway and
+overfit easily — **don't expect added return.** What they reliably do is cut
+drawdown (flip to min-variance / reduce gross in high-vol states), lifting
+Sharpe by shrinking the denominator. Risk management, correctly attributed.*
+
+#### QR3.1 Regime features
+- Engineer causal features: rolling realized vol, bid-ask spread expansion,
+  volume profile, maybe realized-vol-of-vol. All strictly as-of (no future
+  data).
+- **Done when:** a feature Parquet with a documented no-look-ahead alignment;
+  test that the feature at time `t` uses only data `≤ t`.
+
+#### QR3.2 Gaussian HMM (fit causally)
+- Fit a Gaussian HMM (`scikit-learn`/`hmmlearn`) with `K` states. **States
+  are discovered, then labeled by inspection** (sort by emission variance →
+  "low / high / crash"); you don't get to name them a priori, and the "crash"
+  state may or may not emerge — report honestly.
+- **Correctness trap (the sophistication point):** for any live/backtest use,
+  use **filtered** state probabilities (info up to `t`) — Viterbi/**smoothed**
+  states use the *whole* series and are a look-ahead bug. Fit on a
+  rolling/expanding window, never once over all history.
+- **Done when:** a test asserts the live state at `t` is unchanged when
+  future data is appended (i.e. it's genuinely filtered, not smoothed).
+
+#### QR3.3 Anti-whipsaw
+- Regimes flip-flopping cause turnover. Add a minimum dwell time / hysteresis
+  so `λ` only moves on a persistent state change.
+- **Done when:** a test shows a one-bar state blip does *not* trigger a `λ`
+  change; a sustained change does.
+
+#### QR3.4 Integrate with A5 `λ`
+- Map state → `λ` in the YAML config (high-vol/crash → larger `λ` →
+  PortfolioBuilder drives toward min-variance weights and lower gross).
+- **Done when:** a `gtest` confirms a state-change YAML injection forces the
+  C++ engine to scale down gross exposure / shift to a minimum-variance
+  posture; a Jupyter notebook plots the SPY equity curve colored by HMM
+  state.
+
+### QR-P4 — Execution Intelligence: OFI / VPIN (QR1)
+
+*Reframed from standalone alpha to execution-timing filter, for two concrete
+reasons: (1) faithful OFI needs real L2/L3 depth updates and our depth is
+L1-reconstructed; (2) the OFI edge decays in seconds while our fill path is
+REST polling at hundreds of ms — the signal is gone before we act. As a
+toxicity filter in `OrderManager` it plays straight to the systems strength,
+and the A/B audit decides whether it earns its place.*
+
+#### QR-Data Settle the depth-data fork *first*
+- Decide before building: stay on **L1-reconstructed** depth (honest result:
+  *"an approximate toxicity filter improves fills in simulation"* — valid,
+  but not "OFI predicts price"), or source real MBO/depth (**Databento MBO**,
+  **IEX DEEP**) for a genuine OFI result. Document the choice as a stated
+  limitation either way.
+- **Done when:** the data decision + its honesty caveat is written into the
+  thesis limitations section.
+
+#### QR1.1 OFI engine
+- Per tick interval, `OFI_t = ΔV_bid,t − ΔV_ask,t` with the conditional
+  bid/ask size changes from the original spec (add to size on favorable price
+  move, subtract prior size on adverse move, else the delta).
+- **Done when:** a `gtest` reproduces OFI on a hand-built tick sequence with
+  known level changes.
+
+#### QR1.2 VPIN engine
+- Equal-**volume** buckets; bulk-volume classification (standardized price
+  change through the normal CDF splits each bucket into buy/sell volume);
+  `VPIN = mean over n buckets of |V_buy − V_sell| / V`.
+- **Done when:** a `gtest` computes VPIN on a synthetic volume series with
+  known buy/sell split within tolerance.
+
+#### QR1.3 Toxicity filter in `OrderManager`
+- `OrderManager` reads OFI/VPIN state and **delays crossing the spread**
+  (rests passive / waits) when localized VPIN flags toxic flow, instead of
+  firing a blind market order.
+- **Done when:** the A/B audit shows a **measurable slippage reduction** vs
+  the blind-market-order baseline on the same signals/data (the filter earns
+  its place or it doesn't — the audit decides).
+
+### QR-P5 — Learned Meta-Layer: meta-labeling (QR5) 🎓
+
+*The one defensible ML addition, and the capstone: QR4's s-score still
+decides the **side**; a classifier decides **whether to act and how big**,
+trained on features from QR1 (VPIN/OFI), QR3 (regime), and s-score magnitude.
+López de Prado meta-labeling — improves precision and sizes bets without ever
+predicting direction. Gated behind QR-P2 by design: it is only trustworthy
+under purging/embargo, reuses QR-P2's CPCV directly, and is judged by the
+same DSR.*
+
+#### QR5.1 Triple-barrier labels
+- For each QR4 entry signal, set an upper barrier (profit-take), lower
+  barrier (stop), and vertical barrier (time limit). Label = which is hit
+  first, framed as meta-labels: **1** if the primary (s-score) bet would have
+  been profitable, **0** otherwise.
+- **Done when:** `pytest` verifies barrier-touch labeling on hand-built price
+  paths (up-first, down-first, timeout).
+
+#### QR5.2 Sample uniqueness
+- Overlapping label windows violate IID. Weight samples by average uniqueness
+  (concurrency-adjusted) and/or sequential bootstrap so overlapping events
+  don't dominate training.
+- **Done when:** a test shows heavily-overlapping samples receive lower
+  weight than isolated ones.
+
+#### QR5.3 Meta-model under purged CV
+- Train a classifier (start simple — logistic / gradient-boosted trees,
+  **not** a deep net) on features `{s-score magnitude, regime state (QR3),
+  VPIN/OFI (QR1), spread, recent vol, time-of-day}` to predict
+  `P(profitable)`. Validate **only** through QR-P2's CPCV — no leakage.
+- **Done when:** the model trains through the purged CV harness; a `pytest`
+  confirms no train/test overlap in any fold.
+
+#### QR5.4 Probability → size / gate
+- Map `P(profitable)` to bet size (or a gate: skip trades below a probability
+  floor). Feed sized/gated signals into the A5 PortfolioBuilder path.
+- **Done when:** the meta-layer produces the same weight-file format the
+  engine consumes; a config flag toggles meta-sizing on/off for A/B.
+
+#### QR5.5 Judge it like everything else
+- Run meta-labeled QR4 through `ab_audit` (Engine B) and report **DSR** — did
+  the learned layer improve net-of-cost, deflated Sharpe, or just add trials
+  to overfit against?
+- **Done when:** the tearsheet compares meta-on vs meta-off under Engine B
+  with DSR for both; feature importance via **MDA under purged CV** ranks
+  which features actually carried information.
+
+### QR-X (optional) — Hierarchical Risk Parity
+- Same intellectual spirit, small scope, reuses existing infrastructure: HRP
+  clusters the correlation matrix (hierarchical tree) and allocates by
+  recursive bisection, avoiding the unstable matrix inversion mean-variance
+  needs for near-singular covariance. Running **A5 MVO vs HRP out-of-sample**
+  on the QR4 universe is a clean, self-contained research question — and
+  hierarchical clustering is ML-adjacent without any return prediction.
+- **Done when (if pursued):** both allocators run on the same
+  universe/windows; a tearsheet compares out-of-sample Sharpe and turnover,
+  judged under CPCV.
+
+---
+
 ## Track F — Presentation & Thesis (Phase 8)
 
 ### F1. ✅ Whitepaper README (done 2026-07-06)
@@ -327,5 +622,14 @@ backtester hallucinates.*
 - Methodology = Tracks A+B; experiments = same factor strategy under
   fixed-slippage vs full-depth fills across order sizes/turnover levels;
   results = tearsheets + impact curves from A4/B3.
+- **Sharpened by Track QR** (do QR-P1/QR-P2 first): *"How much does
+  market-microstructure realism change the measured performance of a
+  cross-sectional statistical-arbitrage strategy — and does anything survive
+  once its Sharpe is also deflated for the number of configurations
+  tested?"* Methodology = QR-P1 + QR-P2; experiments = QR4 (and baselines)
+  under Engine A vs Engine B across order sizes, each config deflated by
+  CPCV/DSR; risk overlay and execution filter (QR-P3/P4) as ablations; the
+  learned layer (QR-P5) as the capstone ablation. Whether the answer is
+  "survives" or "doesn't," it's a genuine, defensible result.
 - **Done when:** `docs/thesis/` contains a 25–40 page paper: intro, related
   work, architecture, methodology, results, limitations.

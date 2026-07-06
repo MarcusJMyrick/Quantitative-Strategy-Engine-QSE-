@@ -13,6 +13,10 @@ a full-depth limit order book, VWAP fills, and queue position — change the
 measured performance of trading strategies versus the fixed-slippage
 assumptions of standard backtesters?*
 
+**Sharpened by the QR track (Phases 12–16):** *…the measured performance of a
+**cross-sectional statistical-arbitrage strategy** — and does anything survive
+once its Sharpe is also **deflated for the number of configurations tested**?*
+
 ---
 
 ## System at a glance
@@ -334,7 +338,7 @@ research claims, validated or destroyed by systems engineering. This is the
 artifact to hand across the interview table, and the results chapter of the
 thesis.
 
-## Phase 10 — Live Trading Integration ⏳ (Track E)
+## Phase 10 — Live Trading Integration ✅ (Track E)
 
 **Goal:** demonstrate the engine is an execution system, not just a simulator.
 
@@ -387,6 +391,264 @@ a live brokerage session.
 
 ---
 
+## The QR track (Phases 12–16) — Quantitative Research & Signal Intelligence
+
+*The research half of the artifact: everything above proves the engine tells
+the truth about fills; this track builds strategies worth testing and the
+statistical guardrails to trust the results. Execution checklist:
+[TASK_BREAKDOWN.md](TASK_BREAKDOWN.md) Track QR.*
+
+**The rule that governs the whole track.** "Profitable in Alpaca paper" is
+not a result. Paper fills are optimistic — near-mid, instant, effectively
+infinite liquidity — and the Phase 9 audit already measured what that hides:
+identical SMA signals went from **+$153k / Sharpe 1.93** (naive) to
+**−$661k / Sharpe −5.26** once orders walk the book at 25k shares/signal. So
+the bar for every strategy in this track is:
+
+> A strategy is *viable* only if it survives **Engine B** (VWAP-walk market
+> orders + FIFO queue-position limit fills) **and** clears a Sharpe ratio
+> that has been **deflated for the number of configurations tried**
+> (Phase 13). Everything else is a candidate, not a result.
+
+The honest headline being aimed for is not "I built a money printer." It is
+**"after realistic fills and a Sharpe deflated for search, this survives /
+does not survive"** — and a well-argued negative result is more credible to a
+quant desk than a Sharpe-3 backtest they will assume is broken. The truth
+serum (Phase 13) is built early so it judges everything, including the
+machine-learning layer.
+
+**Sequencing.** The phases are ordered by expected value, not by the original
+proposal's numbering — build the one that can make money first, then the
+thing that keeps it honest, then risk, then execution timing, then (only once
+the honesty layer exists) the learned layer:
+
+| Order | Phase | Item | Honest expectation |
+|---|---|---|---|
+| 1 | 12 (QR-P1) | QR4 eigen stat arb + baselines | **Realistic profit candidate.** Market-neutral, daily freq, documented edge — the one that could show net-positive PnL |
+| 2 | 13 (QR-P2) | QR2 CPCV + Deflated Sharpe | **The credibility layer.** Judges QR4 and everything after; build before tuning anything |
+| 3 | 14 (QR-P3) | QR3 HMM regime overlay | **Risk management, not alpha.** Cuts drawdown → lifts Sharpe by shrinking the denominator |
+| 4 | 15 (QR-P4) | QR1 OFI / VPIN | **Execution filter, not a standalone signal.** Times entries / avoids toxic flow |
+| 5 | 16 (QR-P5) | QR5 meta-labeling | **The one defensible use of ML here.** Sizes/gates bets; judged by Phase 13 |
+
+**Where ML belongs (and where it doesn't).** The way ML usually enters a
+trading project — a random forest or LSTM predicting next-period returns — is
+exactly the failure mode Phase 13 exists to catch: returns have such low
+signal-to-noise that flexible models memorize noise and report a beautiful
+in-sample Sharpe that evaporates live. Naive ML would actively lower this
+project's credibility. But three roles are legitimate here because **none of
+them require predicting the direction of returns**: unsupervised regime
+classification (Phase 14), meta-labeling that decides *whether to act and how
+big* while the s-score decides the side (Phase 16), and feature importance
+via MDA under purged CV (Phase 16). ML earns its place *only because
+Phase 13 exists to keep it honest* — which is why Phase 16 is gated behind
+Phase 13 by design.
+
+**Architecture map (QR track):**
+
+```mermaid
+graph TD
+    subgraph SignalGen[Signal generation]
+        U[Liquid-universe returns matrix] --> PCA[QR4.2 Rolling PCA + RMT eigen-count]
+        PCA --> RES[QR4.3 Idiosyncratic residuals]
+        RES --> OU[QR4.4 OU fit -> s-score]
+        OU --> SIG[Raw s-score signals]
+        BASE[QR4.6 Reversal + 12-1 momentum baselines] --> SIG
+    end
+    subgraph Micro[Microstructure]
+        TICK[Raw ticks] --> OFI[QR1 OFI / VPIN engine]
+    end
+    subgraph Learned[Learned meta-layer]
+        SIG --> META[QR5 Meta-model: P is profitable]
+        OFI --> META
+        REG[QR3 HMM regime state] --> META
+        META --> SIZED[Sized / gated signals]
+    end
+    SIZED --> PB[A5 PortfolioBuilder, lambda from QR3]
+    REG -->|dynamic lambda| PB
+    PB --> ENG[C++ Engine B: VWAP walk + FIFO queue]
+    OFI -->|toxicity filter| ENG
+    ENG --> LOGS[Multi-path tradelogs]
+    LOGS --> CPCV[QR2 CPCV out-of-sample paths]
+    CPCV --> DSR[QR2 Deflated Sharpe]
+    DSR --> DECISION[Ship / kill decision]
+```
+
+The elegant composition: **CPCV produces a distribution of out-of-sample
+Sharpes**, and **DSR consumes that distribution's variance** plus the trial
+count. They are built to fit together.
+
+## Phase 12 — Alpha Discovery: Eigen Stat Arb + Baselines ⏳ (QR-P1) 🎓
+
+**Goal:** a flagship strategy that is market-neutral and resilient to
+full-depth execution costs. Avellaneda-Lee residual reversion: rolling PCA on
+a liquid universe, model each name's idiosyncratic residual as a
+mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
+(s-score), stay dollar-neutral. **Prove it on 10–15 names before scaling to
+100** — this keeps compute and debugging sane.
+
+- **12.1 Universe + returns matrix (QR4.1).** 10–15 liquid names in one
+  sector (correlated → PCA has structure to find), adjusted daily bars
+  through the existing corporate-actions (B2) + ffill (B1) pipeline,
+  standardized returns matrix with documented as-of alignment.
+- **12.2 Rolling PCA + principled factor count (QR4.2).** Eigendecomposition
+  of the rolling correlation matrix; retained-factor count from the
+  **Marchenko-Pastur cutoff** `λ+ = (1 + √q)²` (random-matrix theory), not an
+  arbitrary constant; eigenportfolio weights and factor returns.
+- **12.3 Idiosyncratic residuals (QR4.3).** Regress each name on the retained
+  factor returns; the cumulative residual is the tradeable process, verified
+  orthogonal to the factors in-window.
+- **12.4 OU fit + s-score (QR4.4).** AR(1) fit backs out mean-reversion speed
+  κ, equilibrium level m, and equilibrium std σ_eq → s-score. **Speed
+  filter:** names whose reversion time is slower than ~half the estimation
+  window are rejected — slow reversion is a spurious signal.
+- **12.5 Dollar-neutral weights (QR4.5).** Avellaneda-Lee entry/exit bands
+  (±1.25 open, asymmetric close) as *starting points* — these are exactly the
+  overfitting-prone knobs Phase 13 must protect. Output is the same
+  weight-file format `WeightsLoader` / `FactorExecutionEngine` already
+  consume, net exposure ≈ 0 daily.
+- **12.6 Cheap baselines (QR4.6).** Cross-sectional short-term reversal and
+  12-1 momentum through the same harness. If the eigen stat arb can't beat
+  *reversal* net of Engine B costs, that's a finding — the fancy version
+  isn't earning its complexity.
+- **12.7 Survive Engine B (QR4.7).** The whole thing through `ab_audit` at
+  1×/10×/50× sizes; the summary states the net Sharpe under Engine B at each
+  size. Positive-but-modest is the win; a clean negative with the
+  phantom-cost decomposition is still a result.
+
+**Proves:** the industry-standard market-neutral stat-arb pipeline end to
+end — RMT-based factor selection, OU residual modeling, dollar-neutral
+construction — judged against realistic fills and cheap baselines.
+
+## Phase 13 — The Truth Serum: CPCV + Deflated Sharpe ⏳ (QR-P2) 🎓
+
+**Goal:** prove Phase 12 (and everything after) is not overfit. Financial
+time series have heavy serial correlation, so vanilla k-fold CV leaks the
+future into the past; and if you test 1,000 threshold combinations, the best
+is almost always a fluke. Two composing pieces: **Combinatorial Purged CV**
+(the machinery) and the **Deflated Sharpe Ratio** (the headline metric) —
+the difference between "I found a Sharpe-2 strategy" and "I found a Sharpe-2
+strategy that survives correction for having tried 400 variants."
+
+- **13.1 Purge + embargo (QR2.1).** Drop training samples whose evaluation
+  window overlaps the test window; embargo a fraction of training samples
+  immediately after each test block against serial-correlation leakage.
+- **13.2 Combinatorial paths (QR2.2).** N blocks, k test → C(N,k) splits,
+  recombined into C(N−1,k−1) complete out-of-sample equity curves — a
+  *distribution* of Sharpes, not a point estimate.
+- **13.3 Trial registry (QR2.3).** Every backtest variation logs params
+  **and its return series**; the DSR is only meaningful if trial count and
+  dispersion are real.
+- **13.4 PSR → DSR (QR2.4).** The Probabilistic Sharpe Ratio (accounts for
+  return skew/kurtosis and sample length), then the Deflated Sharpe with the
+  benchmark set to the expected max Sharpe under the null across N trials.
+  Acceptance test: **100 random-noise strategy variations must severely
+  deflate the final DSR** vs a single-hypothesis run.
+- **13.5 Wire Phase 12 through it (QR2.5).** QR4's parameter search runs
+  under CPCV; its tearsheet carries a DSR line and the trial count it was
+  deflated against.
+
+**Proves:** understanding of the single most important trap in quant research
+— and the machinery (purging, embargo, combinatorial paths, deflation) to
+avoid it. This is the section a skeptical PM checks first.
+
+## Phase 14 — Risk Architecture: HMM Regime Overlay ⏳ (QR-P3)
+
+**Goal:** detect volatility regime shifts and de-risk into them — the overlay
+scales the A5 risk-aversion λ toward minimum-variance when the market turns.
+**Honest expectation:** regime models detect the regime *after* it's underway
+and overfit easily, so don't expect added return; what they reliably do is
+**cut drawdown**, lifting Sharpe by shrinking the denominator — a legitimate
+gain, correctly attributed.
+
+- **14.1 Causal regime features (QR3.1).** Rolling realized vol, spread
+  expansion, volume profile — all strictly as-of, with a no-look-ahead test.
+- **14.2 Gaussian HMM, fit causally (QR3.2).** States discovered then labeled
+  by inspection (sorted by emission variance); the "crash" state may or may
+  not emerge — report honestly. **The correctness trap:** live use takes
+  **filtered** state probabilities (info up to t) — Viterbi/smoothed states
+  see the whole series and are a look-ahead bug that silently inflates most
+  published regime backtests. Verified by a test that appending future data
+  does not change the state at t.
+- **14.3 Anti-whipsaw (QR3.3).** Minimum dwell time / hysteresis so λ only
+  moves on persistent state changes.
+- **14.4 Integration with A5 λ (QR3.4).** State → λ mapping in YAML; a gtest
+  confirms a state change forces the C++ engine toward min-variance / lower
+  gross; a notebook plots the SPY equity curve colored by regime.
+
+**Proves:** regime models treated as risk control (their real job), an
+unsupervised ML model integrated into a live risk parameter, and the
+look-ahead trap avoided.
+
+## Phase 15 — Execution Intelligence: OFI / VPIN ⏳ (QR-P4)
+
+**Goal:** use microstructure features to *time entries* and avoid crossing
+the spread into toxic, one-sided flow — measured by whether it improves fills
+in the A/B audit. Reframed from standalone alpha for two concrete reasons:
+faithful OFI needs real L2/L3 depth updates and this system's depth is
+**L1-reconstructed**; and the OFI edge decays in *seconds* while the fill
+path is REST polling at hundreds of ms. As an execution-timing filter in
+`OrderManager`, it plays straight to the systems strength.
+
+- **15.0 The depth-data fork, settled first (QR-Data).** Stay on
+  L1-reconstructed depth (honest result: "an approximate toxicity filter
+  improves fills in simulation") or source real MBO/depth (Databento MBO,
+  IEX DEEP) for a genuine OFI result — the choice and its honesty caveat go
+  into the thesis limitations section either way.
+- **15.1 OFI engine (QR1.1).** Order-flow imbalance from conditional bid/ask
+  size changes per tick interval, gtest-verified on a hand-built sequence.
+- **15.2 VPIN engine (QR1.2).** Equal-volume buckets, bulk-volume
+  classification through the normal CDF, rolling mean of the buy/sell volume
+  imbalance.
+- **15.3 Toxicity filter in `OrderManager` (QR1.3).** Delay crossing the
+  spread when localized VPIN flags toxic flow. The A/B audit decides: the
+  filter must show a **measurable slippage reduction** vs blind market
+  orders on the same signals/data, or it doesn't ship.
+
+**Proves:** microstructure literacy applied where it actually pays for
+retail-grade data — execution timing — and honesty about what
+L1-reconstructed depth can and can't support.
+
+## Phase 16 — Learned Meta-Layer: Meta-Labeling ⏳ (QR-P5) 🎓
+
+**Goal:** the ML capstone that consumes the other four phases. The primary
+model (Phase 12's s-score) still decides the *side*; a classifier decides
+*whether to act and how big*, trained on regime state (Phase 14), VPIN/OFI
+(Phase 15), s-score magnitude, spread, and vol. This is López de Prado's
+**meta-labeling** — it improves precision and sizes bets **without ever
+predicting direction**, which is why it survives where return-prediction ML
+doesn't. Deliberately last: it is only trustworthy under purging/embargo, so
+it is gated behind Phase 13 by design.
+
+- **16.1 Triple-barrier labels (QR5.1).** Profit-take / stop / time-limit
+  barriers per entry signal; the meta-label is whether the primary bet would
+  have been profitable.
+- **16.2 Sample uniqueness (QR5.2).** Overlapping label windows violate IID —
+  weight samples by average uniqueness / sequential bootstrap.
+- **16.3 Meta-model under purged CV (QR5.3).** Simple classifier (logistic /
+  gradient-boosted trees, not a deep net) predicting P(profitable), validated
+  only through Phase 13's CPCV.
+- **16.4 Probability → size / gate (QR5.4).** P(profitable) mapped to bet
+  size or a skip-gate, feeding the A5 PortfolioBuilder path in the same
+  weight-file format, toggleable for A/B.
+- **16.5 Judged like everything else (QR5.5).** Meta-on vs meta-off under
+  Engine B with DSR for both; feature importance via MDA under purged CV
+  ranks which features actually carried information.
+
+**Proves:** the mature use of ML in quant — meta-labeling, triple-barrier,
+sample uniqueness, purged feature importance — with the discipline to gate it
+behind the same statistical guardrails as everything else. A "clearly read
+AFML and applied it correctly" signal, which is rare.
+
+### Optional extension — Hierarchical Risk Parity
+
+Same intellectual spirit, small scope: HRP clusters the correlation matrix
+and allocates by recursive bisection, avoiding the unstable matrix inversion
+mean-variance needs for near-singular covariance. **A5 MVO vs HRP
+out-of-sample** on the Phase 12 universe is a clean, self-contained research
+question, judged under CPCV like everything else.
+
+---
+
 ## Results ledger (updated as phases land)
 
 | Evidence | Value | Where |
@@ -401,3 +663,15 @@ a live brokerage session.
 | Phantom profit at 25k sh/signal | $813,700 (naive Sharpe +1.93 vs real −5.26) | docs/research/microstructure |
 | Arena vs heap allocation | 3.5 ns/op vs 57–70 ns/op (16–20×); book workload 2.4× | docs/benchmarks/04 |
 | SPSC ring vs locked queue | p99 push 42ns vs 16,334ns (389×); max 71µs vs 1.15ms; TSan clean | docs/benchmarks/05 |
+
+### QR-track ledger (targets — fill in as Phases 12–16 land)
+
+| Evidence | Target | Where |
+|---|---|---|
+| QR4 net Sharpe under Engine B | positive-but-modest, or clean negative | docs/research/statarb |
+| QR4 vs reversal/momentum baselines | stat arb beats the floor net of costs? | docs/research/statarb |
+| DSR of chosen QR4 config | deflated for N trials | validation registry |
+| CPCV multiple-testing penalty | 100 noise variants → DSR collapses | tests/python |
+| HMM drawdown reduction | max-DD down in high-vol states | docs/research/regime |
+| OFI/VPIN filter | measurable slippage reduction vs blind market order | ab_audit |
+| Meta-layer | meta-on vs meta-off DSR under Engine B | docs/research/statarb |

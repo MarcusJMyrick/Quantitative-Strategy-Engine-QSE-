@@ -334,9 +334,11 @@ thesis.
 
 **Goal:** demonstrate the engine is an execution system, not just a simulator.
 
-- **10.1 `IExecutionHandler` (E1).** Order submission/cancel/fill-notification
-  behind an interface; the backtest fill logic becomes
-  `SimulatedExecutionHandler`, strategies depend only on the abstraction.
+- **10.1 `IExecutionHandler` ✅ (E1, done 2026-07-06).** Venue-agnostic
+  contract (submit market/limit, cancel, replace, fill stream) shaped to map
+  1:1 onto Alpaca's REST API; `SimulatedExecutionHandler` puts the real
+  backtest fill engine behind it, verified equivalent to direct OrderManager
+  use; gmock contract tests prove callers need only the interface.
 - **10.2 Alpaca paper trading (E2).** `AlpacaExecutionHandler` speaks REST to
   the free Alpaca paper API (keys from `.env`, never committed); unit tests
   run against a mocked HTTP layer so CI needs no network.

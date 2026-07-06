@@ -138,6 +138,7 @@ add_executable(run_tests
     tests/cpp/ConfigParseTest.cpp
     tests/cpp/ArenaTest.cpp
     tests/cpp/SPSCRingBufferTest.cpp
+    tests/cpp/ExecutionHandlerTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp

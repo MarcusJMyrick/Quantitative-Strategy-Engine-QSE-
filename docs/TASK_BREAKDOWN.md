@@ -5,8 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** E1 → E2 → E3 → F2 → F3 → F4 (A5 optional)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1
+**Remaining work, recommended order:** E2 → E3 → F2 → F3 → F4 (A5 optional)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1
 
 ---
 
@@ -172,12 +172,20 @@ to this checklist — full phase descriptions including completed work — is
 
 ## Track E — Live Paper Trading (Phase 7)
 
-### E1. `IExecutionHandler` interface
-- `submit_order / cancel_order / on_fill` interface; adapt current backtest
-  fill logic into a `SimulatedExecutionHandler` implementing it; strategies
-  depend only on the interface.
-- **Done when:** all existing tests pass with the simulated handler injected,
-  plus new gmock-based tests for the interface contract.
+### E1. ✅ `IExecutionHandler` interface (done 2026-07-06)
+- `include/qse/exe/IExecutionHandler.h`: venue-shaped contract —
+  submit market/limit, cancel, replace (cancel-and-resubmit semantics),
+  `get_order`, and an async fill callback — designed to map 1:1 onto the
+  Alpaca REST API in E2. `SimulatedExecutionHandler` adapts the proven
+  OrderManager fill logic (whichever fill model it is configured for) behind
+  the interface; it owns the fill stream. `MockExecutionHandler` (gmock) for
+  contract tests.
+- Done-when verified: 8 new tests — 3 contract tests where callers depend
+  only on the interface (StrictMock), 5 integration tests through the real
+  full-depth engine (market fill pays the ask, resting limit cancels cleanly,
+  replace preserves symbol/side and rejects market/unknown ids, and a
+  handler-vs-direct equivalence check on cash+position). 235/235 ctest;
+  tidy/format gates clean.
 
 ### E2. `AlpacaExecutionHandler`
 - REST calls to Alpaca paper API (libcurl + nlohmann/json); API keys from

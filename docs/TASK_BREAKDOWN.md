@@ -5,7 +5,7 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Remaining work, recommended order:** G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
 **Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1
 
 ---
@@ -200,22 +200,23 @@ to this checklist — full phase descriptions including completed work — is
 *Hardware-level engineering: heap jitter, cache locality, false sharing, atomic
 memory ordering. Each chunk produces a committed benchmark artifact, not just code.*
 
-### G1. Arena (bump) allocator for the hot path
-- Implement `qse::Arena`: one large contiguous block requested up front, a
-  single offset pointer "bumped" per allocation, **no per-object deallocation**
-  — the whole arena resets in one operation at end of session/backtest. Either
-  a custom bump allocator or `std::pmr::monotonic_buffer_resource` wrapped
-  with instrumentation (bytes used, high-water mark, allocation count).
-- Adopt in the hot path: back `OrderBookFullDepth`'s per-level containers with
-  `std::pmr` equivalents so resting orders pack contiguously — the point is
-  L1/L2 cache locality, and the fill benchmark must show it.
-- Files: new `include/qse/core/Arena.h`, `OrderBookFullDepth.h/.cpp`,
-  new `tests/cpp/ArenaTest.cpp`, microbenchmark tool in `src/tools/`
-- **Done when:** gtest covers alignment guarantees, bump arithmetic,
-  exhaustion policy, and reset semantics; an allocation microbenchmark (≥1M
-  allocations, arena vs `new`/`delete`) plus a before/after full-depth fill
-  benchmark are committed to `docs/benchmarks/04_arena_allocator.md`; full
-  suite still green on mac and CI.
+### G1. ✅ Arena (bump) allocator for the hot path (done 2026-07-05)
+- `qse::Arena` (include/qse/core/Arena.h): custom fixed-capacity bump
+  allocator exposed as a `std::pmr::memory_resource` — address-aligned bump
+  cursor, no-op deallocate, O(1) reset, bad_alloc on exhaustion, full
+  instrumentation (bytes used, high-water mark, alloc/dealloc/reset counts).
+- `OrderBookFullDepth` takes an optional resource; its maps, per-level FIFO
+  deques, and lookup tables are now `std::pmr` and allocate from the arena
+  (levels constructed explicitly with the book's resource — `operator[]`
+  would have silently defaulted their inner containers to the heap).
+- **Measured** (docs/benchmarks/04_arena_allocator.md, arm64 -O3):
+  raw allocation path 57–70 ns/op → **3.5 ns/op (16–20×)**; end-to-end
+  order-book workload (2,000 books × 200 levels, build+walk+destroy)
+  139 µs → **58 µs/book (2.4×)**; high-water 884 KiB/book.
+- Done-when verified: 7 ArenaTest cases (alignment on a misaligned cursor,
+  bump contiguity, exhaustion + state survival, no-op dealloc, reset reuse,
+  pmr-container integration, arena-vs-heap book equivalence); 218/218 ctest;
+  format + tidy gates clean.
 
 ### G2. SPSC lock-free ring buffer
 - Implement `qse::SPSCRingBuffer<T>`: fixed power-of-two capacity; the

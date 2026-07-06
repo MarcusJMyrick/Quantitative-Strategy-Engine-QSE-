@@ -21,16 +21,13 @@ void OrderBookFullDepth::reset_queue_id_counter() {
 // --- Level Management ---
 
 void OrderBookFullDepth::add_level(Order::Side side, Price price) {
+    // Construct new levels with the book's memory resource so their inner
+    // containers allocate from the same arena as the maps (operator[] would
+    // default-construct a Level on the global resource instead)
     if (side == Order::Side::BUY) {
-        auto& bids = get_bids();
-        if (bids.find(price) == bids.end()) {
-            bids[price] = Level(price);
-        }
+        get_bids().try_emplace(price, Level(price, resource_));
     } else { // SELL
-        auto& asks = get_asks();
-        if (asks.find(price) == asks.end()) {
-            asks[price] = Level(price);
-        }
+        get_asks().try_emplace(price, Level(price, resource_));
     }
 }
 

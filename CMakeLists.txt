@@ -136,6 +136,7 @@ add_executable(run_tests
     tests/cpp/RebalanceGuardTest.cpp
     tests/cpp/FactorIntegrationTest.cpp
     tests/cpp/ConfigParseTest.cpp
+    tests/cpp/ArenaTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp
@@ -187,6 +188,9 @@ target_link_libraries(impact_sweep PRIVATE qse)
 
 add_executable(ab_audit src/tools/ab_audit.cpp)
 target_link_libraries(ab_audit PRIVATE qse)
+
+add_executable(arena_bench src/tools/arena_bench.cpp)
+target_link_libraries(arena_bench PRIVATE qse)
 
 # --- Testing Setup ---
 enable_testing()

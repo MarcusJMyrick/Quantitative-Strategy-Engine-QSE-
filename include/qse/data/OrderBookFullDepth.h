@@ -8,6 +8,7 @@
 #include <string>
 #include <atomic>
 #include <cstdint>
+#include <memory_resource>
 #include <unordered_map>
 
 namespace qse {
@@ -18,20 +19,24 @@ using QueueId = std::uint64_t;
 /**
  * @brief Represents a single price level in the order book.
  * Contains the total size at this price and a FIFO queue of order IDs.
+ *
+ * All containers are pmr-backed so a book constructed on an arena (G1) packs
+ * its levels, queues, and lookup nodes contiguously for cache locality.
  */
 struct Level {
     Volume total_size = 0;
-    std::deque<OrderId> queue;
+    std::pmr::deque<OrderId> queue;
     Price price = 0.0; // Metadata field for convenience
 
     // Position tracking for O(1) queue position lookups
-    std::unordered_map<OrderId, size_t> position_map;
+    std::pmr::unordered_map<OrderId, size_t> position_map;
 
     // Remaining size of each resting order (partially filled orders shrink here)
-    std::unordered_map<OrderId, Volume> order_sizes;
+    std::pmr::unordered_map<OrderId, Volume> order_sizes;
 
-    Level() = default;
-    Level(Price p) : price(p) {}
+    Level() : Level(0.0) {}
+    explicit Level(Price p, std::pmr::memory_resource* mr = std::pmr::get_default_resource())
+        : queue(mr), price(p), position_map(mr), order_sizes(mr) {}
 
     // Helper methods
     bool empty() const { return queue.empty() && total_size == 0; }
@@ -41,10 +46,15 @@ struct Level {
 /**
  * @brief Full-depth order book that maintains price levels with FIFO queues.
  * This replaces the simplified top-of-book only implementation.
+ *
+ * Pass a qse::Arena (or any pmr resource) to keep every internal allocation
+ * in one contiguous block; the default is the global new/delete resource.
  */
 class OrderBookFullDepth {
 public:
-    OrderBookFullDepth() = default;
+    explicit OrderBookFullDepth(
+        std::pmr::memory_resource* resource = std::pmr::get_default_resource())
+        : bids_(resource), asks_(resource), queue_id_to_order_id_(resource), resource_(resource) {}
 
     // --- Queue ID Management ---
 
@@ -189,14 +199,17 @@ private:
     // Maps price -> Level, with proper ordering
     // Bids: descending order (best bid first)
     // Asks: ascending order (best ask first)
-    std::map<Price, Level, std::greater<Price>> bids_; // greater for descending
-    std::map<Price, Level, std::less<Price>> asks_;    // less for ascending
+    std::pmr::map<Price, Level, std::greater<Price>> bids_; // greater for descending
+    std::pmr::map<Price, Level, std::less<Price>> asks_;    // less for ascending
 
     // Global queue ID generator for FIFO ordering
     static std::atomic<QueueId> next_queue_id_;
 
     // Mapping from QueueId to OrderId for position lookups
-    std::unordered_map<QueueId, OrderId> queue_id_to_order_id_;
+    std::pmr::unordered_map<QueueId, OrderId> queue_id_to_order_id_;
+
+    // Where every internal allocation goes (levels, queues, lookup nodes)
+    std::pmr::memory_resource* resource_;
 
     // Synthetic displayed liquidity from the latest quote (one per side)
     QueueId synthetic_bid_qid_ = 0;
@@ -208,10 +221,10 @@ private:
     void remove_synthetic(Order::Side side);
 
     // Helper methods
-    const std::map<Price, Level, std::greater<Price>>& get_bids() const { return bids_; }
-    const std::map<Price, Level, std::less<Price>>& get_asks() const { return asks_; }
-    std::map<Price, Level, std::greater<Price>>& get_bids() { return bids_; }
-    std::map<Price, Level, std::less<Price>>& get_asks() { return asks_; }
+    const std::pmr::map<Price, Level, std::greater<Price>>& get_bids() const { return bids_; }
+    const std::pmr::map<Price, Level, std::less<Price>>& get_asks() const { return asks_; }
+    std::pmr::map<Price, Level, std::greater<Price>>& get_bids() { return bids_; }
+    std::pmr::map<Price, Level, std::less<Price>>& get_asks() { return asks_; }
 };
 
 } // namespace qse

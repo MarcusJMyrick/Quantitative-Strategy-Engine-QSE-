@@ -221,11 +221,11 @@ market impact — implemented, not just cited.
 **Proves:** the difference between code that works here and software that
 works anywhere.
 
-## Phase 8 — Low-Latency Engineering ⏳ (new, Track G)
+## Phase 8 — Low-Latency Engineering 🟡 (Track G)
 
 **Goal:** hardware-sympathy — the layer trading firms actually interview on.
 
-### 8.1 Custom memory management: the arena allocator (G1)
+### 8.1 Custom memory management: the arena allocator ✅ (G1)
 
 *The problem.* Every `new`/`malloc` walks OS heap structures in unpredictable
 time — 10 ns on a good day, thousands when it triggers a page fault or
@@ -240,11 +240,13 @@ session ends. Implemented as a custom allocator or C++17
 `std::pmr::monotonic_buffer_resource` with instrumentation, then plugged into
 `OrderBookFullDepth`'s level containers via `std::pmr`.
 
-*The payoff.* Beyond eliminating jitter, all live orders pack **sequentially
-in one block**, so the CPU prefetcher streams them through L1/L2 cache during
-book walks. Deliverable is a benchmark artifact
-(`docs/benchmarks/04_arena_allocator.md`): ≥1M allocations arena-vs-heap plus
-before/after full-depth fill numbers.
+*The payoff (measured 2026-07-05).* Raw allocation path: 57–70 ns/op heap →
+**3.5 ns/op arena (16–20×)**, stable to ~0.1 ns run-to-run where the heap
+varies — the determinism is the point. End-to-end order-book workload (2,000
+books × 200 levels, build + VWAP walk + destroy): 139 µs → **58 µs/book
+(2.4×)** even though allocation is only part of each iteration, because live
+orders pack sequentially and the prefetcher streams them through L1/L2 during
+book walks. Full numbers: `docs/benchmarks/04_arena_allocator.md`.
 
 ### 8.2 Lock-free multi-threading: the SPSC ring buffer (G2)
 
@@ -369,5 +371,5 @@ a live brokerage session.
 | Python tests | 16 (pytest, hand-computed metrics) | tests/python |
 | CI wall time | ~2.5 min per push | GitHub Actions |
 | Phantom profit at 25k sh/signal | $813,700 (naive Sharpe +1.93 vs real −5.26) | docs/research/microstructure |
-| Arena vs heap allocation | *pending G1* | — |
+| Arena vs heap allocation | 3.5 ns/op vs 57–70 ns/op (16–20×); book workload 2.4× | docs/benchmarks/04 |
 | SPSC vs mutex throughput | *pending G2* | — |

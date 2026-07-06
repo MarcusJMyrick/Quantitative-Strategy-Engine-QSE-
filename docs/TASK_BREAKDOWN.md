@@ -187,7 +187,7 @@ to this checklist — full phase descriptions including completed work — is
   handler-vs-direct equivalence check on cash+position). 235/235 ctest;
   tidy/format gates clean.
 
-### E2. ✅ `AlpacaExecutionHandler` (done 2026-07-06; manual dashboard smoke pending user's keys)
+### E2. ✅ `AlpacaExecutionHandler` (done 2026-07-06; dashboard smoke verified: order ed05ef12 placed PENDING and cancelled CANCELLED against the live paper account)
 - Implements the E1 interface over the Alpaca paper REST API: submit
   market/limit (POST /v2/orders), cancel (DELETE), replace (PATCH, new-id
   fill-count carryover), get_order with full status/field mapping (Alpaca's

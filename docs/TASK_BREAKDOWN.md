@@ -5,13 +5,18 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** F2 → F3 → Track QR (QR-P1 → QR-P2 → QR-P3 → QR-P4 → QR-P5) → F4
-(F4 deliberately moves last: the QR track supplies its sharpened research question, methodology, and results.)
+**Remaining work, recommended order:** Track QR (QR-P1 → QR-P2 → QR-P3 → QR-P4 → QR-P5) → F2 → F3 → F4
+(QR leads: it is the large majority of the remaining effort, and F2/F3 are results showcases — built
+after QR they tell the sharpened survives-or-doesn't story instead of presenting the pre-QR system
+while the thesis tells the QR story. F2/F3 have no upstream dependency and are cheap, so they *may*
+be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
+strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
+results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
 **Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5
 
 ---
 
-## Current state (audited 2026-07-04)
+## Current state (audited 2026-07-04, updated 2026-07-06)
 
 | Roadmap phase | Actual status |
 |---|---|
@@ -23,7 +28,7 @@ to this checklist — full phase descriptions including completed work — is
 | 5 Data & tearsheet | ✅ Track B complete 2026-07-05 (B1 ffill, B2 corporate actions, B3 tearsheet) |
 | 6 CI / format / lint | ✅ Track C complete 2026-07-05 (CI, hygiene, format, clang-tidy gates) |
 | 7 Live trading | ✅ Track E complete 2026-07-06 (IExecutionHandler, Alpaca REST handler, live_engine with reconciliation) |
-| 8 Presentation | ❌ Not started |
+| 8 Presentation | 🔄 In progress — F1 whitepaper README done 2026-07-06; F2/F3/F4 remain |
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
@@ -397,6 +402,9 @@ edge — the one item in the track with a real shot at net-positive PnL.
   net Sharpe under **Engine B** at each size. (Positive-but-modest is the
   win; a clean negative with the phantom-cost decomposition is still a
   result.)
+- **Note:** the Sharpe reported here is provisional — a candidate, not a
+  result — until QR2.5 deflates it for the parameter search and the tearsheet
+  carries the DSR + trial count.
 
 ### QR-P2 — The Truth Serum: CPCV + Deflated Sharpe (QR2) 🎓
 

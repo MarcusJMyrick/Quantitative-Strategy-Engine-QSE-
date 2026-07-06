@@ -373,6 +373,13 @@ a live brokerage session.
 
 **Goal:** make the work legible to recruiters, professors, and hiring managers.
 
+**Ordering note:** the remaining items (11.2–11.4) land *after* the QR track
+(Phases 12–16), so every presentation artifact tells the sharpened
+survives-or-doesn't story rather than showcasing the pre-QR system while the
+thesis tells the QR story. F2/F3 may be pulled forward only if built
+strategy-agnostic (notebook loops over whatever strategies exist; one-pager
+templated on the results ledger) — never hardcoded to the current SMA results.
+
 - **11.1 Whitepaper README ✅ (F1, done 2026-07-06).** Full rewrite: findings
   table with every measured number, the A/B audit as the flagship section
   with committed figures, Mermaid architecture, engineering-quality evidence,
@@ -513,7 +520,9 @@ mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
 - **12.7 Survive Engine B (QR4.7).** The whole thing through `ab_audit` at
   1×/10×/50× sizes; the summary states the net Sharpe under Engine B at each
   size. Positive-but-modest is the win; a clean negative with the
-  phantom-cost decomposition is still a result.
+  phantom-cost decomposition is still a result. Either way the number is
+  provisional — a candidate, not a result — until Phase 13 deflates it for
+  the parameter search (QR2.5).
 
 **Proves:** the industry-standard market-neutral stat-arb pipeline end to
 end — RMT-based factor selection, OU residual modeling, dollar-neutral

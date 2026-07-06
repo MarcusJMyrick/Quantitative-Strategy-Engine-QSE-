@@ -26,10 +26,27 @@ std::size_t LiveEngine::step() {
 }
 
 void LiveEngine::run_for(std::chrono::seconds duration, std::chrono::milliseconds cadence) {
-    const auto deadline = std::chrono::steady_clock::now() + duration;
+    const auto start = std::chrono::steady_clock::now();
+    const auto deadline = start + duration;
+    auto next_heartbeat = start + std::chrono::seconds(30);
+    std::size_t ticks_total = 0;
+
     while (running_.load(std::memory_order_relaxed) &&
            std::chrono::steady_clock::now() < deadline) {
-        step();
+        ticks_total += step();
+        // Periodic proof of life: the loop is otherwise silent between
+        // crossovers, which makes a healthy session look like a hung one
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= next_heartbeat) {
+            const auto elapsed =
+                std::chrono::duration_cast<std::chrono::seconds>(now - start).count();
+            std::cout << "[LiveEngine] " << elapsed << "s elapsed: " << ticks_total << " ticks, "
+                      << bars_seen_ << " bars, " << submitted_.size() << " orders, "
+                      << fills_.size() << " fills"
+                      << (ticks_total == 0 ? " (no fresh quotes - market closed?)" : "")
+                      << std::endl;
+            next_heartbeat = now + std::chrono::seconds(30);
+        }
         std::this_thread::sleep_for(cadence);
     }
     // Final sweep so fills that landed during the last cadence are recorded

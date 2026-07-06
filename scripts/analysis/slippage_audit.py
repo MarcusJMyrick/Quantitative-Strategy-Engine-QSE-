@@ -76,9 +76,11 @@ def analyze_regime(size: int) -> dict:
     shares_traded = float(naive_tl["quantity"].abs().sum())
 
     naive_sharpe = tearsheet.annualized_sharpe(
-        tearsheet.daily_returns(tearsheet.to_daily(naive_eq)))
+        tearsheet.daily_returns(tearsheet.to_daily(naive_eq))
+    )
     depth_sharpe = tearsheet.annualized_sharpe(
-        tearsheet.daily_returns(tearsheet.to_daily(depth_eq)))
+        tearsheet.daily_returns(tearsheet.to_daily(depth_eq))
+    )
 
     return {
         "size": size,
@@ -100,15 +102,26 @@ def analyze_regime(size: int) -> dict:
 def make_overlay_figure(regimes: list[dict]):
     fig, axes = plt.subplots(len(regimes) + 1, 1, figsize=(8.5, 12))
     for ax, r in zip(axes, regimes):
-        ax.plot(r["naive_eq"].index, r["naive_eq"].values,
-                color="tab:gray", label="Engine A - naive (mid fills)")
-        ax.plot(r["depth_eq"].index, r["depth_eq"].values,
-                color="tab:blue", label="Engine B - full-depth book")
-        ax.fill_between(r["naive_eq"].index, r["naive_eq"].values,
-                        r["depth_eq"].reindex(r["naive_eq"].index).values,
-                        color="tab:red", alpha=0.15)
-        ax.set_title(
-            f"{r['size']:,} shares/signal - phantom profit ${r['phantom']:,.0f}")
+        ax.plot(
+            r["naive_eq"].index,
+            r["naive_eq"].values,
+            color="tab:gray",
+            label="Engine A - naive (mid fills)",
+        )
+        ax.plot(
+            r["depth_eq"].index,
+            r["depth_eq"].values,
+            color="tab:blue",
+            label="Engine B - full-depth book",
+        )
+        ax.fill_between(
+            r["naive_eq"].index,
+            r["naive_eq"].values,
+            r["depth_eq"].reindex(r["naive_eq"].index).values,
+            color="tab:red",
+            alpha=0.15,
+        )
+        ax.set_title(f"{r['size']:,} shares/signal - phantom profit ${r['phantom']:,.0f}")
         ax.legend(fontsize=8)
         ax.grid(alpha=0.3)
 
@@ -126,19 +139,31 @@ def make_overlay_figure(regimes: list[dict]):
 def make_table_figure(regimes: list[dict]):
     fig, ax = plt.subplots(figsize=(8.5, 11))
     ax.axis("off")
-    columns = ["Size", "Naive PnL", "Real PnL", "Phantom $", "Phantom $/sh",
-               "Naive Sharpe", "Real Sharpe", "Buy gap $/sh", "Sell gap $/sh"]
-    rows = [[
-        f"{r['size']:,}",
-        f"${r['naive_pnl']:,.0f}",
-        f"${r['depth_pnl']:,.0f}",
-        f"${r['phantom']:,.0f}",
-        f"{r['phantom_per_share']:.4f}",
-        f"{r['naive_sharpe']:.2f}",
-        f"{r['depth_sharpe']:.2f}",
-        f"{r['buy_gap']:.4f}",
-        f"{r['sell_gap']:.4f}",
-    ] for r in regimes]
+    columns = [
+        "Size",
+        "Naive PnL",
+        "Real PnL",
+        "Phantom $",
+        "Phantom $/sh",
+        "Naive Sharpe",
+        "Real Sharpe",
+        "Buy gap $/sh",
+        "Sell gap $/sh",
+    ]
+    rows = [
+        [
+            f"{r['size']:,}",
+            f"${r['naive_pnl']:,.0f}",
+            f"${r['depth_pnl']:,.0f}",
+            f"${r['phantom']:,.0f}",
+            f"{r['phantom_per_share']:.4f}",
+            f"{r['naive_sharpe']:.2f}",
+            f"{r['depth_sharpe']:.2f}",
+            f"{r['buy_gap']:.4f}",
+            f"{r['sell_gap']:.4f}",
+        ]
+        for r in regimes
+    ]
     table = ax.table(cellText=rows, colLabels=columns, loc="center", cellLoc="center")
     table.auto_set_font_size(False)
     table.set_fontsize(8)
@@ -149,12 +174,12 @@ def make_table_figure(regimes: list[dict]):
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--rerun-audit", action="store_true",
-                        help="Re-run the C++ audit even if outputs exist")
+    parser.add_argument(
+        "--rerun-audit", action="store_true", help="Re-run the C++ audit even if outputs exist"
+    )
     args = parser.parse_args()
 
-    expected = [AUDIT_DIR / f"{m}_{s}_equity.csv"
-                for s in SIZES for m in ("naive", "depth")]
+    expected = [AUDIT_DIR / f"{m}_{s}_equity.csv" for s in SIZES for m in ("naive", "depth")]
     if args.rerun_audit or not all(p.exists() for p in expected):
         run_audit()
 
@@ -199,7 +224,8 @@ def main() -> int:
         lines.append(
             f"| {r['size']:,} | ${r['naive_pnl']:,.0f} | ${r['depth_pnl']:,.0f} "
             f"| ${r['phantom']:,.0f} | {r['phantom_per_share']:.4f} "
-            f"| {r['naive_sharpe']:.2f} | {r['depth_sharpe']:.2f} |")
+            f"| {r['naive_sharpe']:.2f} | {r['depth_sharpe']:.2f} |"
+        )
     lines += [
         "",
         "## Method",
@@ -233,9 +259,11 @@ def main() -> int:
     print(f"Wrote {md_path}")
 
     for r in regimes:
-        print(f"size {r['size']:>6,}: phantom ${r['phantom']:>12,.0f} "
-              f"({r['phantom_per_share']:.4f} $/sh), "
-              f"Sharpe {r['naive_sharpe']:.2f} -> {r['depth_sharpe']:.2f}")
+        print(
+            f"size {r['size']:>6,}: phantom ${r['phantom']:>12,.0f} "
+            f"({r['phantom_per_share']:.4f} $/sh), "
+            f"Sharpe {r['naive_sharpe']:.2f} -> {r['depth_sharpe']:.2f}"
+        )
     return 0
 
 

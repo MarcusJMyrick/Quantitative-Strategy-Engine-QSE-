@@ -16,29 +16,31 @@ static std::shared_ptr<arrow::Table> build_table() {
     std::vector<double> returns(n);
     for (int i = 0; i < n; ++i) {
         dates[i] = "2023-01-" + std::to_string(1 + i);
-        factor_strong[i] = static_cast<double>(i);      // perfectly correlated with returns
-        factor_weak[i]   = (i % 2 == 0) ? 1.0 : -1.0;   // noisy signal
-        returns[i]       = static_cast<double>(i);
+        factor_strong[i] = static_cast<double>(i);  // perfectly correlated with returns
+        factor_weak[i] = (i % 2 == 0) ? 1.0 : -1.0; // noisy signal
+        returns[i] = static_cast<double>(i);
     }
     // Build Arrow arrays
-    arrow::StringBuilder sb; sb.AppendValues(dates);
+    arrow::StringBuilder sb;
+    sb.AppendValues(dates);
     arrow::DoubleBuilder f1b, f2b, rb;
     f1b.AppendValues(factor_strong);
     f2b.AppendValues(factor_weak);
     rb.AppendValues(returns);
     std::shared_ptr<arrow::Array> date_a, f1_a, f2_a, r_a;
-    sb.Finish(&date_a); f1b.Finish(&f1_a); f2b.Finish(&f2_a); rb.Finish(&r_a);
-    auto schema = arrow::schema({
-        arrow::field("date", arrow::utf8()),
-        arrow::field("factorA", arrow::float64()),
-        arrow::field("factorB", arrow::float64()),
-        arrow::field("ret_fwd", arrow::float64())});
-    return arrow::Table::Make(schema,{date_a,f1_a,f2_a,r_a});
+    sb.Finish(&date_a);
+    f1b.Finish(&f1_a);
+    f2b.Finish(&f2_a);
+    rb.Finish(&r_a);
+    auto schema = arrow::schema(
+        {arrow::field("date", arrow::utf8()), arrow::field("factorA", arrow::float64()),
+         arrow::field("factorB", arrow::float64()), arrow::field("ret_fwd", arrow::float64())});
+    return arrow::Table::Make(schema, {date_a, f1_a, f2_a, r_a});
 }
 
 TEST(AlphaBlenderICIntegrationTest, IRWeightsPrioritiseHighIC) {
     auto table = build_table();
-    std::vector<std::string> factors = {"factorA","factorB"};
+    std::vector<std::string> factors = {"factorA", "factorB"};
 
     // Config: use IR weighting
     qse::AlphaBlender blender;
@@ -48,11 +50,11 @@ TEST(AlphaBlenderICIntegrationTest, IRWeightsPrioritiseHighIC) {
     cfg.max_ir_weight = 2.0;
     blender.set_config(cfg);
 
-    auto res = blender.blend_factors(table,factors,"ret_fwd","date");
+    auto res = blender.blend_factors(table, factors, "ret_fwd", "date");
 
     // Expect weight for factorA > factorB due to higher IC
     double wA = res.final_weights["factorA"];
     double wB = res.final_weights["factorB"];
     EXPECT_GT(wA, wB);
     EXPECT_NEAR(wA + wB, 1.0, 1e-6);
-} 
+}

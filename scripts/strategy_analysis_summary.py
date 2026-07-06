@@ -6,12 +6,12 @@ Comprehensive Strategy Analysis Summary
 import os
 import glob
 import pandas as pd
-from datetime import datetime
+
 
 def analyze_strategy_performance():
     print("🔍 QSE Strategy Performance Analysis")
     print("=" * 50)
-    
+
     # Find latest results
     latest_timestamp = None
     for file in glob.glob("results/tradelog_*_*.csv"):
@@ -21,29 +21,29 @@ def analyze_strategy_performance():
                 timestamp = "_".join(parts[-3:]).replace(".csv", "")
                 if latest_timestamp is None or timestamp > latest_timestamp:
                     latest_timestamp = timestamp
-    
+
     if not latest_timestamp:
         print("❌ No recent results found")
         return
-    
+
     print(f"📅 Analyzing results from: {latest_timestamp}")
     print()
-    
+
     # Analyze each strategy
     strategies = {
         "FillTracking": {"trades": 0, "symbols": []},
         "SMA_20_50": {"trades": 0, "symbols": []},
         "DoNothing": {"trades": 0, "symbols": []},
-        "PairsTrading": {"trades": 0, "symbols": []}
+        "PairsTrading": {"trades": 0, "symbols": []},
     }
-    
+
     symbols = ["AAPL", "GOOG", "MSFT", "SPY"]
-    
+
     for symbol in symbols:
         for strategy_name in strategies.keys():
             pattern = f"results/tradelog_{symbol}_{strategy_name}_{latest_timestamp}.csv"
             files = glob.glob(pattern)
-            
+
             if files:
                 file_path = files[0]
                 try:
@@ -54,7 +54,7 @@ def analyze_strategy_performance():
                         strategies[strategy_name]["symbols"].append(symbol)
                 except:
                     strategies[strategy_name]["trades"] += 0
-    
+
     # Check PairsTrading specifically
     pairs_pattern = f"results/tradelog_PairsTrading_AAPL_GOOG_{latest_timestamp}.csv"
     pairs_files = glob.glob(pairs_pattern)
@@ -64,41 +64,41 @@ def analyze_strategy_performance():
             strategies["PairsTrading"]["trades"] = len(df) - 1
         except:
             strategies["PairsTrading"]["trades"] = 0
-    
+
     print("📊 Strategy Performance Summary:")
     print("-" * 40)
-    
+
     for strategy, data in strategies.items():
         status = "✅" if data["trades"] > 0 else "❌"
         symbols_str = ", ".join(data["symbols"]) if data["symbols"] else "None"
         print(f"{status} {strategy}: {data['trades']} trades ({symbols_str})")
-    
+
     print()
-    
+
     # Data analysis
     print("📈 Data Analysis:")
     print("-" * 20)
-    
+
     data_files = {
         "AAPL": "data/raw_ticks_AAPL.csv",
-        "GOOG": "data/raw_ticks_GOOG.csv", 
+        "GOOG": "data/raw_ticks_GOOG.csv",
         "MSFT": "data/raw_ticks_MSFT.csv",
-        "SPY": "data/raw_ticks_SPY.csv"
+        "SPY": "data/raw_ticks_SPY.csv",
     }
-    
+
     for symbol, file_path in data_files.items():
         if os.path.exists(file_path):
             df = pd.read_csv(file_path)
             print(f"  {symbol}: {len(df):,} ticks")
         else:
             print(f"  {symbol}: ❌ File not found")
-    
+
     print()
-    
+
     # PairsTrading specific analysis
     print("🎯 PairsTrading Deep Dive:")
     print("-" * 30)
-    
+
     if strategies["PairsTrading"]["trades"] == 0:
         print("❌ PairsTrading generated 0 trades despite:")
         print("   ✅ Having 8,300+ potential signals with aggressive parameters")
@@ -117,7 +117,7 @@ def analyze_strategy_performance():
         print("   2. Create a multi-symbol data reader")
         print("   3. Use a different strategy that works with single symbols")
         print("   4. Implement a proper pairs trading data pipeline")
-    
+
     print()
     print("🎉 Overall Assessment:")
     print("-" * 20)
@@ -130,5 +130,6 @@ def analyze_strategy_performance():
     print("   The core infrastructure works perfectly.")
     print("   PairsTrading just needs architectural improvements.")
 
+
 if __name__ == "__main__":
-    analyze_strategy_performance() 
+    analyze_strategy_performance()

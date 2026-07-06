@@ -4,8 +4,11 @@
 
 int main(int argc, char* argv[]) {
     if (argc != 4) {
-        std::cout << "Usage: " << argv[0] << " <input_csv> <output_parquet> <weights_yaml>" << std::endl;
-        std::cout << "Example: " << argv[0] << " data/daily_prices_AAPL.csv factors_AAPL.parquet config/factor_weights.yaml" << std::endl;
+        std::cout << "Usage: " << argv[0] << " <input_csv> <output_parquet> <weights_yaml>"
+                  << std::endl;
+        std::cout << "Example: " << argv[0]
+                  << " data/daily_prices_AAPL.csv factors_AAPL.parquet config/factor_weights.yaml"
+                  << std::endl;
         return 1;
     }
 
@@ -23,4 +26,4 @@ int main(int argc, char* argv[]) {
     }
 
     return 0;
-} 
+}

@@ -4,14 +4,15 @@
 #include <memory>
 
 namespace arrow {
-    class Table;
+class Table;
 }
 
 namespace qse {
 
 /**
  * @class ICMonitor
- * @brief Computes Spearman rank information coefficient (IC) between factor and next-day return, with rolling stats
+ * @brief Computes Spearman rank information coefficient (IC) between factor and next-day return,
+ * with rolling stats
  *
  * 1. Computes daily Spearman rank IC between factor and next-day return
  * 2. Tracks 252-day rolling mean and std of IC
@@ -22,9 +23,9 @@ public:
     ~ICMonitor() = default;
 
     struct ICResult {
-        std::vector<double> daily_ic;      // Daily IC values
-        std::vector<double> rolling_mean;  // 252-day rolling mean
-        std::vector<double> rolling_std;   // 252-day rolling std
+        std::vector<double> daily_ic;     // Daily IC values
+        std::vector<double> rolling_mean; // 252-day rolling mean
+        std::vector<double> rolling_std;  // 252-day rolling std
     };
 
     /**
@@ -36,14 +37,12 @@ public:
      * @param window_size Rolling window size (default 252)
      * @return ICResult struct with daily and rolling IC stats
      */
-    ICResult compute_ic(const std::shared_ptr<arrow::Table>& table,
-                       const std::string& factor_col,
-                       const std::string& return_col,
-                       const std::string& date_col,
-                       int window_size = 252);
+    ICResult compute_ic(const std::shared_ptr<arrow::Table>& table, const std::string& factor_col,
+                        const std::string& return_col, const std::string& date_col,
+                        int window_size = 252);
 
 private:
     double spearman_rank_corr(const std::vector<double>& x, const std::vector<double>& y);
 };
 
-} // namespace qse 
+} // namespace qse

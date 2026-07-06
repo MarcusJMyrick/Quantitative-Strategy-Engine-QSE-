@@ -128,13 +128,13 @@ def main() -> int:
             label=f"{profile} depth (fit b={b:.3f}, theory {THEORY[profile]:.1f})",
         )
         grid = np.geomspace(positive["size"].min(), positive["size"].max(), 100)
-        ax.plot(grid, a * grid ** b, "-", color=color, alpha=0.7)
+        ax.plot(grid, a * grid**b, "-", color=color, alpha=0.7)
 
     # Square-root law reference, anchored to the linear-profile fit level
     if "linear" in fits:
         anchor = fits["linear"]
         grid = np.geomspace(curves["size"].min(), curves["size"].max(), 100)
-        ref = anchor["a"] * grid ** 0.5
+        ref = anchor["a"] * grid**0.5
         ax.plot(grid, ref, "--", color="gray", label="square-root law (b=0.5)")
 
     ax.set_xscale("log")

@@ -38,13 +38,15 @@ ROLLING_WINDOW = 63
 # Metrics (pure functions, unit-tested in tests/python/test_tearsheet.py)
 # ---------------------------------------------------------------------------
 
+
 def daily_returns(equity: pd.Series) -> pd.Series:
     """Simple returns between consecutive equity observations."""
     return equity.pct_change().dropna()
 
 
-def annualized_sharpe(returns: pd.Series, risk_free_rate: float = 0.0,
-                      periods: int = TRADING_DAYS) -> float:
+def annualized_sharpe(
+    returns: pd.Series, risk_free_rate: float = 0.0, periods: int = TRADING_DAYS
+) -> float:
     """Annualized Sharpe ratio of per-period returns (sample std, ddof=1)."""
     if len(returns) < 2:
         return 0.0
@@ -80,8 +82,9 @@ def calmar_ratio(equity: pd.Series, periods: int = TRADING_DAYS) -> float:
     return cagr(equity, periods) / abs(mdd)
 
 
-def annualized_turnover(trades: pd.DataFrame, equity: pd.Series,
-                        periods: int = TRADING_DAYS) -> float:
+def annualized_turnover(
+    trades: pd.DataFrame, equity: pd.Series, periods: int = TRADING_DAYS
+) -> float:
     """Traded notional (|quantity| * price, single-counted) over mean equity,
     per year of the equity history."""
     n = len(equity) - 1
@@ -92,21 +95,22 @@ def annualized_turnover(trades: pd.DataFrame, equity: pd.Series,
     return notional / float(equity.mean()) / years
 
 
-def rolling_sharpe(returns: pd.Series, window: int = ROLLING_WINDOW,
-                   periods: int = TRADING_DAYS) -> pd.Series:
+def rolling_sharpe(
+    returns: pd.Series, window: int = ROLLING_WINDOW, periods: int = TRADING_DAYS
+) -> pd.Series:
     """Annualized Sharpe over a rolling window of per-period returns."""
     mean = returns.rolling(window).mean()
     std = returns.rolling(window).std(ddof=1)
     return mean / std * np.sqrt(periods)
 
 
-def alpha_beta(strategy_returns: pd.Series, benchmark_returns: pd.Series,
-               periods: int = TRADING_DAYS) -> tuple[float, float]:
+def alpha_beta(
+    strategy_returns: pd.Series, benchmark_returns: pd.Series, periods: int = TRADING_DAYS
+) -> tuple[float, float]:
     """OLS regression strategy = alpha + beta * benchmark on the aligned
     overlap. Returns (annualized alpha, beta); (nan, nan) if the overlap is
     too short to regress."""
-    df = pd.concat([strategy_returns, benchmark_returns], axis=1,
-                   join="inner").dropna()
+    df = pd.concat([strategy_returns, benchmark_returns], axis=1, join="inner").dropna()
     if len(df) < 3:
         return (float("nan"), float("nan"))
     y = df.iloc[:, 0].to_numpy(dtype=float)
@@ -118,6 +122,7 @@ def alpha_beta(strategy_returns: pd.Series, benchmark_returns: pd.Series,
 # ---------------------------------------------------------------------------
 # Loaders
 # ---------------------------------------------------------------------------
+
 
 def _parse_timestamps(ts: pd.Series) -> pd.Index:
     """Epoch timestamps of any resolution -> DatetimeIndex; non-numeric values
@@ -134,12 +139,12 @@ def _parse_timestamps(ts: pd.Series) -> pd.Index:
 
 def load_equity(path: str) -> pd.Series:
     df = pd.read_csv(path)
-    value_col = next((c for c in ("equity", "portfolio_value", "value")
-                      if c in df.columns), None)
+    value_col = next((c for c in ("equity", "portfolio_value", "value") if c in df.columns), None)
     if value_col is None:
         raise ValueError(f"No equity column in {path}; columns: {list(df.columns)}")
-    series = pd.Series(df[value_col].to_numpy(dtype=float),
-                       index=_parse_timestamps(df["timestamp"]), name="equity")
+    series = pd.Series(
+        df[value_col].to_numpy(dtype=float), index=_parse_timestamps(df["timestamp"]), name="equity"
+    )
     # Keep the last observation per timestamp (intraday duplicates)
     series = series[~series.index.duplicated(keep="last")].sort_index()
     return series
@@ -171,16 +176,21 @@ def to_daily(equity: pd.Series) -> pd.Series:
 # Tearsheet PDF
 # ---------------------------------------------------------------------------
 
-def compute_summary(equity: pd.Series, trades: pd.DataFrame | None,
-                    benchmark: pd.Series | None,
-                    periods: int = TRADING_DAYS) -> dict:
+
+def compute_summary(
+    equity: pd.Series,
+    trades: pd.DataFrame | None,
+    benchmark: pd.Series | None,
+    periods: int = TRADING_DAYS,
+) -> dict:
     returns = daily_returns(equity)
     summary = {
         "Observations": len(equity),
         "Total return": equity.iloc[-1] / equity.iloc[0] - 1.0,
         "CAGR": cagr(equity, periods),
-        "Volatility (ann.)": float(returns.std(ddof=1) * np.sqrt(periods))
-        if len(returns) > 1 else 0.0,
+        "Volatility (ann.)": (
+            float(returns.std(ddof=1) * np.sqrt(periods)) if len(returns) > 1 else 0.0
+        ),
         "Sharpe (ann.)": annualized_sharpe(returns, periods=periods),
         "Max drawdown": max_drawdown(equity),
         "Calmar": calmar_ratio(equity, periods),
@@ -205,9 +215,13 @@ def _format_value(key: str, value) -> str:
     return f"{value:.3f}"
 
 
-def build_tearsheet(equity: pd.Series, trades: pd.DataFrame | None,
-                    benchmark: pd.Series | None, out_path: str,
-                    title: str = "Strategy") -> dict:
+def build_tearsheet(
+    equity: pd.Series,
+    trades: pd.DataFrame | None,
+    benchmark: pd.Series | None,
+    out_path: str,
+    title: str = "Strategy",
+) -> dict:
     """Render the multi-page PDF and return the summary metrics."""
     daily = to_daily(equity)
     returns = daily_returns(daily)
@@ -216,15 +230,14 @@ def build_tearsheet(equity: pd.Series, trades: pd.DataFrame | None,
     bench_daily = to_daily(benchmark) if benchmark is not None else None
     if bench_daily is not None and isinstance(daily.index, pd.DatetimeIndex):
         bench_daily = bench_daily.loc[
-            (bench_daily.index >= daily.index.min())
-            & (bench_daily.index <= daily.index.max())]
+            (bench_daily.index >= daily.index.min()) & (bench_daily.index <= daily.index.max())
+        ]
         if bench_daily.empty:
             bench_daily = None
 
     with PdfPages(out_path) as pdf:
         # Page 1: equity, drawdown, summary table
-        fig, axes = plt.subplots(3, 1, figsize=(8.5, 11),
-                                 gridspec_kw={"height_ratios": [3, 2, 2]})
+        fig, axes = plt.subplots(3, 1, figsize=(8.5, 11), gridspec_kw={"height_ratios": [3, 2, 2]})
         fig.suptitle(f"Performance Tearsheet — {title}", fontsize=14)
 
         axes[0].plot(daily.index, daily.values, color="tab:blue")
@@ -232,15 +245,15 @@ def build_tearsheet(equity: pd.Series, trades: pd.DataFrame | None,
         axes[0].grid(alpha=0.3)
 
         drawdown = (daily - daily.cummax()) / daily.cummax()
-        axes[1].fill_between(daily.index, drawdown.values, 0, color="tab:red",
-                             alpha=0.4)
+        axes[1].fill_between(daily.index, drawdown.values, 0, color="tab:red", alpha=0.4)
         axes[1].set_title("Drawdown")
         axes[1].grid(alpha=0.3)
 
         axes[2].axis("off")
         rows = [[k, _format_value(k, v)] for k, v in summary.items()]
-        table = axes[2].table(cellText=rows, colLabels=["Metric", "Value"],
-                              loc="center", cellLoc="left")
+        table = axes[2].table(
+            cellText=rows, colLabels=["Metric", "Value"], loc="center", cellLoc="left"
+        )
         table.auto_set_font_size(False)
         table.set_fontsize(9)
         table.scale(1.0, 1.3)
@@ -260,8 +273,12 @@ def build_tearsheet(equity: pd.Series, trades: pd.DataFrame | None,
         axes[0].grid(alpha=0.3)
 
         axes[1].hist(returns.values, bins=50, color="tab:blue", alpha=0.7)
-        axes[1].axvline(float(returns.mean()), color="tab:red", lw=1.0,
-                        label=f"mean {returns.mean() * 1e4:.1f} bps")
+        axes[1].axvline(
+            float(returns.mean()),
+            color="tab:red",
+            lw=1.0,
+            label=f"mean {returns.mean() * 1e4:.1f} bps",
+        )
         axes[1].set_title("Daily return distribution")
         axes[1].legend()
         axes[1].grid(alpha=0.3)
@@ -276,25 +293,34 @@ def build_tearsheet(equity: pd.Series, trades: pd.DataFrame | None,
 
             strat_rebased = daily / daily.iloc[0]
             bench_rebased = bench_daily / bench_daily.iloc[0]
-            axes[0].plot(strat_rebased.index, strat_rebased.values,
-                         label="strategy", color="tab:blue")
-            axes[0].plot(bench_rebased.index, bench_rebased.values,
-                         label="benchmark (buy & hold)", color="tab:gray")
+            axes[0].plot(
+                strat_rebased.index, strat_rebased.values, label="strategy", color="tab:blue"
+            )
+            axes[0].plot(
+                bench_rebased.index,
+                bench_rebased.values,
+                label="benchmark (buy & hold)",
+                color="tab:gray",
+            )
             axes[0].set_title("Growth of $1 vs benchmark")
             axes[0].legend()
             axes[0].grid(alpha=0.3)
 
-            aligned = pd.concat([returns, bench_returns], axis=1,
-                                join="inner").dropna()
+            aligned = pd.concat([returns, bench_returns], axis=1, join="inner").dropna()
             if len(aligned) >= 3:
                 y = aligned.iloc[:, 0].to_numpy(dtype=float)
                 x = aligned.iloc[:, 1].to_numpy(dtype=float)
                 beta, alpha_daily = np.polyfit(x, y, 1)
                 axes[1].scatter(x, y, s=12, alpha=0.6, color="tab:blue")
                 grid = np.linspace(x.min(), x.max(), 50)
-                axes[1].plot(grid, alpha_daily + beta * grid, color="tab:red",
-                             label=(f"alpha {alpha_daily * TRADING_DAYS * 100:.2f}%/yr, "
-                                    f"beta {beta:.2f}"))
+                axes[1].plot(
+                    grid,
+                    alpha_daily + beta * grid,
+                    color="tab:red",
+                    label=(
+                        f"alpha {alpha_daily * TRADING_DAYS * 100:.2f}%/yr, " f"beta {beta:.2f}"
+                    ),
+                )
                 axes[1].set_xlabel("Benchmark daily return")
                 axes[1].set_ylabel("Strategy daily return")
                 axes[1].set_title("Return regression vs benchmark")

@@ -8,7 +8,7 @@ namespace qse {
 bool Config::load_config(const std::string& config_path) {
     try {
         YAML::Node config = YAML::LoadFile(config_path);
-        
+
         // Load symbol slippage coefficients
         if (config["symbols"]) {
             auto symbols = config["symbols"];
@@ -18,12 +18,12 @@ bool Config::load_config(const std::string& config_path) {
                 if (slippage_node && slippage_node["linear_coeff"]) {
                     double coeff = slippage_node["linear_coeff"].as<double>();
                     linear_impact_[symbol] = coeff;
-                    std::cout << "Loaded slippage coefficient for " << symbol 
-                              << ": " << coeff << std::endl;
+                    std::cout << "Loaded slippage coefficient for " << symbol << ": " << coeff
+                              << std::endl;
                 }
             }
         }
-        
+
         // Load backtester settings
         if (config["backtester"]) {
             auto backtester = config["backtester"];
@@ -45,7 +45,7 @@ bool Config::load_config(const std::string& config_path) {
                 }
             }
         }
-        
+
         // Load data paths
         if (config["data"]) {
             auto data = config["data"];
@@ -59,10 +59,10 @@ bool Config::load_config(const std::string& config_path) {
                 results_path_ = data["results_path"].as<std::string>();
             }
         }
-        
+
         std::cout << "Configuration loaded successfully from: " << config_path << std::endl;
         return true;
-        
+
     } catch (const YAML::Exception& e) {
         std::cerr << "Error loading YAML config: " << e.what() << std::endl;
         return false;
@@ -80,4 +80,4 @@ double Config::get_slippage_coeff(const std::string& symbol) const {
     return 0.0; // Default to no slippage if symbol not found
 }
 
-} // namespace qse 
+} // namespace qse

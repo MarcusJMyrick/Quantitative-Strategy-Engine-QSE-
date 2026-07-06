@@ -19,4 +19,4 @@ private:
     double current_sum_ = 0.0;
 };
 
-} // namespace qse 
+} // namespace qse

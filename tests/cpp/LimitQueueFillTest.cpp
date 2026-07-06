@@ -62,8 +62,8 @@ TEST_F(LimitQueueFillTest, NoFillWhileQueueAhead) {
     auto om = make_om("queue_ahead");
     om->depth_book("AAPL").enqueue_order(Order::Side::SELL, 10.0, "mm_1", 300);
 
-    OrderId id = om->submit_limit_order("AAPL", Order::Side::SELL, 100, 10.0,
-                                        Order::TimeInForce::GTC);
+    OrderId id =
+        om->submit_limit_order("AAPL", Order::Side::SELL, 100, 10.0, Order::TimeInForce::GTC);
     // Joined the back of the queue, behind the 300 already displayed
     EXPECT_EQ(om->depth_book("AAPL").queue_position(Order::Side::SELL, 10.0, id), 2u);
 
@@ -82,8 +82,8 @@ TEST_F(LimitQueueFillTest, FillsAfterQueueAheadExhausted) {
     auto om = make_om("queue_fill");
     om->depth_book("AAPL").enqueue_order(Order::Side::SELL, 10.0, "mm_1", 300);
 
-    OrderId id = om->submit_limit_order("AAPL", Order::Side::SELL, 100, 10.0,
-                                        Order::TimeInForce::GTC);
+    OrderId id =
+        om->submit_limit_order("AAPL", Order::Side::SELL, 100, 10.0, Order::TimeInForce::GTC);
 
     // 200 consumes queue ahead down to 100; still nothing for us
     om->process_tick(trade_tick("AAPL", 10.0, 200));
@@ -110,8 +110,8 @@ TEST_F(LimitQueueFillTest, CancelRemovesFromQueue) {
     auto om = make_om("cancel");
     om->depth_book("AAPL").enqueue_order(Order::Side::SELL, 10.0, "mm_1", 100);
 
-    OrderId id = om->submit_limit_order("AAPL", Order::Side::SELL, 50, 10.0,
-                                        Order::TimeInForce::GTC);
+    OrderId id =
+        om->submit_limit_order("AAPL", Order::Side::SELL, 50, 10.0, Order::TimeInForce::GTC);
     EXPECT_EQ(om->depth_book("AAPL").queue_position(Order::Side::SELL, 10.0, id), 2u);
 
     EXPECT_TRUE(om->cancel_order(id));
@@ -130,10 +130,10 @@ TEST_F(LimitQueueFillTest, CancelRemovesFromQueue) {
 TEST_F(LimitQueueFillTest, FifoAmongStrategyOrders) {
     auto om = make_om("fifo");
 
-    OrderId first = om->submit_limit_order("AAPL", Order::Side::SELL, 50, 10.0,
-                                           Order::TimeInForce::GTC);
-    OrderId second = om->submit_limit_order("AAPL", Order::Side::SELL, 50, 10.0,
-                                            Order::TimeInForce::GTC);
+    OrderId first =
+        om->submit_limit_order("AAPL", Order::Side::SELL, 50, 10.0, Order::TimeInForce::GTC);
+    OrderId second =
+        om->submit_limit_order("AAPL", Order::Side::SELL, 50, 10.0, Order::TimeInForce::GTC);
     EXPECT_EQ(om->depth_book("AAPL").queue_position(Order::Side::SELL, 10.0, first), 1u);
     EXPECT_EQ(om->depth_book("AAPL").queue_position(Order::Side::SELL, 10.0, second), 2u);
 
@@ -158,8 +158,8 @@ TEST_F(LimitQueueFillTest, MarketableLimitTakesThenRests) {
 
     // Buy 150 limit 10.2: takes the 100 @ 10.0, will not lift 10.5,
     // rests the remaining 50 on the bid side at 10.2
-    OrderId id = om->submit_limit_order("AAPL", Order::Side::BUY, 150, 10.2,
-                                        Order::TimeInForce::GTC);
+    OrderId id =
+        om->submit_limit_order("AAPL", Order::Side::BUY, 150, 10.2, Order::TimeInForce::GTC);
 
     auto order = om->get_order(id);
     ASSERT_TRUE(order.has_value());
@@ -174,8 +174,8 @@ TEST_F(LimitQueueFillTest, IocTakesAndCancelsRemainder) {
     auto om = make_om("ioc");
     om->depth_book("AAPL").enqueue_order(Order::Side::SELL, 10.0, "mm_a", 100);
 
-    OrderId id = om->submit_limit_order("AAPL", Order::Side::BUY, 150, 10.2,
-                                        Order::TimeInForce::IOC);
+    OrderId id =
+        om->submit_limit_order("AAPL", Order::Side::BUY, 150, 10.2, Order::TimeInForce::IOC);
 
     auto order = om->get_order(id);
     ASSERT_TRUE(order.has_value());
@@ -189,8 +189,8 @@ TEST_F(LimitQueueFillTest, IocTakesAndCancelsRemainder) {
 TEST_F(LimitQueueFillTest, MakerCreditedWhenStrategyMarketOrderConsumesIt) {
     auto om = make_om("attribution");
 
-    OrderId maker_id = om->submit_limit_order("AAPL", Order::Side::SELL, 100, 10.0,
-                                              Order::TimeInForce::GTC);
+    OrderId maker_id =
+        om->submit_limit_order("AAPL", Order::Side::SELL, 100, 10.0, Order::TimeInForce::GTC);
     OrderId taker_id = om->submit_market_order("AAPL", Order::Side::BUY, 60);
     om->attempt_fills();
 
@@ -218,8 +218,8 @@ TEST_F(LimitQueueFillTest, QuoteRefreshKeepsDisplayedLiquidityAhead) {
     // Quote: 300 displayed at the 10.0 ask
     om->process_tick(quote_tick("AAPL", 9.9, 500, 10.0, 300));
 
-    OrderId id = om->submit_limit_order("AAPL", Order::Side::SELL, 100, 10.0,
-                                        Order::TimeInForce::GTC);
+    OrderId id =
+        om->submit_limit_order("AAPL", Order::Side::SELL, 100, 10.0, Order::TimeInForce::GTC);
     EXPECT_EQ(om->depth_book("AAPL").queue_position(Order::Side::SELL, 10.0, id), 2u);
 
     // A quote refresh must not let us jump ahead of displayed size

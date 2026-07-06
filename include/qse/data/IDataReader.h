@@ -14,7 +14,7 @@ public:
     // --- NEW: A method to get all tick data ---
     // This is the core addition for making the engine tick-driven.
     virtual const std::vector<qse::Tick>& read_all_ticks() const = 0;
-    
+
     // --- UPDATED: Returns by const reference for efficiency ---
     // This method remains to support bar-based strategies and tests.
     virtual const std::vector<qse::Bar>& read_all_bars() const = 0;

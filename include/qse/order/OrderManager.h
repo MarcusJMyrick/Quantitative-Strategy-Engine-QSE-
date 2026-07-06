@@ -16,120 +16,126 @@
 
 namespace qse {
 
-    // A concrete implementation of the IOrderManager interface.
-    // This class handles order execution, position tracking, and logging for multiple assets.
-    class OrderManager : public IOrderManager {
-    public:
-        // Constructor with OrderBook integration
-        OrderManager(const Config& config, OrderBook& order_book, const std::string& equity_curve_path, const std::string& tradelog_path);
-        
-        // Constructor now takes a Config object
-        OrderManager(const Config& config, const std::string& equity_curve_path, const std::string& tradelog_path);
-        
-        // Legacy constructor for backward compatibility
-        OrderManager(double initial_cash, const std::string& equity_curve_path, const std::string& tradelog_path);
-        
-        ~OrderManager() override;
+// A concrete implementation of the IOrderManager interface.
+// This class handles order execution, position tracking, and logging for multiple assets.
+class OrderManager : public IOrderManager {
+public:
+    // Constructor with OrderBook integration
+    OrderManager(const Config& config, OrderBook& order_book, const std::string& equity_curve_path,
+                 const std::string& tradelog_path);
 
-        // Legacy methods
-        void execute_buy(const std::string& symbol, int quantity, double price) override;
-        void execute_sell(const std::string& symbol, int quantity, double price) override;
-        int get_position(const std::string& symbol) const override;
-        std::vector<Position> get_positions() const override;
-        double get_cash() const override;
-        void record_equity(long long timestamp, const std::map<std::string, double>& market_prices) override;
+    // Constructor now takes a Config object
+    OrderManager(const Config& config, const std::string& equity_curve_path,
+                 const std::string& tradelog_path);
 
-        // Tick-level order management methods
-        OrderId submit_market_order(const std::string& symbol, Order::Side side, Volume quantity) override;
-        OrderId submit_limit_order(const std::string& symbol, Order::Side side, Volume quantity, 
-                                  Price limit_price, Order::TimeInForce tif) override;
-        bool cancel_order(const OrderId& order_id) override;
-        void process_tick(const Tick& tick) override;
-        
-        // --- NEW: Attempt fills against current order book ---
-        void attempt_fills() override;
-        
-        // --- NEW: Set fill callback for strategy notifications ---
-        void set_fill_callback(FillCallback callback) override;
-        
-        std::optional<Order> get_order(const OrderId& order_id) const override;
-        std::vector<Order> get_active_orders(const std::string& symbol) const override;
+    // Legacy constructor for backward compatibility
+    OrderManager(double initial_cash, const std::string& equity_curve_path,
+                 const std::string& tradelog_path);
 
-        // --- Full-depth fill model (config: backtester.fill_model = full_depth) ---
-        // When enabled, market orders fill by walking a per-symbol full-depth
-        // book (size-dependent VWAP impact) instead of a flat top-of-book price
-        // plus linear slippage coefficient.
-        void set_use_full_depth(bool enabled) { use_full_depth_ = enabled; }
-        bool use_full_depth() const { return use_full_depth_; }
+    ~OrderManager() override;
 
-        // Access (creating if needed) the full-depth book for a symbol, so
-        // callers and tests can seed multi-level liquidity directly.
-        OrderBookFullDepth& depth_book(const std::string& symbol) { return depth_books_[symbol]; }
+    // Legacy methods
+    void execute_buy(const std::string& symbol, int quantity, double price) override;
+    void execute_sell(const std::string& symbol, int quantity, double price) override;
+    int get_position(const std::string& symbol) const override;
+    std::vector<Position> get_positions() const override;
+    double get_cash() const override;
+    void record_equity(long long timestamp,
+                       const std::map<std::string, double>& market_prices) override;
 
-    private:
-        // Configuration for slippage coefficients
-        const Config* config_;
-        
-        // Order book reference
-        OrderBook* order_book_;
+    // Tick-level order management methods
+    OrderId submit_market_order(const std::string& symbol, Order::Side side,
+                                Volume quantity) override;
+    OrderId submit_limit_order(const std::string& symbol, Order::Side side, Volume quantity,
+                               Price limit_price, Order::TimeInForce tif) override;
+    bool cancel_order(const OrderId& order_id) override;
+    void process_tick(const Tick& tick) override;
 
-        // Full-depth fill model state
-        bool use_full_depth_ = false;
-        std::unordered_map<std::string, OrderBookFullDepth> depth_books_;
+    // --- NEW: Attempt fills against current order book ---
+    void attempt_fills() override;
 
-        // QueueId of each strategy limit order resting in a depth book
-        std::unordered_map<OrderId, QueueId> limit_queue_ids_;
-        
-        // Portfolio state
-        double cash_;
-        std::map<std::string, int> positions_;
-        
-        // Order book
-        std::unordered_map<OrderId, Order> orders_;
-        std::unordered_map<std::string, std::vector<OrderId>> symbol_orders_;
-        
-        // Order ID generation
-        int next_order_id_;
-        
-        // File outputs
-        std::ofstream equity_curve_file_;
-        std::ofstream tradelog_file_;
-        
-        // --- NEW: Fill callback for strategy notifications ---
-        FillCallback fill_callback_;
-        
-        // Helper methods
-        OrderId generate_order_id();
-        void add_order_to_book(const Order& order);
-        void remove_order_from_book(const OrderId& order_id);
-        void match_orders_for_symbol(const std::string& symbol, const Tick& tick);
-        // price_includes_impact: true when fill_price came from walking the
-        // depth book (VWAP), so the linear slippage coefficient must not be
-        // applied on top of it
-        void fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick,
-                        bool price_includes_impact = false);
-        void cancel_ioc_orders(const std::string& symbol, const Tick& tick);
-        
-        // New helper methods for OrderBook integration
-        Volume process_limit_order_fill(Order& order, const TopOfBook& tob);
-        Volume process_ioc_order_fill(Order& order, const TopOfBook& tob);
+    // --- NEW: Set fill callback for strategy notifications ---
+    void set_fill_callback(FillCallback callback) override;
 
-        // --- Full-depth fill model helpers ---
-        // Walks the opposite side of the depth book while the taker's price
-        // allows (unbounded for market orders, capped at limit_price for
-        // limit orders), fills the taker at the VWAP of consumed liquidity,
-        // and credits any strategy maker orders that were consumed.
-        Volume take_liquidity(Order& taker, OrderBookFullDepth& book, const Tick& tick);
-        // A trade print consumes the FIFO queue at its price level; strategy
-        // orders reached by the print are filled at that price.
-        void consume_trade_print(const Tick& tick);
-        // Credits a maker fill to a strategy order consumed from the book
-        // (order ids not tracked in orders_ are synthetic/seeded liquidity).
-        void apply_maker_fill(const OrderId& maker_id, Volume qty, Price price, const Tick& tick);
-        
-        // Legacy helper methods
-        void log_trade(long long timestamp, const std::string& symbol, const std::string& type, int quantity, double price);
-        double calculate_holdings_value(const std::map<std::string, double>& market_prices) const;
-    };
+    std::optional<Order> get_order(const OrderId& order_id) const override;
+    std::vector<Order> get_active_orders(const std::string& symbol) const override;
+
+    // --- Full-depth fill model (config: backtester.fill_model = full_depth) ---
+    // When enabled, market orders fill by walking a per-symbol full-depth
+    // book (size-dependent VWAP impact) instead of a flat top-of-book price
+    // plus linear slippage coefficient.
+    void set_use_full_depth(bool enabled) { use_full_depth_ = enabled; }
+    bool use_full_depth() const { return use_full_depth_; }
+
+    // Access (creating if needed) the full-depth book for a symbol, so
+    // callers and tests can seed multi-level liquidity directly.
+    OrderBookFullDepth& depth_book(const std::string& symbol) { return depth_books_[symbol]; }
+
+private:
+    // Configuration for slippage coefficients
+    const Config* config_;
+
+    // Order book reference
+    OrderBook* order_book_;
+
+    // Full-depth fill model state
+    bool use_full_depth_ = false;
+    std::unordered_map<std::string, OrderBookFullDepth> depth_books_;
+
+    // QueueId of each strategy limit order resting in a depth book
+    std::unordered_map<OrderId, QueueId> limit_queue_ids_;
+
+    // Portfolio state
+    double cash_;
+    std::map<std::string, int> positions_;
+
+    // Order book
+    std::unordered_map<OrderId, Order> orders_;
+    std::unordered_map<std::string, std::vector<OrderId>> symbol_orders_;
+
+    // Order ID generation
+    int next_order_id_;
+
+    // File outputs
+    std::ofstream equity_curve_file_;
+    std::ofstream tradelog_file_;
+
+    // --- NEW: Fill callback for strategy notifications ---
+    FillCallback fill_callback_;
+
+    // Helper methods
+    OrderId generate_order_id();
+    void add_order_to_book(const Order& order);
+    void remove_order_from_book(const OrderId& order_id);
+    void match_orders_for_symbol(const std::string& symbol, const Tick& tick);
+    // price_includes_impact: true when fill_price came from walking the
+    // depth book (VWAP), so the linear slippage coefficient must not be
+    // applied on top of it
+    void fill_order(Order& order, Volume fill_qty, Price fill_price, const Tick& tick,
+                    bool price_includes_impact = false);
+    void cancel_ioc_orders(const std::string& symbol, const Tick& tick);
+
+    // New helper methods for OrderBook integration
+    Volume process_limit_order_fill(Order& order, const TopOfBook& tob);
+    Volume process_ioc_order_fill(Order& order, const TopOfBook& tob);
+
+    // --- Full-depth fill model helpers ---
+    // Walks the opposite side of the depth book while the taker's price
+    // allows (unbounded for market orders, capped at limit_price for
+    // limit orders), fills the taker at the VWAP of consumed liquidity,
+    // and credits any strategy maker orders that were consumed.
+    Volume take_liquidity(Order& taker, OrderBookFullDepth& book, const Tick& tick);
+    // A trade print consumes the FIFO queue at its price level; strategy
+    // orders reached by the print are filled at that price.
+    void consume_trade_print(const Tick& tick);
+    // Credits a maker fill to a strategy order consumed from the book
+    // (order ids not tracked in orders_ are synthetic/seeded liquidity).
+    void apply_maker_fill(const OrderId& maker_id, Volume qty, Price price, const Tick& tick);
+
+    // Legacy helper methods
+    void log_trade(long long timestamp, const std::string& symbol, const std::string& type,
+                   int quantity, double price);
+    double calculate_holdings_value(const std::map<std::string, double>& market_prices) const;
+};
 
 } // namespace qse

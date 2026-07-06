@@ -14,9 +14,9 @@ struct TopOfBook {
     Volume best_bid_size = 0;
     Price best_ask_price = 0.0;
     Volume best_ask_size = 0;
-    
+
     TopOfBook() = default;
-    
+
     // Helper methods
     bool has_bid() const { return best_bid_size > 0; }
     bool has_ask() const { return best_ask_size > 0; }
@@ -31,20 +31,20 @@ struct TopOfBook {
 class OrderBook {
 public:
     OrderBook() = default;
-    
+
     /**
      * @brief Updates the order book with a new tick.
      * @param tick The tick containing bid/ask information
      */
     void on_tick(const Tick& tick);
-    
+
     /**
      * @brief Gets the current top of book for a symbol.
      * @param symbol The symbol to query
      * @return The top of book for the symbol, or empty TopOfBook if not found
      */
     const TopOfBook& top_of_book(const std::string& symbol) const;
-    
+
     /**
      * @brief Consumes liquidity from the order book (for order fills).
      * @param symbol The symbol
@@ -58,4 +58,4 @@ private:
     std::unordered_map<std::string, TopOfBook> books_;
 };
 
-} // namespace qse 
+} // namespace qse

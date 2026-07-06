@@ -22,8 +22,8 @@ TEST_F(MessagingTest, CanCreatePublisherAndSubscriber) {
 }
 
 TEST_F(MessagingTest, CanPublishAndReceiveTick) {
-    const std::string endpoint = "tcp://127.0.0.1:5555";  // Use TCP instead of inproc
-    const std::string topic = "TICK_DATA"; // Define a clear topic
+    const std::string endpoint = "tcp://127.0.0.1:5555"; // Use TCP instead of inproc
+    const std::string topic = "TICK_DATA";               // Define a clear topic
 
     // 1. Define the data you want to send
     Tick sent_tick;
@@ -34,7 +34,7 @@ TEST_F(MessagingTest, CanPublishAndReceiveTick) {
     // 2. Set up subscriber with the correct topic
     std::optional<Tick> received_tick;
     std::atomic<bool> message_received{false};
-    
+
     TickSubscriber subscriber(endpoint, topic); // Use the topic variable
     subscriber.set_tick_callback([&](const Tick& tick) {
         received_tick = tick;
@@ -55,18 +55,18 @@ TEST_F(MessagingTest, CanPublishAndReceiveTick) {
     // Use try_receive() in a loop with timeout instead of blocking listen()
     auto start = std::chrono::steady_clock::now();
     int receive_attempts = 0;
-    while (!message_received && 
+    while (!message_received &&
            std::chrono::steady_clock::now() - start < std::chrono::milliseconds(3000)) {
         bool received = subscriber.try_receive();
         receive_attempts++;
         if (receive_attempts % 100 == 0) {
-            std::cout << "Receive attempts: " << receive_attempts 
+            std::cout << "Receive attempts: " << receive_attempts
                       << ", message_received: " << message_received << std::endl;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    
-    std::cout << "Final receive attempts: " << receive_attempts 
+
+    std::cout << "Final receive attempts: " << receive_attempts
               << ", message_received: " << message_received << std::endl;
 
     // 5. Clean up the publisher thread.
@@ -75,13 +75,14 @@ TEST_F(MessagingTest, CanPublishAndReceiveTick) {
     // 6. Assert that we received the message and its contents are correct.
     ASSERT_TRUE(message_received) << "Test failed: Message was not received.";
     ASSERT_TRUE(received_tick.has_value()) << "Test failed: No tick data received.";
-    
+
     EXPECT_DOUBLE_EQ(received_tick->price, sent_tick.price);
     EXPECT_EQ(received_tick->volume, sent_tick.volume);
 }
 
 TEST_F(MessagingTest, CanPublishAndReceiveBar) {
-    const std::string endpoint = "tcp://127.0.0.1:5556";  // Use TCP instead of inproc, different port
+    const std::string endpoint =
+        "tcp://127.0.0.1:5556";           // Use TCP instead of inproc, different port
     const std::string topic = "BAR_DATA"; // Define a clear topic
 
     // 1. Define the bar data
@@ -97,7 +98,7 @@ TEST_F(MessagingTest, CanPublishAndReceiveBar) {
     // 2. Set up subscriber with the correct topic
     std::optional<Bar> received_bar;
     std::atomic<bool> message_received{false};
-    
+
     TickSubscriber subscriber(endpoint, topic); // Use the topic variable
     subscriber.set_bar_callback([&](const Bar& bar) {
         received_bar = bar;
@@ -107,7 +108,8 @@ TEST_F(MessagingTest, CanPublishAndReceiveBar) {
     // 3. Run the publisher in the background
     std::thread publisher_thread([&]() {
         TickPublisher publisher(endpoint);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // Give subscriber time to connect
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(1000)); // Give subscriber time to connect
         // FIX: Pass the topic when publishing
         publisher.publish_bar(topic, sent_bar); // Use the topic variable
     });
@@ -115,18 +117,18 @@ TEST_F(MessagingTest, CanPublishAndReceiveBar) {
     // 4. Subscribe and receive in the main thread
     auto start = std::chrono::steady_clock::now();
     int receive_attempts = 0;
-    while (!message_received && 
+    while (!message_received &&
            std::chrono::steady_clock::now() - start < std::chrono::milliseconds(3000)) {
         bool received = subscriber.try_receive();
         receive_attempts++;
         if (receive_attempts % 100 == 0) {
-            std::cout << "Receive attempts: " << receive_attempts 
+            std::cout << "Receive attempts: " << receive_attempts
                       << ", message_received: " << message_received << std::endl;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    
-    std::cout << "Final receive attempts: " << receive_attempts 
+
+    std::cout << "Final receive attempts: " << receive_attempts
               << ", message_received: " << message_received << std::endl;
 
     // 5. Clean up

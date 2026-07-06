@@ -20,7 +20,7 @@ protected:
     void SetUp() override {
         // Create test data directory if it doesn't exist
         std::filesystem::create_directories("test_data");
-        
+
         // Create a test CSV file
         file_path_ = "test_data/test_bars.csv";
         std::ofstream file(file_path_);
@@ -50,7 +50,7 @@ TEST_F(DataReaderTest, CanReadTimeRange) {
     using namespace std::chrono;
     auto start_time = system_clock::time_point{seconds(1704067200)};
     auto end_time = system_clock::time_point{seconds(1704153600)};
-    
+
     // Filter bars manually since read_bars_in_range is not available
     std::vector<qse::Bar> filtered_bars;
     for (const auto& bar : bars) {
@@ -72,4 +72,4 @@ TEST_F(DataReaderTest, GetBarCountReturnsCorrectSize) {
 }
 
 } // namespace test
-} // namespace qse 
+} // namespace qse

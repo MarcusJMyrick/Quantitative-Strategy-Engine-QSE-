@@ -95,19 +95,22 @@ def adjust_for_corporate_actions(
             if amount <= 0 or amount >= prev_close:
                 logger.warning(
                     f"Skipping implausible dividend for {symbol}: {amount} "
-                    f"against reference close {prev_close}")
+                    f"against reference close {prev_close}"
+                )
                 continue
             factor = 1.0 - amount / prev_close
             price_factor[mask] *= factor
 
-        report.append({
-            "symbol": symbol,
-            "date": ex_date.date().isoformat(),
-            "action": row.action,
-            "value": float(row.value),
-            "factor": factor,
-            "rows_adjusted": n_rows,
-        })
+        report.append(
+            {
+                "symbol": symbol,
+                "date": ex_date.date().isoformat(),
+                "action": row.action,
+                "value": float(row.value),
+                "factor": factor,
+                "rows_adjusted": n_rows,
+            }
+        )
 
     if not report:
         return df, report  # nothing applied - preserve the frame (and dtypes)

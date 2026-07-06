@@ -20,7 +20,8 @@ public:
     // Register the given strategy for a particular symbol. Duplicate
     // registrations are ignored.
     void register_strategy(const std::string& symbol, IStrategy* strategy) {
-        if (!strategy) return;
+        if (!strategy)
+            return;
         auto& vec = routes_[symbol];
         if (std::find(vec.begin(), vec.end(), strategy) == vec.end()) {
             vec.push_back(strategy);
@@ -30,7 +31,8 @@ public:
     // Dispatch a bar to all interested strategies.
     void route_bar(const Bar& bar) const {
         auto it = routes_.find(bar.symbol);
-        if (it == routes_.end()) return;
+        if (it == routes_.end())
+            return;
         for (auto* strat : it->second) {
             if (strat) {
                 strat->on_bar(bar);
@@ -42,4 +44,4 @@ private:
     std::unordered_map<std::string, std::vector<IStrategy*>> routes_;
 };
 
-} // namespace qse 
+} // namespace qse

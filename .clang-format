@@ -1,0 +1,15 @@
+# QSE C++ style (C2): LLVM base adjusted to the codebase's existing
+# conventions. Enforced in CI with clang-format 18 (pinned via pip so local
+# and CI output are identical).
+BasedOnStyle: LLVM
+Standard: c++17
+ColumnLimit: 100
+IndentWidth: 4
+AccessModifierOffset: -4
+PointerAlignment: Left
+DerivePointerAlignment: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortLambdasOnASingleLine: All
+BreakBeforeBraces: Attach
+IncludeBlocks: Preserve
+SortIncludes: false

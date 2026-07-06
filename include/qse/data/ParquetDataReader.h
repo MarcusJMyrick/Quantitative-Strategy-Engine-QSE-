@@ -14,7 +14,7 @@ namespace qse {
 class ParquetDataReader : public qse::IDataReader {
 public:
     explicit ParquetDataReader(const std::string& file_path);
-    
+
     // Implement the IDataReader interface
     const std::vector<qse::Tick>& read_all_ticks() const override;
     const std::vector<qse::Bar>& read_all_bars() const override;
@@ -26,4 +26,4 @@ private:
     std::vector<qse::Bar> bars_;
 };
 
-} // namespace qse 
+} // namespace qse

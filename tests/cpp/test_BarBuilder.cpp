@@ -31,30 +31,28 @@ TEST(BarBuilderTest, AggregatesTicksIntoBars) {
     }
 
     // Sort by start timestamp so we assert chronologically:
-    std::sort(completed.begin(), completed.end(),
-        [](auto const &a, auto const &b){
-            return to_unix_ms(a.timestamp) < to_unix_ms(b.timestamp);
-        }
-    );
+    std::sort(completed.begin(), completed.end(), [](auto const& a, auto const& b) {
+        return to_unix_ms(a.timestamp) < to_unix_ms(b.timestamp);
+    });
 
     // Now we should have exactly two bars:
     ASSERT_EQ(completed.size(), 2u);
 
     // Bar 1: [1000,2000)
-    auto &bar1 = completed[0];
+    auto& bar1 = completed[0];
     EXPECT_EQ(to_unix_ms(bar1.timestamp), 1000LL);
-    EXPECT_DOUBLE_EQ(bar1.open,  10.0);
-    EXPECT_DOUBLE_EQ(bar1.high,  12.0);
-    EXPECT_DOUBLE_EQ(bar1.low,   10.0);
+    EXPECT_DOUBLE_EQ(bar1.open, 10.0);
+    EXPECT_DOUBLE_EQ(bar1.high, 12.0);
+    EXPECT_DOUBLE_EQ(bar1.low, 10.0);
     EXPECT_DOUBLE_EQ(bar1.close, 12.0);
-    EXPECT_EQ(bar1.volume,       200); // 100 + 100 (bid_size + ask_size)
+    EXPECT_EQ(bar1.volume, 200); // 100 + 100 (bid_size + ask_size)
 
     // Bar 2: [2000,3000)
-    auto &bar2 = completed[1];
+    auto& bar2 = completed[1];
     EXPECT_EQ(to_unix_ms(bar2.timestamp), 2000LL);
-    EXPECT_DOUBLE_EQ(bar2.open,  11.0);
-    EXPECT_DOUBLE_EQ(bar2.high,  11.0);
-    EXPECT_DOUBLE_EQ(bar2.low,   11.0);
+    EXPECT_DOUBLE_EQ(bar2.open, 11.0);
+    EXPECT_DOUBLE_EQ(bar2.high, 11.0);
+    EXPECT_DOUBLE_EQ(bar2.low, 11.0);
     EXPECT_DOUBLE_EQ(bar2.close, 11.0);
-    EXPECT_EQ(bar2.volume,       100); // 100 (bid_size + ask_size)
-} 
+    EXPECT_EQ(bar2.volume, 100); // 100 (bid_size + ask_size)
+}

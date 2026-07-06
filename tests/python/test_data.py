@@ -2,87 +2,92 @@ import os
 from unittest.mock import patch
 
 import pandas as pd
-import pytest
 from scripts.download_data import fetch_crypto_data
 from scripts.process_data import process_raw_data
 
+
 def create_mock_data():
     """Create mock market data for testing."""
-    dates = pd.date_range(start='2024-01-01', periods=100, freq='h')
+    dates = pd.date_range(start="2024-01-01", periods=100, freq="h")
     data = {
-        'open': [100.0 + i for i in range(100)],
-        'high': [101.0 + i for i in range(100)],
-        'low': [99.0 + i for i in range(100)],
-        'close': [100.5 + i for i in range(100)],
-        'volume': [1000.0 + i * 10 for i in range(100)]
+        "open": [100.0 + i for i in range(100)],
+        "high": [101.0 + i for i in range(100)],
+        "low": [99.0 + i for i in range(100)],
+        "close": [100.5 + i for i in range(100)],
+        "volume": [1000.0 + i * 10 for i in range(100)],
     }
     df = pd.DataFrame(data, index=dates)
-    
+
     # Convert to the format expected by the API
     time_series = {
-        dt.strftime('%Y-%m-%d %H:%M:%S'): {
-            'open': str(row['open']),
-            'high': str(row['high']),
-            'low': str(row['low']),
-            'close': str(row['close']),
-            'volume': str(row['volume'])
+        dt.strftime("%Y-%m-%d %H:%M:%S"): {
+            "open": str(row["open"]),
+            "high": str(row["high"]),
+            "low": str(row["low"]),
+            "close": str(row["close"]),
+            "volume": str(row["volume"]),
         }
         for dt, row in df.iterrows()
     }
-    return {'Time Series Crypto': time_series}
+    return {"Time Series Crypto": time_series}
+
 
 class MockResponse:
     def json(self):
         return create_mock_data()
+
     def raise_for_status(self):
         pass
 
-@patch('scripts.download_data.requests.get')
+
+@patch("scripts.download_data.requests.get")
 def test_data_pipeline(mock_get):
     """Test the complete data pipeline from download to processing."""
     mock_get.return_value = MockResponse()
 
     # 1. Test download
-    symbol = 'BTCUSD'
-    raw_file = fetch_crypto_data(symbol=symbol, interval='60min', limit=100)
+    symbol = "BTCUSD"
+    raw_file = fetch_crypto_data(symbol=symbol, interval="60min", limit=100)
     assert raw_file is not None
     assert os.path.exists(raw_file)
-    
+
     # Verify raw data format
     raw_df = pd.read_csv(raw_file, index_col=0, parse_dates=True)
-    expected_columns = ['open', 'high', 'low', 'close', 'volume']
+    expected_columns = ["open", "high", "low", "close", "volume"]
     assert list(raw_df.columns) == expected_columns
     assert isinstance(raw_df.index, pd.DatetimeIndex)
-    
+
     # 2. Test processing
     processed_file = process_raw_data(symbol=symbol)
     assert processed_file is not None
     assert os.path.exists(processed_file)
-    
+
     # 3. Validate processed data
     df = pd.read_parquet(processed_file)
     assert not df.isnull().values.any()  # Check for NaNs
     assert df.index.is_monotonic_increasing  # Check for correct sorting
-    assert list(df.columns) == ['open', 'high', 'low', 'close', 'volume']
-    
+    assert list(df.columns) == ["open", "high", "low", "close", "volume"]
+
     # Verify data types
     assert isinstance(df.index, pd.DatetimeIndex)
-    for col in ['open', 'high', 'low', 'close', 'volume']:
+    for col in ["open", "high", "low", "close", "volume"]:
         assert pd.api.types.is_numeric_dtype(df[col])
-    
+
     # Clean up created files
     os.remove(raw_file)
     os.remove(processed_file)
 
-@patch('scripts.download_data.requests.get')
+
+@patch("scripts.download_data.requests.get")
 def test_download_data_error_handling(mock_get):
     """Test error handling in data download."""
     mock_get.side_effect = Exception("API error")
-    result = fetch_crypto_data(symbol='INVALID_PAIR', interval='60min', limit=100)
+    result = fetch_crypto_data(symbol="INVALID_PAIR", interval="60min", limit=100)
     assert result is None
+
 
 def test_process_data_error_handling():
     """Test error handling in data processing."""
     # Test with non-existent file
-    result = process_raw_data(symbol='NONEXISTENT')
+    result = process_raw_data(symbol="NONEXISTENT")
     assert result is None

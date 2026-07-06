@@ -25,4 +25,4 @@ TEST(WeightsLoadTest, CsvToMap) {
     EXPECT_NEAR(wmap["MSFT"], 0.0, 1e-9);
 
     std::remove(fname);
-} 
+}

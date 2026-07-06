@@ -12,20 +12,12 @@
 namespace qse {
 
 // Constructor updated to initialize BarBuilder and OrderBook
-Backtester::Backtester(
-    const std::string& symbol,
-    std::unique_ptr<IDataReader> data_reader,
-    std::unique_ptr<IStrategy> strategy,
-    std::shared_ptr<IOrderManager> order_manager,
-    const std::chrono::seconds& bar_interval)
-    : symbol_(symbol),
-      strategy_(std::move(strategy)),
-      order_manager_(order_manager),
-      bar_builders_(),
-      bar_router_(),
-      order_book_(),
-      bar_interval_(bar_interval)
-{
+Backtester::Backtester(const std::string& symbol, std::unique_ptr<IDataReader> data_reader,
+                       std::unique_ptr<IStrategy> strategy,
+                       std::shared_ptr<IOrderManager> order_manager,
+                       const std::chrono::seconds& bar_interval)
+    : symbol_(symbol), strategy_(std::move(strategy)), order_manager_(order_manager),
+      bar_builders_(), bar_router_(), order_book_(), bar_interval_(bar_interval) {
     if (data_reader) {
         data_readers_.push_back(std::move(data_reader));
     }
@@ -33,18 +25,15 @@ Backtester::Backtester(
     // If an order manager is provided, wire up the fill callback so
     // the strategy can react to fills generated during the backtest
     if (order_manager_) {
-        order_manager_->set_fill_callback(
-            [this](const Fill& f) {
-                if (strategy_) {
-                    strategy_->on_fill(f);
-                }
+        order_manager_->set_fill_callback([this](const Fill& f) {
+            if (strategy_) {
+                strategy_->on_fill(f);
             }
-        );
+        });
     }
 }
 
-void Backtester::add_data_source(std::unique_ptr<IDataReader> data_reader)
-{
+void Backtester::add_data_source(std::unique_ptr<IDataReader> data_reader) {
     if (data_reader) {
         data_readers_.push_back(std::move(data_reader));
     }
@@ -63,17 +52,18 @@ void Backtester::run() {
         std::cout << "[Backtester] No ticks to process for " << symbol_ << "." << std::endl;
         return;
     }
-    
-    std::cout << "[Backtester] Processing " << all_ticks.size() << " ticks for " << symbol_ << std::endl;
-    
-    std::sort(all_ticks.begin(), all_ticks.end(), [](const Tick& a, const Tick& b) {
-        return a.timestamp < b.timestamp;
-    });
+
+    std::cout << "[Backtester] Processing " << all_ticks.size() << " ticks for " << symbol_
+              << std::endl;
+
+    std::sort(all_ticks.begin(), all_ticks.end(),
+              [](const Tick& a, const Tick& b) { return a.timestamp < b.timestamp; });
 
     bool abort_due_to_error = false;
     std::map<std::string, double> last_prices;
     for (const auto& tick : all_ticks) {
-        if (abort_due_to_error) break;
+        if (abort_due_to_error)
+            break;
 
         // Register symbol with router once
         if (registered_symbols_.insert(tick.symbol).second) {
@@ -86,14 +76,16 @@ void Backtester::run() {
         } catch (const std::exception& ex) {
             std::cerr << "[Backtester] Strategy exception: " << ex.what() << std::endl;
             // Still feed the tick into the bar builder so we can flush a bar
-            auto& builder = bar_builders_.try_emplace(tick.symbol, BarBuilder(bar_interval_)).first->second;
+            auto& builder =
+                bar_builders_.try_emplace(tick.symbol, BarBuilder(bar_interval_)).first->second;
             builder.add_tick(tick);
             abort_due_to_error = true;
             break; // stop processing further ticks
         }
 
         // Feed this tick into the per-symbol bar builder
-        auto& builder = bar_builders_.try_emplace(tick.symbol, BarBuilder(bar_interval_)).first->second;
+        auto& builder =
+            bar_builders_.try_emplace(tick.symbol, BarBuilder(bar_interval_)).first->second;
 
         if (auto bar = builder.add_tick(tick)) {
             // Dispatch bar via router so strategies interested in this symbol get it
@@ -114,7 +106,7 @@ void Backtester::run() {
             order_manager_->record_equity(ts_ms, last_prices);
         }
     }
-    
+
     // Flush remaining bars for each symbol
     for (auto& [sym, builder] : bar_builders_) {
         if (auto bar = builder.flush()) {

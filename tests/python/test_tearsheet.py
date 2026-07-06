@@ -58,9 +58,9 @@ class TestDrawdownAndCalmar:
     def test_calmar_exact(self):
         # One 252-return year ending +20% with a single dip 110 -> 99:
         # CAGR = 0.2, max drawdown = (99-110)/110 = -0.1, Calmar = 2.0
-        up = np.linspace(100.0, 110.0, 101)          # days 0..100
-        dip = np.array([99.0])                        # day 101
-        recover = np.linspace(99.0, 120.0, 151)       # days 102..252
+        up = np.linspace(100.0, 110.0, 101)  # days 0..100
+        dip = np.array([99.0])  # day 101
+        recover = np.linspace(99.0, 120.0, 151)  # days 102..252
         equity = pd.Series(np.concatenate([up, dip, recover]))
         assert len(equity) == 253  # 252 returns = exactly one year
         assert tearsheet.cagr(equity) == pytest.approx(0.2, abs=TOL)
@@ -79,10 +79,12 @@ class TestTurnover:
         # notional = |100|*500 + |-100|*500 + |250|*400 = 200,000
         # turnover = 200,000 / 100,000 / 1yr = 2.0
         equity = pd.Series(np.full(253, 100_000.0))
-        trades = pd.DataFrame({
-            "quantity": [100, -100, 250],
-            "price": [500.0, 500.0, 400.0],
-        })
+        trades = pd.DataFrame(
+            {
+                "quantity": [100, -100, 250],
+                "price": [500.0, 500.0, 400.0],
+            }
+        )
         assert tearsheet.annualized_turnover(trades, equity) == pytest.approx(2.0, abs=TOL)
 
     def test_no_trades_is_zero(self):
@@ -123,33 +125,21 @@ class TestAlphaBeta:
 class TestLoaders:
     def test_load_equity_current_format_ms_epoch(self, tmp_path):
         path = tmp_path / "equity.csv"
-        path.write_text(
-            "timestamp,equity\n"
-            "1748318400000,100000\n"
-            "1748404800000,101000\n"
-        )
+        path.write_text("timestamp,equity\n" "1748318400000,100000\n" "1748404800000,101000\n")
         equity = tearsheet.load_equity(str(path))
         assert isinstance(equity.index, pd.DatetimeIndex)
         assert equity.iloc[-1] == pytest.approx(101000.0)
 
     def test_load_equity_legacy_portfolio_value(self, tmp_path):
         path = tmp_path / "equity.csv"
-        path.write_text(
-            "timestamp,portfolio_value\n"
-            "1700000000,100000\n"
-            "1700086400,100500\n"
-        )
+        path.write_text("timestamp,portfolio_value\n" "1700000000,100000\n" "1700086400,100500\n")
         equity = tearsheet.load_equity(str(path))
         assert len(equity) == 2
         assert equity.iloc[-1] == pytest.approx(100500.0)
 
     def test_duplicate_timestamps_keep_last(self, tmp_path):
         path = tmp_path / "equity.csv"
-        path.write_text(
-            "timestamp,equity\n"
-            "1700000000,100000\n"
-            "1700000000,100700\n"
-        )
+        path.write_text("timestamp,equity\n" "1700000000,100000\n" "1700000000,100700\n")
         equity = tearsheet.load_equity(str(path))
         assert len(equity) == 1
         assert equity.iloc[0] == pytest.approx(100700.0)

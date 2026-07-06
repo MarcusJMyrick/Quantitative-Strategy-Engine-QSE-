@@ -31,9 +31,9 @@
 
 namespace {
 
-constexpr double kHalfSpread = 0.01;   // synthetic quote half-spread ($)
-constexpr double kTickSize = 0.01;     // price grid behind the touch ($)
-constexpr std::size_t kSeedLevels = 12; // depth levels seeded behind the touch
+constexpr double kHalfSpread = 0.01;          // synthetic quote half-spread ($)
+constexpr double kTickSize = 0.01;            // price grid behind the touch ($)
+constexpr std::size_t kSeedLevels = 12;       // depth levels seeded behind the touch
 constexpr double kInitialCash = 20'000'000.0; // large enough that the cash
                                               // guard never distorts fills
 constexpr std::size_t kShortWindow = 20;
@@ -63,7 +63,8 @@ std::vector<Row> load_rows(const std::string& path) {
         try {
             Row r;
             r.ts_ms = std::stoll(ts);
-            if (r.ts_ms < 10'000'000'000LL) r.ts_ms *= 1000; // seconds -> ms
+            if (r.ts_ms < 10'000'000'000LL)
+                r.ts_ms *= 1000; // seconds -> ms
             r.price = std::stod(price);
             r.volume = std::stoll(volume);
             if (r.price > 0.0 && r.volume > 0) {
@@ -82,11 +83,9 @@ struct Seed {
     qse::QueueId qid;
 };
 
-void run_one(bool depth_mode, qse::Volume order_size,
-             const std::vector<Row>& rows, const std::string& symbol,
-             const std::string& out_prefix) {
-    qse::OrderManager om(kInitialCash, out_prefix + "_equity.csv",
-                         out_prefix + "_tradelog.csv");
+void run_one(bool depth_mode, qse::Volume order_size, const std::vector<Row>& rows,
+             const std::string& symbol, const std::string& out_prefix) {
+    qse::OrderManager om(kInitialCash, out_prefix + "_equity.csv", out_prefix + "_tradelog.csv");
     om.set_use_full_depth(depth_mode);
 
     qse::MovingAverage short_ma(kShortWindow);
@@ -141,12 +140,10 @@ void run_one(bool depth_mode, qse::Volume order_size,
             for (std::size_t lvl = 1; lvl <= kSeedLevels; ++lvl) {
                 qse::Price ask_px = tick.ask + static_cast<double>(lvl) * kTickSize;
                 qse::Price bid_px = tick.bid - static_cast<double>(lvl) * kTickSize;
-                qse::QueueId aq = book.enqueue_order(
-                    qse::Order::Side::SELL, ask_px,
-                    "seed_a" + std::to_string(lvl), tick.ask_size);
-                qse::QueueId bq = book.enqueue_order(
-                    qse::Order::Side::BUY, bid_px,
-                    "seed_b" + std::to_string(lvl), tick.bid_size);
+                qse::QueueId aq = book.enqueue_order(qse::Order::Side::SELL, ask_px,
+                                                     "seed_a" + std::to_string(lvl), tick.ask_size);
+                qse::QueueId bq = book.enqueue_order(qse::Order::Side::BUY, bid_px,
+                                                     "seed_b" + std::to_string(lvl), tick.bid_size);
                 seeds.push_back({qse::Order::Side::SELL, ask_px, aq});
                 seeds.push_back({qse::Order::Side::BUY, bid_px, bq});
             }
@@ -161,11 +158,9 @@ void run_one(bool depth_mode, qse::Volume order_size,
         om.record_equity(row.ts_ms, {{symbol, row.price}});
     }
 
-    double final_equity = om.get_cash() +
-        om.get_position(symbol) * rows.back().price;
-    std::cout << (depth_mode ? "depth" : "naive") << " size " << order_size
-              << ": " << trades << " signals, final equity "
-              << std::fixed << final_equity << "\n";
+    double final_equity = om.get_cash() + om.get_position(symbol) * rows.back().price;
+    std::cout << (depth_mode ? "depth" : "naive") << " size " << order_size << ": " << trades
+              << " signals, final equity " << std::fixed << final_equity << "\n";
 }
 
 } // namespace
@@ -179,9 +174,12 @@ int main(int argc, char** argv) {
     for (int i = 1; i + 1 < argc; i += 2) {
         std::string flag = argv[i];
         std::string value = argv[i + 1];
-        if (flag == "--ticks") ticks_path = value;
-        else if (flag == "--out-dir") out_dir = value;
-        else if (flag == "--symbol") symbol = value;
+        if (flag == "--ticks")
+            ticks_path = value;
+        else if (flag == "--out-dir")
+            out_dir = value;
+        else if (flag == "--symbol")
+            symbol = value;
         else {
             std::cerr << "Unknown flag: " << flag << "\n";
             return 1;
@@ -204,8 +202,8 @@ int main(int argc, char** argv) {
 
     for (qse::Volume size : sizes) {
         for (bool depth_mode : {false, true}) {
-            std::string prefix = out_dir + "/" +
-                (depth_mode ? "depth" : "naive") + "_" + std::to_string(size);
+            std::string prefix =
+                out_dir + "/" + (depth_mode ? "depth" : "naive") + "_" + std::to_string(size);
             run_one(depth_mode, size, rows, symbol, prefix);
         }
     }

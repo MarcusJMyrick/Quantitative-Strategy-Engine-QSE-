@@ -1,0 +1,7 @@
+# Lint gate (C2): errors that indicate real bugs — syntax errors, undefined
+# names, unused imports/variables, f-string mistakes. Pure style is black's
+# job; broader rule classes can be enabled later.
+[flake8]
+select = E9,F63,F7,F82,F401,F811,F841
+max-line-length = 100
+extend-exclude = venv,build,third-party,__pycache__

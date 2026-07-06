@@ -22,9 +22,9 @@ TEST(PortfolioBuilderTest, GrossLimit) {
     auto result = builder.optimize(alphas, betas, symbols);
 
     ASSERT_TRUE(result.converged);
-    
+
     double gross_exposure = 0.0;
-    for(double w : result.weights) {
+    for (double w : result.weights) {
         gross_exposure += std::abs(w);
     }
 
@@ -60,18 +60,18 @@ portfolio_optimizer:
     max_iterations: 500
     convergence_tol: 1e-8
 )";
-    
+
     // Create a temporary YAML file
     std::ofstream ofs("temp_config.yaml");
     ofs << yaml_content;
     ofs.close();
 
     builder.load_config("temp_config.yaml");
-    
+
     // Test that the config is loaded correctly
     // This requires adding a getter for the config, or testing behavior
     // For now, we assume it works and will be tested via behavior in other tests.
-    
+
     std::remove("temp_config.yaml");
 }
 
@@ -90,16 +90,15 @@ TEST(WeightFileTest, Schema) {
 
     // Verify file content
     std::ifstream ifs(output_path);
-    std::string content((std::istreambuf_iterator<char>(ifs)),
-                        (std::istreambuf_iterator<char>()));
-    
+    std::string content((std::istreambuf_iterator<char>(ifs)), (std::istreambuf_iterator<char>()));
+
     std::string expected_header = "\"symbol\",\"weight\"\n";
     std::string expected_row1 = "\"AAPL\",0.5\n";
     std::string expected_row2 = "\"GOOG\",-0.5\n";
-    
+
     ASSERT_TRUE(content.find(expected_header) != std::string::npos);
     ASSERT_TRUE(content.find(expected_row1) != std::string::npos);
     ASSERT_TRUE(content.find(expected_row2) != std::string::npos);
 
     std::remove(output_path.c_str());
-} 
+}

@@ -12,8 +12,8 @@ bool FactorStrategyConfig::load_from_file(const std::string& config_path) {
         YAML::Node config = YAML::LoadFile(config_path);
         return load_from_node(config);
     } catch (const YAML::Exception& e) {
-        std::cerr << "[ERROR] Failed to load config file " << config_path 
-                  << ": " << e.what() << std::endl;
+        std::cerr << "[ERROR] Failed to load config file " << config_path << ": " << e.what()
+                  << std::endl;
         return false;
     }
 }
@@ -33,12 +33,12 @@ bool FactorStrategyConfig::load_from_node(const YAML::Node& config) {
     if (config["rebalance_time"]) {
         rebalance_time_ = config["rebalance_time"].as<std::string>();
     }
-    
+
     // Load min dollar threshold
     if (config["min_dollar_threshold"]) {
         min_dollar_threshold_ = config["min_dollar_threshold"].as<double>();
     }
-    
+
     // Load engine configuration
     if (config["engine"]) {
         YAML::Node engine = config["engine"];
@@ -58,7 +58,7 @@ bool FactorStrategyConfig::load_from_node(const YAML::Node& config) {
             engine_.min_qty = engine["min_qty"].as<double>();
         }
     }
-    
+
     // Load portfolio configuration
     if (config["portfolio"]) {
         YAML::Node portfolio = config["portfolio"];
@@ -72,7 +72,7 @@ bool FactorStrategyConfig::load_from_node(const YAML::Node& config) {
             portfolio_.max_leverage = portfolio["max_leverage"].as<double>();
         }
     }
-    
+
     // Load data configuration
     if (config["data"]) {
         YAML::Node data = config["data"];
@@ -83,7 +83,7 @@ bool FactorStrategyConfig::load_from_node(const YAML::Node& config) {
             data_.price_source = data["price_source"].as<std::string>();
         }
     }
-    
+
     // Load logging configuration
     if (config["logging"]) {
         YAML::Node logging = config["logging"];
@@ -100,7 +100,7 @@ bool FactorStrategyConfig::load_from_node(const YAML::Node& config) {
             logging_.performance = logging["performance"].as<bool>();
         }
     }
-    
+
     return true;
 }
 
@@ -128,20 +128,21 @@ ExecConfig FactorStrategyConfig::to_exec_config() const {
     return config;
 }
 
-std::optional<std::chrono::minutes> FactorStrategyConfig::parse_time_string(const std::string& time_str) const {
+std::optional<std::chrono::minutes>
+FactorStrategyConfig::parse_time_string(const std::string& time_str) const {
     std::istringstream ss(time_str);
     int hours, minutes;
     char colon;
-    
+
     if (ss >> hours >> colon >> minutes && colon == ':') {
         if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
             return std::chrono::minutes(hours * 60 + minutes);
         }
     }
-    
-    std::cerr << "[WARN] Invalid time format: " << time_str 
-              << ". Expected HH:MM format." << std::endl;
+
+    std::cerr << "[WARN] Invalid time format: " << time_str << ". Expected HH:MM format."
+              << std::endl;
     return std::nullopt;
 }
 
-} // namespace qse 
+} // namespace qse

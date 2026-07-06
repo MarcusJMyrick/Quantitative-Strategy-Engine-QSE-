@@ -22,10 +22,10 @@ Volume OrderBook::consume_liquidity(const std::string& symbol, Order::Side side,
     if (it == books_.end()) {
         return 0; // No liquidity available
     }
-    
+
     TopOfBook& tob = it->second;
     Volume consumed = 0;
-    
+
     if (side == Order::Side::BUY) {
         // Buy orders consume ask liquidity
         if (tob.has_ask()) {
@@ -39,8 +39,8 @@ Volume OrderBook::consume_liquidity(const std::string& symbol, Order::Side side,
             tob.best_bid_size -= consumed;
         }
     }
-    
+
     return consumed;
 }
 
-} // namespace qse 
+} // namespace qse

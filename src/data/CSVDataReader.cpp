@@ -70,12 +70,13 @@ void CSVDataReader::load_data() {
     }
 
     // Detect file type based on header content
-    bool isBar = (header_line.find("Open") != std::string::npos || 
+    bool isBar = (header_line.find("Open") != std::string::npos ||
                   header_line.find("open") != std::string::npos);
-    
+
     std::string line;
     if (isBar) {
-        if (qse_debug_enabled()) std::cout << "Detected Bar data format in " << file_path_ << std::endl;
+        if (qse_debug_enabled())
+            std::cout << "Detected Bar data format in " << file_path_ << std::endl;
         while (std::getline(file, line)) {
             if (line.empty()) {
                 continue; // trailing newlines are not data-quality problems
@@ -83,7 +84,7 @@ void CSVDataReader::load_data() {
             std::stringstream ss(line);
             std::string item;
             std::vector<std::string> tokens;
-            while(std::getline(ss, item, ',')) {
+            while (std::getline(ss, item, ',')) {
                 tokens.push_back(item);
             }
             if (tokens.size() < 6) {
@@ -108,12 +109,13 @@ void CSVDataReader::load_data() {
         }
 
         std::sort(bars_.begin(), bars_.end(),
-            [](const Bar& a, const Bar& b) { return a.timestamp < b.timestamp; });
+                  [](const Bar& a, const Bar& b) { return a.timestamp < b.timestamp; });
         gap_count_ = count_grid_gaps(bars_, [](const Bar& b) {
             return static_cast<long long>(b.timestamp.time_since_epoch().count());
         });
     } else {
-        if (qse_debug_enabled()) std::cout << "Detected Tick data format in " << file_path_ << std::endl;
+        if (qse_debug_enabled())
+            std::cout << "Detected Tick data format in " << file_path_ << std::endl;
         while (std::getline(file, line)) {
             if (line.empty()) {
                 continue;
@@ -121,11 +123,11 @@ void CSVDataReader::load_data() {
             std::stringstream ss(line);
             std::string item;
             std::vector<std::string> tokens;
-            while(std::getline(ss, item, ',')) {
+            while (std::getline(ss, item, ',')) {
                 tokens.push_back(item);
             }
             try {
-                if(tokens.size() >= 8) {
+                if (tokens.size() >= 8) {
                     // Full tick format: timestamp,symbol,price,volume,bid,ask,bid_size,ask_size
                     Tick tick;
                     {
@@ -143,7 +145,7 @@ void CSVDataReader::load_data() {
                     tick.bid_size = std::stoull(tokens[6]);
                     tick.ask_size = std::stoull(tokens[7]);
                     ticks_.push_back(tick);
-                } else if(tokens.size() >= 3) {
+                } else if (tokens.size() >= 3) {
                     // Legacy format: timestamp,price,volume
                     Tick tick;
                     {
@@ -171,16 +173,16 @@ void CSVDataReader::load_data() {
 
         // Sort ticks by timestamp
         std::sort(ticks_.begin(), ticks_.end(),
-            [](const Tick& a, const Tick& b) { return a.timestamp < b.timestamp; });
+                  [](const Tick& a, const Tick& b) { return a.timestamp < b.timestamp; });
         gap_count_ = count_grid_gaps(ticks_, [](const Tick& t) {
             return static_cast<long long>(t.timestamp.time_since_epoch().count());
         });
     }
 
     if (skipped_rows_ > 0 || gap_count_ > 0) {
-        std::cerr << "[CSVDataReader] Data quality warning for " << file_path_
-                  << ": " << skipped_rows_ << " unparseable row(s) skipped, "
-                  << gap_count_ << " missing row(s) in the time grid" << std::endl;
+        std::cerr << "[CSVDataReader] Data quality warning for " << file_path_ << ": "
+                  << skipped_rows_ << " unparseable row(s) skipped, " << gap_count_
+                  << " missing row(s) in the time grid" << std::endl;
     }
 }
 

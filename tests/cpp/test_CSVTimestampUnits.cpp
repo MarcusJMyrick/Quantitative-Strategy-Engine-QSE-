@@ -22,7 +22,9 @@ TEST(CSVDataReaderTicksTest, TimestampUnits) {
     std::remove(fn.c_str());
 
     ASSERT_FALSE(ticks.empty());
-    auto ts_ms = std::chrono::duration_cast<std::chrono::milliseconds>(ticks.front().timestamp.time_since_epoch()).count();
+    auto ts_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                     ticks.front().timestamp.time_since_epoch())
+                     .count();
     // Expect >= 1.5e12 ms (2017-07-14) to verify seconds → ms promotion happened
     // 1500000000 seconds * 1000 = 1500000000000 milliseconds
     ASSERT_GE(ts_ms, 1500000000000LL);

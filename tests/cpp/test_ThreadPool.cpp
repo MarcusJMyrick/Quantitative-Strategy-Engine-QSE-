@@ -7,7 +7,7 @@
 // Test to ensure all enqueued tasks are executed.
 TEST(ThreadPoolTest, ExecutesAllTasks) {
     // Arrange: Create a thread pool and a counter.
-    qse::ThreadPool pool(4); // Use 4 worker threads.
+    qse::ThreadPool pool(4);     // Use 4 worker threads.
     std::atomic<int> counter(0); // An atomic integer to safely count across threads.
     int num_tasks = 100;
 
@@ -28,7 +28,7 @@ TEST(ThreadPoolTest, ExecutesAllTasks) {
     // relying on the destructor to block is sufficient.
     // However, to be robust, we can add a small sleep or check loop.
     std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Give threads time to finish.
-    
+
     EXPECT_EQ(counter.load(), num_tasks);
 }
 
@@ -40,11 +40,7 @@ TEST(ThreadPoolTest, HandlesReturnValues) {
 
     // Act: Enqueue tasks that return a value.
     for (int i = 0; i < 10; ++i) {
-        results.emplace_back(
-            pool.enqueue([i] {
-                return i * 2;
-            })
-        );
+        results.emplace_back(pool.enqueue([i] { return i * 2; }));
     }
 
     // Assert: Check if the results are correct.

@@ -10,7 +10,7 @@ namespace qse {
 
 /**
  * @brief AlphaBlender for combining factor scores into final alpha scores
- * 
+ *
  * Supports two blending methods:
  * 1. YAML-configured weights per factor
  * 2. IR-weighted blending using Information Ratio
@@ -18,17 +18,17 @@ namespace qse {
 class AlphaBlender {
 public:
     struct BlendingConfig {
-        std::map<std::string, double> factor_weights;  // YAML weights
-        bool use_ir_weighting = false;                 // Use IR-weighted blending
-        double ir_lookback_period = 252;               // Days for IR calculation
-        double min_ir_weight = 0.1;                    // Minimum weight for any factor
-        double max_ir_weight = 2.0;                    // Maximum weight for any factor
+        std::map<std::string, double> factor_weights; // YAML weights
+        bool use_ir_weighting = false;                // Use IR-weighted blending
+        double ir_lookback_period = 252;              // Days for IR calculation
+        double min_ir_weight = 0.1;                   // Minimum weight for any factor
+        double max_ir_weight = 2.0;                   // Maximum weight for any factor
     };
 
     struct BlendingResult {
-        std::shared_ptr<arrow::Table> table;           // Table with alpha_score column
-        std::map<std::string, double> final_weights;   // Final weights used
-        std::map<std::string, double> factor_irs;      // IR values for each factor
+        std::shared_ptr<arrow::Table> table;         // Table with alpha_score column
+        std::map<std::string, double> final_weights; // Final weights used
+        std::map<std::string, double> factor_irs;    // IR values for each factor
     };
 
     AlphaBlender() = default;
@@ -56,9 +56,8 @@ public:
      * @return BlendingResult with alpha_score column and metadata
      */
     BlendingResult blend_factors(const std::shared_ptr<arrow::Table>& table,
-                                const std::vector<std::string>& factor_cols,
-                                const std::string& return_col,
-                                const std::string& date_col);
+                                 const std::vector<std::string>& factor_cols,
+                                 const std::string& return_col, const std::string& date_col);
 
     /**
      * @brief Calculate Information Ratio for a factor
@@ -67,7 +66,7 @@ public:
      * @return Information Ratio
      */
     double calculate_ir(const std::vector<double>& factor_values,
-                       const std::vector<double>& return_values);
+                        const std::vector<double>& return_values);
 
     /**
      * @brief Get current configuration
@@ -86,19 +85,17 @@ private:
      * @param date_col Date column name
      * @return Map of factor name to IR weight
      */
-    std::map<std::string, double> calculate_ir_weights(
-        const std::shared_ptr<arrow::Table>& table,
-        const std::vector<std::string>& factor_cols,
-        const std::string& return_col,
-        const std::string& date_col);
+    std::map<std::string, double> calculate_ir_weights(const std::shared_ptr<arrow::Table>& table,
+                                                       const std::vector<std::string>& factor_cols,
+                                                       const std::string& return_col,
+                                                       const std::string& date_col);
 
     /**
      * @brief Normalize weights to sum to 1.0
      * @param weights Input weights
      * @return Normalized weights
      */
-    std::map<std::string, double> normalize_weights(
-        const std::map<std::string, double>& weights);
+    std::map<std::string, double> normalize_weights(const std::map<std::string, double>& weights);
 
     /**
      * @brief Apply weights to factor scores
@@ -107,10 +104,9 @@ private:
      * @param weights Factor weights
      * @return Table with alpha_score column
      */
-    std::shared_ptr<arrow::Table> apply_weights(
-        const std::shared_ptr<arrow::Table>& table,
-        const std::vector<std::string>& factor_cols,
-        const std::map<std::string, double>& weights);
+    std::shared_ptr<arrow::Table> apply_weights(const std::shared_ptr<arrow::Table>& table,
+                                                const std::vector<std::string>& factor_cols,
+                                                const std::map<std::string, double>& weights);
 };
 
-} // namespace qse 
+} // namespace qse

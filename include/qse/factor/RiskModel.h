@@ -12,10 +12,10 @@ namespace qse {
 class RiskModel {
 public:
     struct Config {
-        int    window        = 60;     // rolling look-back in days
-        int    min_obs       = 60;     // min observations required to publish
-        bool   apply_shrink  = false;  // shrink beta toward 1?
-        double lambda        = 0.0;    // shrinkage intensity 0-1
+        int window = 60;           // rolling look-back in days
+        int min_obs = 60;          // min observations required to publish
+        bool apply_shrink = false; // shrink beta toward 1?
+        double lambda = 0.0;       // shrinkage intensity 0-1
     };
 
     RiskModel() = default;
@@ -45,4 +45,4 @@ private:
     Config cfg_;
 };
 
-} // namespace qse 
+} // namespace qse

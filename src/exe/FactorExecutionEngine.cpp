@@ -29,10 +29,12 @@ static WeightMap parse_csv(const std::string& path) {
     // Expect first two columns to be symbol and weight (case insensitive)
     std::string line;
     while (std::getline(ifs, line)) {
-        if (line.empty()) continue;
+        if (line.empty())
+            continue;
         std::stringstream ss(line);
         std::string sym, wstr;
-        if (!std::getline(ss, sym, ',')) continue;
+        if (!std::getline(ss, sym, ','))
+            continue;
         if (!std::getline(ss, wstr, ',')) {
             throw std::runtime_error("Malformed weights line: " + line);
         }
@@ -103,25 +105,24 @@ WeightMap FactorExecutionEngine::load_weights(const std::string& path) {
 std::unordered_map<std::string, double> FactorExecutionEngine::fetch_holdings() {
     std::unordered_map<std::string, double> holdings;
     if (!order_manager_) {
-        return holdings;  // Return empty map if no order manager
+        return holdings; // Return empty map if no order manager
     }
-    
+
     // Get all positions from the order manager
     auto positions = order_manager_->get_positions();
     for (const auto& pos : positions) {
         holdings[pos.symbol] = pos.quantity;
     }
-    
+
     return holdings;
 }
 
 std::unordered_map<std::string, long long> FactorExecutionEngine::calc_target_shares(
     const std::unordered_map<std::string, double>& target_weights,
-    const std::unordered_map<std::string, double>& current_holdings,
-    double cash,
+    const std::unordered_map<std::string, double>& current_holdings, double cash,
     const std::unordered_map<std::string, double>& prices) {
     std::unordered_map<std::string, long long> target_shares;
-    
+
     // Calculate total portfolio value (NAV)
     double nav = cash;
     for (const auto& holding : current_holdings) {
@@ -132,57 +133,58 @@ std::unordered_map<std::string, long long> FactorExecutionEngine::calc_target_sh
             nav += quantity * price_it->second;
         }
     }
-    
+
     // Calculate target shares for each symbol
     for (const auto& weight_pair : target_weights) {
         const std::string& symbol = weight_pair.first;
         double target_weight = weight_pair.second;
-        
+
         // Get current holdings (default to 0 if not found)
         double current_quantity = 0.0;
         auto holdings_it = current_holdings.find(symbol);
         if (holdings_it != current_holdings.end()) {
             current_quantity = holdings_it->second;
         }
-        
+
         // Get current price (required for calculation)
         auto price_it = prices.find(symbol);
         if (price_it == prices.end()) {
             continue; // Skip symbols without price data
         }
         double price = price_it->second;
-        
+
         if (price <= 0.0) {
             continue; // Skip symbols with invalid prices
         }
-        
+
         // Calculate target quantity: target_weight * nav / price
         double target_quantity = target_weight * nav / price;
-        
+
         // Overflow protection: skip if target quantity is unreasonably large
         // This prevents issues with penny stocks or extreme price scenarios
-        const double MAX_REASONABLE_SHARES = 1e9;  // 1 billion shares max
+        const double MAX_REASONABLE_SHARES = 1e9; // 1 billion shares max
         if (std::abs(target_quantity) > MAX_REASONABLE_SHARES) {
             continue; // Skip symbols that would require unreasonable share quantities
         }
-        
+
         // Calculate difference: target - current
         double delta_quantity = target_quantity - current_quantity;
-        
+
         // Round to nearest share (using lot_size from config)
         long long rounded_delta = std::round(delta_quantity / cfg_.lot_size) * cfg_.lot_size;
-        
+
         // Only include if there's a meaningful difference
         if (std::abs(rounded_delta) > 0) {
             target_shares[symbol] = rounded_delta;
         }
     }
-    
+
     return target_shares;
 }
 
 void FactorExecutionEngine::submit_orders(const std::vector<qse::Order>& orders) {
-    if (!order_manager_) return;
+    if (!order_manager_)
+        return;
     for (const auto& order : orders) {
         try {
             if (order.type == qse::Order::Type::MARKET) {
@@ -190,7 +192,9 @@ void FactorExecutionEngine::submit_orders(const std::vector<qse::Order>& orders)
             } else if (order.type == qse::Order::Type::TARGET_PERCENT) {
                 // No support for target percent orders in IOrderManager
                 // Log or throw
-                fprintf(stderr, "[WARN] TARGET_PERCENT order for %s not supported by OrderManager.\n", order.symbol.c_str());
+                fprintf(stderr,
+                        "[WARN] TARGET_PERCENT order for %s not supported by OrderManager.\n",
+                        order.symbol.c_str());
             } else {
                 // Fallback: legacy path
                 if (order.side == qse::Order::Side::BUY) {
@@ -200,7 +204,8 @@ void FactorExecutionEngine::submit_orders(const std::vector<qse::Order>& orders)
                 }
             }
         } catch (const std::exception& ex) {
-            fprintf(stderr, "[ERROR] Order submission failed for %s: %s\n", order.symbol.c_str(), ex.what());
+            fprintf(stderr, "[ERROR] Order submission failed for %s: %s\n", order.symbol.c_str(),
+                    ex.what());
         }
     }
 }
@@ -212,7 +217,7 @@ bool FactorExecutionEngine::should_rebalance(std::chrono::system_clock::time_poi
     if (colon_pos == std::string::npos) {
         return false; // Invalid time format
     }
-    
+
     int target_hour, target_minute;
     try {
         target_hour = std::stoi(time_str.substr(0, colon_pos));
@@ -220,44 +225,46 @@ bool FactorExecutionEngine::should_rebalance(std::chrono::system_clock::time_poi
     } catch (const std::exception&) {
         return false; // Invalid time format
     }
-    
+
     // Convert current time to local time
     auto time_t = std::chrono::system_clock::to_time_t(now);
     std::tm* tm = std::localtime(&time_t);
     if (!tm) {
         return false;
     }
-    
+
     // Check if current time matches rebalance time (within 1 minute tolerance)
-    bool time_matches = (tm->tm_hour == target_hour && 
-                        std::abs(tm->tm_min - target_minute) <= 1);
-    
+    bool time_matches = (tm->tm_hour == target_hour && std::abs(tm->tm_min - target_minute) <= 1);
+
     if (!time_matches) {
         return false;
     }
-    
+
     // Check if we've already rebalanced today
     std::tm today_tm = {};
     today_tm.tm_year = tm->tm_year;
     today_tm.tm_mon = tm->tm_mon;
     today_tm.tm_mday = tm->tm_mday;
     auto today_start = std::chrono::system_clock::from_time_t(std::mktime(&today_tm));
-    
+
     if (last_rebalance_ >= today_start) {
         return false; // Already rebalanced today
     }
-    
+
     // Update last rebalance time and allow rebalancing
     last_rebalance_ = now;
     return true;
 }
 
-std::vector<qse::Order> FactorExecutionEngine::build_orders(const std::unordered_map<std::string, long long>& target_qty, const std::unordered_map<std::string, double>& target_weights) {
+std::vector<qse::Order>
+FactorExecutionEngine::build_orders(const std::unordered_map<std::string, long long>& target_qty,
+                                    const std::unordered_map<std::string, double>& target_weights) {
     std::vector<qse::Order> orders;
     for (const auto& pair : target_qty) {
         const std::string& symbol = pair.first;
         long long qty = pair.second;
-        if (std::abs(qty) <= cfg_.min_qty) continue;
+        if (std::abs(qty) <= cfg_.min_qty)
+            continue;
         qse::Order order;
         order.symbol = symbol;
         order.quantity = std::abs(qty);
@@ -279,4 +286,4 @@ std::vector<qse::Order> FactorExecutionEngine::build_orders(const std::unordered
     return orders;
 }
 
-} // namespace qse 
+} // namespace qse

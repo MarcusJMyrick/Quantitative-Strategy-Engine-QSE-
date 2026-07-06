@@ -6,7 +6,7 @@
 #include <yaml-cpp/yaml.h>
 
 namespace arrow {
-    class Table;
+class Table;
 }
 
 namespace qse {
@@ -14,7 +14,7 @@ namespace qse {
 /**
  * @class PortfolioBuilder
  * @brief Portfolio optimizer that maximizes alpha while honoring constraints
- * 
+ *
  * This class implements a quadratic programming optimizer that:
  * 1. Maximizes alpha score: Σ αᵢwᵢ
  * 2. Minimizes risk: -γ Σ wᵢ² (L2 regularization)
@@ -36,13 +36,13 @@ public:
     };
 
     struct OptimizationResult {
-        std::vector<double> weights;   // Optimal weights
-        double objective_value;        // Final objective value
-        double net_exposure;           // Σ wᵢ
-        double gross_exposure;         // Σ |wᵢ|
-        double portfolio_beta;         // Σ βᵢwᵢ
-        int iterations;                // Number of iterations
-        bool converged;                // Whether optimization converged
+        std::vector<double> weights; // Optimal weights
+        double objective_value;      // Final objective value
+        double net_exposure;         // Σ wᵢ
+        double gross_exposure;       // Σ |wᵢ|
+        double portfolio_beta;       // Σ βᵢwᵢ
+        int iterations;              // Number of iterations
+        bool converged;              // Whether optimization converged
     };
 
     PortfolioBuilder() = default;
@@ -68,8 +68,8 @@ public:
      * @return Optimization result with weights and metrics
      */
     OptimizationResult optimize(const std::vector<double>& alpha_scores,
-                               const std::vector<double>& betas,
-                               const std::vector<std::string>& symbols);
+                                const std::vector<double>& betas,
+                                const std::vector<std::string>& symbols);
 
     /**
      * @brief Optimize from Arrow table with factor data
@@ -80,9 +80,9 @@ public:
      * @return Optimization result
      */
     OptimizationResult optimize_from_table(const std::shared_ptr<arrow::Table>& factor_table,
-                                          const std::string& alpha_col,
-                                          const std::string& beta_col,
-                                          const std::string& symbol_col);
+                                           const std::string& alpha_col,
+                                           const std::string& beta_col,
+                                           const std::string& symbol_col);
 
     /**
      * @brief Save weights to CSV file
@@ -90,14 +90,12 @@ public:
      * @param symbols Asset symbols
      * @param output_path Output file path
      */
-    void save_weights(const OptimizationResult& result,
-                     const std::vector<std::string>& symbols,
-                     const std::string& output_path);
+    void save_weights(const OptimizationResult& result, const std::vector<std::string>& symbols,
+                      const std::string& output_path);
 
 private:
     // Core optimization using projected gradient descent
-    OptimizationResult solve_qp(const Eigen::VectorXd& alpha,
-                               const Eigen::VectorXd& beta);
+    OptimizationResult solve_qp(const Eigen::VectorXd& alpha, const Eigen::VectorXd& beta);
 
     // Constraint checking functions
     double compute_net_exposure(const Eigen::VectorXd& weights);
@@ -106,10 +104,11 @@ private:
     bool check_constraints(const Eigen::VectorXd& weights, const Eigen::VectorXd& beta);
 
     // Projection onto constraint set
-    Eigen::VectorXd project_to_constraints(const Eigen::VectorXd& weights, const Eigen::VectorXd& beta);
+    Eigen::VectorXd project_to_constraints(const Eigen::VectorXd& weights,
+                                           const Eigen::VectorXd& beta);
 
     // Configuration
     OptimizationConfig config_;
 };
 
-} // namespace qse 
+} // namespace qse

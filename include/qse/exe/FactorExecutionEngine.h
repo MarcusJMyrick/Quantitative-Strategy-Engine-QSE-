@@ -55,11 +55,10 @@ public:
     std::unordered_map<std::string, double> fetch_holdings();
 
     // (H-3) Calculate target share differences – to be implemented
-    std::unordered_map<std::string, long long> calc_target_shares(
-        const std::unordered_map<std::string, double>& target_weights,
-        const std::unordered_map<std::string, double>& current_holdings,
-        double cash,
-        const std::unordered_map<std::string, double>& prices);
+    std::unordered_map<std::string, long long>
+    calc_target_shares(const std::unordered_map<std::string, double>& target_weights,
+                       const std::unordered_map<std::string, double>& current_holdings, double cash,
+                       const std::unordered_map<std::string, double>& prices);
 
     // (H-5) Submit orders to OrderManager – to be implemented
     void submit_orders(const std::vector<qse::Order>& orders);
@@ -67,7 +66,9 @@ public:
     // (H-6) Rebalance gatekeeping – to be implemented
     bool should_rebalance(std::chrono::system_clock::time_point now) const;
 
-    std::vector<qse::Order> build_orders(const std::unordered_map<std::string, long long>& target_qty, const std::unordered_map<std::string, double>& target_weights);
+    std::vector<qse::Order>
+    build_orders(const std::unordered_map<std::string, long long>& target_qty,
+                 const std::unordered_map<std::string, double>& target_weights);
 
 private:
     ExecConfig cfg_{};
@@ -77,4 +78,4 @@ private:
     mutable std::chrono::system_clock::time_point last_rebalance_{};
 };
 
-} // namespace qse 
+} // namespace qse

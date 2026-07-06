@@ -11,19 +11,19 @@ namespace qse {
 using Timestamp = std::chrono::system_clock::time_point;
 using Price = double;
 using Volume = uint64_t;
-using OrderId = std::string;  // Order identifier
+using OrderId = std::string; // Order identifier
 
 /**
  * @brief Represents a single price bar (OHLCV data).
  */
 struct Bar {
-    std::string symbol;    // Symbol/identifier for the asset
-    Timestamp timestamp;   // Bar's start timestamp
-    Price open;           // Opening price
-    Price high;           // Highest price during the bar
-    Price low;            // Lowest price during the bar
-    Price close;          // Closing price
-    Volume volume;        // Total volume traded during the bar
+    std::string symbol;  // Symbol/identifier for the asset
+    Timestamp timestamp; // Bar's start timestamp
+    Price open;          // Opening price
+    Price high;          // Highest price during the bar
+    Price low;           // Lowest price during the bar
+    Price close;         // Closing price
+    Volume volume;       // Total volume traded during the bar
 
     // No user-declared constructors: Bar must stay an aggregate so positional
     // brace-initialization works under both C++17 and C++20 rules
@@ -33,8 +33,8 @@ struct Bar {
  * @brief Represents a single market trade event (a tick).
  */
 struct Tick {
-    std::string symbol;    // Symbol/identifier for the asset
-    Timestamp timestamp;   // Tick's exact timestamp
+    std::string symbol;  // Symbol/identifier for the asset
+    Timestamp timestamp; // Tick's exact timestamp
     Price price;         // Price of the trade (last trade price)
     Price bid;           // Best bid price
     Price ask;           // Best ask price
@@ -54,30 +54,32 @@ struct Tick {
  * Enhanced for tick-level simulation with support for limit orders, IOC, and partial fills.
  */
 struct Order {
-    enum class Type { MARKET, LIMIT, IOC, TARGET_PERCENT };  // Added TARGET_PERCENT
+    enum class Type { MARKET, LIMIT, IOC, TARGET_PERCENT }; // Added TARGET_PERCENT
     enum class Side { BUY, SELL };
     enum class Status { PENDING, PARTIALLY_FILLED, FILLED, CANCELLED, REJECTED };
-    enum class TimeInForce { DAY, IOC, GTC };  // Day, Immediate-or-Cancel, Good-Till-Cancelled
+    enum class TimeInForce { DAY, IOC, GTC }; // Day, Immediate-or-Cancel, Good-Till-Cancelled
 
     std::string order_id;
     std::string symbol;
     Type type;
     Side side;
     TimeInForce time_in_force;
-    Price limit_price;        // For limit orders
-    Volume quantity;          // Original order quantity
-    Volume filled_quantity;   // How much has been filled
-    Price avg_fill_price;     // Average fill price for partial fills
+    Price limit_price;      // For limit orders
+    Volume quantity;        // Original order quantity
+    Volume filled_quantity; // How much has been filled
+    Price avg_fill_price;   // Average fill price for partial fills
     Status status;
-    Timestamp timestamp;      // When order was placed
-    Timestamp expiry_time;    // For IOC orders
+    Timestamp timestamp;         // When order was placed
+    Timestamp expiry_time;       // For IOC orders
     double target_percent = 0.0; // Only used for TARGET_PERCENT orders
-    
+
     // Helper methods
-    bool is_active() const { return status == Status::PENDING || status == Status::PARTIALLY_FILLED; }
+    bool is_active() const {
+        return status == Status::PENDING || status == Status::PARTIALLY_FILLED;
+    }
     bool is_filled() const { return status == Status::FILLED; }
     Volume remaining_quantity() const { return quantity - filled_quantity; }
-    
+
     Order() = default;
 };
 
@@ -94,10 +96,10 @@ enum class TradeType { BUY, SELL };
  */
 struct Trade {
     Timestamp timestamp;
-    
+
     // --- ADDITION: Added symbol to support multi-asset logging ---
     // This is crucial for distinguishing trades when running parallel backtests.
-    std::string symbol;      
+    std::string symbol;
 
     TradeType type;
     Price price;
@@ -113,16 +115,17 @@ struct Fill {
     Price price;
     Timestamp timestamp;
     std::string side; // "BUY" or "SELL"
-    
-    Fill(OrderId id, const std::string& sym, Volume qty, Price px, Timestamp ts, const std::string& s)
+
+    Fill(OrderId id, const std::string& sym, Volume qty, Price px, Timestamp ts,
+         const std::string& s)
         : order_id(id), symbol(sym), quantity(qty), price(px), timestamp(ts), side(s) {}
 };
 
 // --- NEW: Position structure for portfolio holdings ---
 struct Position {
     std::string symbol;
-    double quantity;  // Can be negative for short positions
-    
+    double quantity; // Can be negative for short positions
+
     Position(const std::string& sym, double qty) : symbol(sym), quantity(qty) {}
     Position() = default;
 };

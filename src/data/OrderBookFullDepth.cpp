@@ -60,7 +60,8 @@ bool OrderBookFullDepth::has_level(Order::Side side, Price price) const {
 
 // --- Order Queue Management ---
 
-QueueId OrderBookFullDepth::enqueue_order(Order::Side side, Price price, OrderId order_id, Volume size) {
+QueueId OrderBookFullDepth::enqueue_order(Order::Side side, Price price, OrderId order_id,
+                                          Volume size) {
     // Ensure the price level exists
     add_level(side, price);
 
@@ -91,7 +92,8 @@ QueueId OrderBookFullDepth::enqueue_order(Order::Side side, Price price, OrderId
     return queue_id;
 }
 
-QueueId OrderBookFullDepth::enqueue_order_front(Order::Side side, Price price, OrderId order_id, Volume size) {
+QueueId OrderBookFullDepth::enqueue_order_front(Order::Side side, Price price, OrderId order_id,
+                                                Volume size) {
     add_level(side, price);
 
     Level& level = (side == Order::Side::BUY) ? get_bids()[price] : get_asks()[price];
@@ -116,7 +118,8 @@ QueueId OrderBookFullDepth::enqueue_order_front(Order::Side side, Price price, O
     return queue_id;
 }
 
-std::vector<std::pair<OrderId, Volume>> OrderBookFullDepth::consume_at_price(Order::Side side, Price price, Volume quantity) {
+std::vector<std::pair<OrderId, Volume>>
+OrderBookFullDepth::consume_at_price(Order::Side side, Price price, Volume quantity) {
     std::vector<std::pair<OrderId, Volume>> consumed;
 
     auto process = [&](auto& levels) {
@@ -182,15 +185,16 @@ OrderId OrderBookFullDepth::dequeue_head(Order::Side side, Price price) {
             for (auto& pos_pair : it->second.position_map) {
                 pos_pair.second--; // Decrement all positions since head was removed
             }
-            
+
             // Remove from queue_id_to_order_id_ mapping
-            for (auto map_it = queue_id_to_order_id_.begin(); map_it != queue_id_to_order_id_.end(); ++map_it) {
+            for (auto map_it = queue_id_to_order_id_.begin(); map_it != queue_id_to_order_id_.end();
+                 ++map_it) {
                 if (map_it->second == order_id) {
                     queue_id_to_order_id_.erase(map_it);
                     break;
                 }
             }
-            
+
             return order_id;
         }
     } else { // SELL
@@ -212,15 +216,16 @@ OrderId OrderBookFullDepth::dequeue_head(Order::Side side, Price price) {
             for (auto& pos_pair : it->second.position_map) {
                 pos_pair.second--; // Decrement all positions since head was removed
             }
-            
+
             // Remove from queue_id_to_order_id_ mapping
-            for (auto map_it = queue_id_to_order_id_.begin(); map_it != queue_id_to_order_id_.end(); ++map_it) {
+            for (auto map_it = queue_id_to_order_id_.begin(); map_it != queue_id_to_order_id_.end();
+                 ++map_it) {
                 if (map_it->second == order_id) {
                     queue_id_to_order_id_.erase(map_it);
                     break;
                 }
             }
-            
+
             return order_id;
         }
     }
@@ -256,9 +261,9 @@ size_t OrderBookFullDepth::queue_position(QueueId queue_id) const {
     if (it == queue_id_to_order_id_.end()) {
         return 0; // QueueId not found
     }
-    
+
     OrderId order_id = it->second;
-    
+
     // Search in bids
     const auto& bids = get_bids();
     for (const auto& pair : bids) {
@@ -268,7 +273,7 @@ size_t OrderBookFullDepth::queue_position(QueueId queue_id) const {
             return pos_it->second;
         }
     }
-    
+
     // Search in asks
     const auto& asks = get_asks();
     for (const auto& pair : asks) {
@@ -278,7 +283,7 @@ size_t OrderBookFullDepth::queue_position(QueueId queue_id) const {
             return pos_it->second;
         }
     }
-    
+
     return 0; // Not found
 }
 
@@ -286,39 +291,41 @@ size_t OrderBookFullDepth::queue_position(QueueId queue_id) const {
 
 std::vector<Price> OrderBookFullDepth::top_n_prices(Order::Side side, size_t n) const {
     std::vector<Price> prices;
-    
+
     if (side == Order::Side::BUY) {
         const auto& bids = get_bids();
         for (const auto& pair : bids) {
-            if (prices.size() >= n) break;
+            if (prices.size() >= n)
+                break;
             prices.push_back(pair.first);
         }
     } else { // SELL
         const auto& asks = get_asks();
         for (const auto& pair : asks) {
-            if (prices.size() >= n) break;
+            if (prices.size() >= n)
+                break;
             prices.push_back(pair.first);
         }
     }
-    
+
     return prices;
 }
 
 TopOfBook OrderBookFullDepth::top_of_book() const {
     TopOfBook tob;
-    
+
     const auto& bids = get_bids();
     if (!bids.empty()) {
         tob.best_bid_price = bids.begin()->first;
         tob.best_bid_size = bids.begin()->second.total_size;
     }
-    
+
     const auto& asks = get_asks();
     if (!asks.empty()) {
         tob.best_ask_price = asks.begin()->first;
         tob.best_ask_size = asks.begin()->second.total_size;
     }
-    
+
     return tob;
 }
 
@@ -334,11 +341,13 @@ void OrderBookFullDepth::on_tick(const Tick& tick) {
     remove_synthetic(Order::Side::BUY);
     remove_synthetic(Order::Side::SELL);
     if (tick.bid_size > 0) {
-        synthetic_bid_qid_ = enqueue_order_front(Order::Side::BUY, tick.bid, "__quote_bid", tick.bid_size);
+        synthetic_bid_qid_ =
+            enqueue_order_front(Order::Side::BUY, tick.bid, "__quote_bid", tick.bid_size);
         synthetic_bid_price_ = tick.bid;
     }
     if (tick.ask_size > 0) {
-        synthetic_ask_qid_ = enqueue_order_front(Order::Side::SELL, tick.ask, "__quote_ask", tick.ask_size);
+        synthetic_ask_qid_ =
+            enqueue_order_front(Order::Side::SELL, tick.ask, "__quote_ask", tick.ask_size);
         synthetic_ask_price_ = tick.ask;
     }
 }
@@ -364,9 +373,9 @@ bool OrderBookFullDepth::cancel_order(QueueId queue_id) {
     if (it == queue_id_to_order_id_.end()) {
         return false; // QueueId not found
     }
-    
+
     OrderId order_id = it->second;
-    
+
     // Search in bids
     auto& bids = get_bids();
     for (auto& pair : bids) {
@@ -386,21 +395,21 @@ bool OrderBookFullDepth::cancel_order(QueueId queue_id) {
                     level.total_size -= size_it->second;
                     level.order_sizes.erase(size_it);
                 }
-                
+
                 // Update positions of orders behind this one
                 for (auto& pos_pair : level.position_map) {
                     if (pos_pair.second > position) {
                         pos_pair.second--; // Decrement positions of orders behind
                     }
                 }
-                
+
                 // Remove from queue_id_to_order_id_ mapping
                 queue_id_to_order_id_.erase(it);
                 return true;
             }
         }
     }
-    
+
     // Search in asks
     auto& asks = get_asks();
     for (auto& pair : asks) {
@@ -420,21 +429,21 @@ bool OrderBookFullDepth::cancel_order(QueueId queue_id) {
                     level.total_size -= size_it->second;
                     level.order_sizes.erase(size_it);
                 }
-                
+
                 // Update positions of orders behind this one
                 for (auto& pos_pair : level.position_map) {
                     if (pos_pair.second > position) {
                         pos_pair.second--; // Decrement positions of orders behind
                     }
                 }
-                
+
                 // Remove from queue_id_to_order_id_ mapping
                 queue_id_to_order_id_.erase(it);
                 return true;
             }
         }
     }
-    
+
     return false; // Order not found
 }
 
@@ -501,4 +510,4 @@ std::pair<Volume, Price> OrderBookFullDepth::fill_market(Order::Side side, std::
     return {total_filled, avg_price};
 }
 
-} // namespace qse 
+} // namespace qse

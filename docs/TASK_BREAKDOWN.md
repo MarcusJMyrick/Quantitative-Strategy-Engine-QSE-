@@ -5,7 +5,7 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Remaining work, recommended order:** C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
 **Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1
 
 ---
@@ -20,7 +20,7 @@ to this checklist — full phase descriptions including completed work — is
 | 4.3 Portfolio optimizer | ✅ Mostly done (constrained QP exists); mean-variance extension optional (A5) |
 | **OrderBookFullDepth** | ✅ Committed 2026-07-04: all 38 tests pass (PriceLevel, QueuePosition, Impact) |
 | 5 Data & tearsheet | ✅ Track B complete 2026-07-05 (B1 ffill, B2 corporate actions, B3 tearsheet) |
-| 6 CI / format / lint | 🟡 CI green as of 2026-07-04 (C1+C4 done); formatting (C2) and clang-tidy (C3) remain |
+| 6 CI / format / lint | 🟡 C1+C4+C2 done (CI, hygiene, format gates); clang-tidy (C3) remains |
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
@@ -116,11 +116,16 @@ to this checklist — full phase descriptions including completed work — is
 - **Done when:** green check on a pushed commit; a deliberately broken test on
   a branch turns red.
 
-### C2. Formatting
-- `.clang-format` (LLVM base, 100 col) + one-time reformat commit; `black` +
-  `flake8` config for `scripts/`; CI job that runs `clang-format --dry-run
-  --Werror` and `black --check`.
-- **Done when:** CI fails on an unformatted file, passes on the tree.
+### C2. ✅ Formatting (done 2026-07-05)
+- `.clang-format` (LLVM base, 100 col, 4-space indent, left pointers) with a
+  one-time reformat of 124 C++ files; `black` (pyproject.toml, 100 col) over
+  30 Python files; `flake8` gate limited to error classes (syntax, undefined
+  names, unused imports/variables) with legacy violations fixed via autoflake.
+  New CI `format` job runs all three with pip-pinned versions
+  (clang-format 18.1.8 / black 25.1.0 / flake8 7.2.0) so local == CI.
+- Done-when verified locally both ways: gates exit 0 on the tree, exit 1 on a
+  deliberately unformatted file. Full suites re-run after reformat: 211/211
+  ctest, 33/33 pytest.
 
 ### C3. Static analysis
 - `.clang-tidy` (start narrow: `bugprone-*`, `performance-*`,

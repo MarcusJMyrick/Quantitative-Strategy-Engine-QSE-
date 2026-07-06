@@ -203,7 +203,9 @@ market impact — implemented, not just cited.
   day one.
 - **7.2 Repo hygiene ✅ (C4).** Untracked stale binaries and ctest logs;
   `git status` stays clean through a full build + test cycle.
-- **7.3 Formatting ⏳ (C2).** `.clang-format` + `black`/`flake8`, enforced in CI.
+- **7.3 Formatting ✅ (C2).** `.clang-format` + `black`/`flake8` enforced by a
+  dedicated CI job with pip-pinned tool versions (identical output local and
+  CI); one-time mechanical reformat of the whole tree, all suites green after.
 - **7.4 Static analysis ⏳ (C3).** `clang-tidy` (bugprone/performance/modernize)
   as a CI gate.
 - **7.5 Docker ✅ (D1).** Multi-stage `Dockerfile`: stage 1 compiles on the

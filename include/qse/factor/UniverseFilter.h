@@ -6,7 +6,7 @@
 #include <unordered_set>
 
 namespace arrow {
-    class Table;
+class Table;
 }
 
 namespace qse {
@@ -16,11 +16,11 @@ namespace qse {
  * @brief Defines filtering criteria for universe selection
  */
 struct FilterCriteria {
-    double min_price = 5.0;           // Minimum stock price
-    double min_volume = 1000000;      // Minimum daily volume
-    int min_listing_age_days = 252;   // Minimum days since listing
-    double max_price = 10000.0;       // Maximum stock price (penny stocks filter)
-    
+    double min_price = 5.0;         // Minimum stock price
+    double min_volume = 1000000;    // Minimum daily volume
+    int min_listing_age_days = 252; // Minimum days since listing
+    double max_price = 10000.0;     // Maximum stock price (penny stocks filter)
+
     FilterCriteria() = default;
     FilterCriteria(double min_p, double min_v, int min_age, double max_p)
         : min_price(min_p), min_volume(min_v), min_listing_age_days(min_age), max_price(max_p) {}
@@ -29,7 +29,7 @@ struct FilterCriteria {
 /**
  * @class UniverseFilter
  * @brief Handles data hygiene and filtering for multi-factor model universe
- * 
+ *
  * This class implements:
  * 1. Price and volume filters
  * 2. Listing age filters
@@ -74,18 +74,20 @@ private:
     bool passes_price_filter(const std::shared_ptr<arrow::Table>& table, int row);
     bool passes_volume_filter(const std::shared_ptr<arrow::Table>& table, int row);
     bool passes_listing_age_filter(const std::shared_ptr<arrow::Table>& table, int row);
-    
+
     // Data cleaning methods
     void forward_fill_column(std::shared_ptr<arrow::Table>& table, const std::string& column_name);
-    void remove_nan_inf_column(std::shared_ptr<arrow::Table>& table, const std::string& column_name);
-    
+    void remove_nan_inf_column(std::shared_ptr<arrow::Table>& table,
+                               const std::string& column_name);
+
     // Utility methods
-    template<typename T>
-    T get_column_value(const std::shared_ptr<arrow::Table>& table, const std::string& column, int row);
+    template <typename T>
+    T get_column_value(const std::shared_ptr<arrow::Table>& table, const std::string& column,
+                       int row);
     bool is_valid_numeric(double value);
-    
+
     FilterCriteria criteria_;
-    
+
     // Statistics tracking
     int original_rows_ = 0;
     int filtered_rows_ = 0;
@@ -93,4 +95,4 @@ private:
     int forward_filled_ = 0;
 };
 
-} // namespace qse 
+} // namespace qse

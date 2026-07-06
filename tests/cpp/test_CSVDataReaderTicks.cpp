@@ -6,11 +6,10 @@
 
 using namespace qse;
 
-static const char* smallTickCSV =
-  "timestamp,price,volume\n"
-  "1622505601000,100.5,10\n"
-  "1622505600000,100.0,20\n"
-  "1622505602000,101.0,5\n";
+static const char* smallTickCSV = "timestamp,price,volume\n"
+                                  "1622505601000,100.5,10\n"
+                                  "1622505600000,100.0,20\n"
+                                  "1622505602000,101.0,5\n";
 
 TEST(CSVDataReaderTicksTest, LoadsAndSortsTicks) {
     // 1) write the CSV into a temp file
@@ -28,8 +27,7 @@ TEST(CSVDataReaderTicksTest, LoadsAndSortsTicks) {
     // 3) verify timestamps are sorted and values correct
     // Convert timestamp to milliseconds for comparison
     auto timestamp_to_ms = [](const Timestamp& ts) {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(
-            ts.time_since_epoch()).count();
+        return std::chrono::duration_cast<std::chrono::milliseconds>(ts.time_since_epoch()).count();
     };
 
     EXPECT_EQ(timestamp_to_ms(ticks[0].timestamp), 1622505600000LL);
@@ -74,10 +72,10 @@ TEST(CSVDataReaderTicksTest, HandlesBarFile) {
     CSVDataReader reader(fn);
     auto const& ticks = reader.read_all_ticks();
     auto const& bars = reader.read_all_bars();
-    
-    EXPECT_EQ(ticks.size(), 0u);  // Should not parse ticks from bar file
-    EXPECT_EQ(bars.size(), 1u);   // Should parse bars
+
+    EXPECT_EQ(ticks.size(), 0u); // Should not parse ticks from bar file
+    EXPECT_EQ(bars.size(), 1u);  // Should parse bars
 
     // clean up
     std::filesystem::remove(fn);
-} 
+}

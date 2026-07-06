@@ -18,12 +18,11 @@ namespace qse {
 class Backtester {
 public:
     // --- CHANGE: The constructor now accepts the symbol ---
-    Backtester(
-        const std::string& symbol, // The symbol for this specific backtest (e.g., "SPY")
-        std::unique_ptr<IDataReader> data_reader,
-        std::unique_ptr<IStrategy> strategy,
-        std::shared_ptr<IOrderManager> order_manager,
-        const std::chrono::seconds& bar_interval = std::chrono::seconds(60) // Default to 1-minute bars
+    Backtester(const std::string& symbol, // The symbol for this specific backtest (e.g., "SPY")
+               std::unique_ptr<IDataReader> data_reader, std::unique_ptr<IStrategy> strategy,
+               std::shared_ptr<IOrderManager> order_manager,
+               const std::chrono::seconds& bar_interval =
+                   std::chrono::seconds(60) // Default to 1-minute bars
     );
 
     void run();
@@ -37,7 +36,7 @@ private:
     std::vector<std::unique_ptr<IDataReader>> data_readers_;
     std::unique_ptr<IStrategy> strategy_;
     std::shared_ptr<IOrderManager> order_manager_;
-    
+
     // BarRouter dispatches bars to strategies interested in each symbol.
     BarRouter bar_router_;
 

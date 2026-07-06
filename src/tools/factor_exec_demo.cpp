@@ -12,11 +12,16 @@ using namespace qse;
 // Dummy order manager that just prints orders
 class PrintOrderManager : public IOrderManager {
 public:
-    OrderId submit_market_order(const std::string& symbol, Order::Side side, Volume quantity) override {
-        std::cerr << "[ORDER] " << symbol << " " << (side == Order::Side::BUY ? "BUY" : "SELL") << " " << quantity << " (MARKET)\n";
+    OrderId submit_market_order(const std::string& symbol, Order::Side side,
+                                Volume quantity) override {
+        std::cerr << "[ORDER] " << symbol << " " << (side == Order::Side::BUY ? "BUY" : "SELL")
+                  << " " << quantity << " (MARKET)\n";
         return symbol + "_order";
     }
-    OrderId submit_limit_order(const std::string&, Order::Side, Volume, Price, Order::TimeInForce) override { return ""; }
+    OrderId submit_limit_order(const std::string&, Order::Side, Volume, Price,
+                               Order::TimeInForce) override {
+        return "";
+    }
     bool cancel_order(const OrderId&) override { return false; }
     void process_tick(const Tick&) override {}
     void attempt_fills() override {}
@@ -71,9 +76,11 @@ int main(int argc, char* argv[]) {
             }
             std::string line;
             while (std::getline(ifs, line)) {
-                if (line.empty()) continue;
+                if (line.empty())
+                    continue;
                 size_t comma = line.find(',');
-                if (comma == std::string::npos) continue;
+                if (comma == std::string::npos)
+                    continue;
                 std::string sym = line.substr(0, comma);
                 double px = std::stod(line.substr(comma + 1));
                 prices[sym] = px;
@@ -99,10 +106,14 @@ int main(int argc, char* argv[]) {
         for (const auto& order : orders) {
             std::cerr << order.symbol << " " << (order.side == Order::Side::BUY ? "BUY" : "SELL")
                       << " " << order.quantity << " type=";
-            if (order.type == Order::Type::MARKET) std::cerr << "MARKET";
-            else if (order.type == Order::Type::TARGET_PERCENT) std::cerr << "TARGET_PERCENT";
-            else if (order.type == Order::Type::LIMIT) std::cerr << "LIMIT";
-            else std::cerr << "OTHER";
+            if (order.type == Order::Type::MARKET)
+                std::cerr << "MARKET";
+            else if (order.type == Order::Type::TARGET_PERCENT)
+                std::cerr << "TARGET_PERCENT";
+            else if (order.type == Order::Type::LIMIT)
+                std::cerr << "LIMIT";
+            else
+                std::cerr << "OTHER";
             std::cerr << std::endl;
         }
         std::cerr << std::flush;
@@ -116,4 +127,4 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     return 0;
-} 
+}

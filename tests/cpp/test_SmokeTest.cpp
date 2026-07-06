@@ -45,13 +45,13 @@ protected:
 TEST_F(SmokeTest, DoNothingStrategySmokeTest) {
     // Create components
     auto data_reader = std::make_unique<CSVDataReader>(test_csv_file_);
-    auto order_manager = std::make_unique<OrderManager>(10000.0, "smoke_equity.csv", "smoke_tradelog.csv");
+    auto order_manager =
+        std::make_unique<OrderManager>(10000.0, "smoke_equity.csv", "smoke_tradelog.csv");
     auto strategy = std::make_unique<DoNothingStrategy>();
 
     // Create backtester with 1-minute bars
-    Backtester backtester("TEST", std::move(data_reader), 
-                         std::move(strategy), std::move(order_manager),
-                         std::chrono::seconds(60));
+    Backtester backtester("TEST", std::move(data_reader), std::move(strategy),
+                          std::move(order_manager), std::chrono::seconds(60));
 
     // This should not crash and should process all ticks
     EXPECT_NO_THROW(backtester.run());
@@ -65,16 +65,16 @@ TEST_F(SmokeTest, DoNothingStrategySmokeTest) {
 TEST_F(SmokeTest, StrategyDataVerification) {
     // Create components
     auto data_reader = std::make_unique<CSVDataReader>(test_csv_file_);
-    auto order_manager = std::make_unique<OrderManager>(10000.0, "smoke_equity.csv", "smoke_tradelog.csv");
+    auto order_manager =
+        std::make_unique<OrderManager>(10000.0, "smoke_equity.csv", "smoke_tradelog.csv");
     auto strategy = std::make_unique<DoNothingStrategy>();
 
     // Get pointer before moving
     auto strategy_ptr = strategy.get();
 
     // Create backtester with 1-minute bars
-    Backtester backtester("TEST", std::move(data_reader), 
-                         std::move(strategy), std::move(order_manager),
-                         std::chrono::seconds(60));
+    Backtester backtester("TEST", std::move(data_reader), std::move(strategy),
+                          std::move(order_manager), std::chrono::seconds(60));
 
     // Run the backtest
     EXPECT_NO_THROW(backtester.run());
@@ -99,15 +99,15 @@ TEST_F(SmokeTest, EmptyTickStreamSmokeTest) {
 
     // Create components
     auto data_reader = std::make_unique<CSVDataReader>(empty_csv);
-    auto order_manager = std::make_unique<OrderManager>(10000.0, "smoke_equity.csv", "smoke_tradelog.csv");
+    auto order_manager =
+        std::make_unique<OrderManager>(10000.0, "smoke_equity.csv", "smoke_tradelog.csv");
     auto strategy = std::make_unique<DoNothingStrategy>();
 
     auto strategy_ptr = strategy.get();
 
     // Create backtester
-    Backtester backtester("TEST", std::move(data_reader), 
-                         std::move(strategy), std::move(order_manager),
-                         std::chrono::seconds(60));
+    Backtester backtester("TEST", std::move(data_reader), std::move(strategy),
+                          std::move(order_manager), std::chrono::seconds(60));
 
     // This should not crash even with no data
     EXPECT_NO_THROW(backtester.run());
@@ -127,15 +127,15 @@ TEST_F(SmokeTest, EmptyTickStreamSmokeTest) {
 TEST_F(SmokeTest, ShortBarIntervalSmokeTest) {
     // Create components
     auto data_reader = std::make_unique<CSVDataReader>(test_csv_file_);
-    auto order_manager = std::make_unique<OrderManager>(10000.0, "smoke_equity.csv", "smoke_tradelog.csv");
+    auto order_manager =
+        std::make_unique<OrderManager>(10000.0, "smoke_equity.csv", "smoke_tradelog.csv");
     auto strategy = std::make_unique<DoNothingStrategy>();
 
     auto strategy_ptr = strategy.get();
 
     // Create backtester with 1-second bars (very short)
-    Backtester backtester("TEST", std::move(data_reader), 
-                         std::move(strategy), std::move(order_manager),
-                         std::chrono::seconds(1));
+    Backtester backtester("TEST", std::move(data_reader), std::move(strategy),
+                          std::move(order_manager), std::chrono::seconds(1));
 
     // This should not crash
     EXPECT_NO_THROW(backtester.run());
@@ -149,4 +149,4 @@ TEST_F(SmokeTest, ShortBarIntervalSmokeTest) {
     std::filesystem::remove("smoke_tradelog.csv");
 }
 
-} // namespace qse 
+} // namespace qse

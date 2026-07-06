@@ -4,10 +4,10 @@ namespace qse {
 
 // The constructor creates the worker threads.
 ThreadPool::ThreadPool(size_t num_threads) {
-    for(size_t i = 0; i < num_threads; ++i) {
+    for (size_t i = 0; i < num_threads; ++i) {
         workers_.emplace_back([this] {
             // This is the main loop for each worker thread.
-            for(;;) {
+            for (;;) {
                 std::function<void()> task;
 
                 {
@@ -18,12 +18,11 @@ ThreadPool::ThreadPool(size_t num_threads) {
                     // Wait on the condition variable. The thread will sleep until:
                     // 1. The pool is stopped.
                     // 2. The tasks queue is not empty.
-                    this->condition_.wait(lock, [this] {
-                        return this->stop_ || !this->tasks_.empty();
-                    });
+                    this->condition_.wait(lock,
+                                          [this] { return this->stop_ || !this->tasks_.empty(); });
 
                     // If the pool is stopped AND the queue is empty, the thread can exit.
-                    if(this->stop_ && this->tasks_.empty()) {
+                    if (this->stop_ && this->tasks_.empty()) {
                         return;
                     }
 
@@ -51,7 +50,7 @@ ThreadPool::~ThreadPool() {
     condition_.notify_all();
 
     // Wait for each worker thread to complete its execution.
-    for(std::thread &worker: workers_) {
+    for (std::thread& worker : workers_) {
         worker.join();
     }
 }

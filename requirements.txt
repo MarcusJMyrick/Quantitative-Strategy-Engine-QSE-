@@ -2,3 +2,7 @@ pandas>=2.3.0
 requests>=2.32.4
 pyarrow>=20.0.0
 pytest>=8.4.0 
+# Dev tooling (pinned: formatting must match CI exactly)
+black==25.1.0
+flake8==7.2.0
+clang-format==18.1.8

@@ -20,6 +20,7 @@ public:
     explicit InMemoryTickReader(std::vector<Tick> ticks) : ticks_(std::move(ticks)) {}
     const std::vector<Tick>& read_all_ticks() const override { return ticks_; }
     const std::vector<Bar>& read_all_bars() const override { return bars_; }
+
 private:
     std::vector<Tick> ticks_;
     std::vector<Bar> bars_; // Empty – not needed for this test
@@ -31,9 +32,7 @@ protected:
         test_weights_dir = "test_integration_weights";
         std::filesystem::create_directories(test_weights_dir);
     }
-    void TearDown() override {
-        std::filesystem::remove_all(test_weights_dir);
-    }
+    void TearDown() override { std::filesystem::remove_all(test_weights_dir); }
     // Helper to create weight files for a date (YYYYMMDD)
     void create_weight_file(const std::string& date, double weight) {
         std::ofstream file(test_weights_dir + "/weights_" + date + ".csv");
@@ -58,7 +57,7 @@ protected:
 
 TEST_F(FactorIntegrationTest, FillsMatchWeights) {
     // Create weight files
-    create_weight_file("20241215", 0.10); // +10%
+    create_weight_file("20241215", 0.10);  // +10%
     create_weight_file("20241216", -0.05); // -5%
     create_weight_file("20241217", 0.00);  // flat
 
@@ -68,21 +67,29 @@ TEST_F(FactorIntegrationTest, FillsMatchWeights) {
     std::vector<Tick> day3_ticks;
 
     std::tm tm_day1 = {};
-    tm_day1.tm_year = 2024 - 1900; tm_day1.tm_mon = 11; tm_day1.tm_mday = 15;
+    tm_day1.tm_year = 2024 - 1900;
+    tm_day1.tm_mon = 11;
+    tm_day1.tm_mday = 15;
     day1_ticks.push_back(build_tick(tm_day1, 100.0));
 
     std::tm tm_day2 = {};
-    tm_day2.tm_year = 2024 - 1900; tm_day2.tm_mon = 11; tm_day2.tm_mday = 16;
+    tm_day2.tm_year = 2024 - 1900;
+    tm_day2.tm_mon = 11;
+    tm_day2.tm_mday = 16;
     day2_ticks.push_back(build_tick(tm_day2, 101.0));
 
     std::tm tm_day3 = {};
-    tm_day3.tm_year = 2024 - 1900; tm_day3.tm_mon = 11; tm_day3.tm_mday = 17;
+    tm_day3.tm_year = 2024 - 1900;
+    tm_day3.tm_mon = 11;
+    tm_day3.tm_mday = 17;
     day3_ticks.push_back(build_tick(tm_day3, 102.0));
 
     // Shared OrderManager
     auto om = std::make_shared<OrderManager>(1000000.0, "eq_curve.csv", "trades.csv");
 
-    ExecConfig cfg; cfg.order_style = "market"; cfg.min_qty = 1;
+    ExecConfig cfg;
+    cfg.order_style = "market";
+    cfg.min_qty = 1;
 
     // Day 1
     auto strat1 = std::make_unique<FactorStrategy>(om, "AAPL", test_weights_dir, 1.0, cfg);
@@ -90,7 +97,8 @@ TEST_F(FactorIntegrationTest, FillsMatchWeights) {
     auto reader1 = std::make_unique<InMemoryTickReader>(day1_ticks);
     Backtester bt1("AAPL", std::move(reader1), std::move(strat1), om);
     bt1.run();
-    strat1_ptr->on_day_close_with_prices(std::chrono::system_clock::from_time_t(std::mktime(&tm_day1)), {{"AAPL", 100.0}});
+    strat1_ptr->on_day_close_with_prices(
+        std::chrono::system_clock::from_time_t(std::mktime(&tm_day1)), {{"AAPL", 100.0}});
 
     // Day 2
     auto strat2 = std::make_unique<FactorStrategy>(om, "AAPL", test_weights_dir, 1.0, cfg);
@@ -98,7 +106,8 @@ TEST_F(FactorIntegrationTest, FillsMatchWeights) {
     auto reader2 = std::make_unique<InMemoryTickReader>(day2_ticks);
     Backtester bt2("AAPL", std::move(reader2), std::move(strat2), om);
     bt2.run();
-    strat2_ptr->on_day_close_with_prices(std::chrono::system_clock::from_time_t(std::mktime(&tm_day2)), {{"AAPL", 101.0}});
+    strat2_ptr->on_day_close_with_prices(
+        std::chrono::system_clock::from_time_t(std::mktime(&tm_day2)), {{"AAPL", 101.0}});
 
     // Day 3
     auto strat3 = std::make_unique<FactorStrategy>(om, "AAPL", test_weights_dir, 1.0, cfg);
@@ -106,7 +115,8 @@ TEST_F(FactorIntegrationTest, FillsMatchWeights) {
     auto reader3 = std::make_unique<InMemoryTickReader>(day3_ticks);
     Backtester bt3("AAPL", std::move(reader3), std::move(strat3), om);
     bt3.run();
-    strat3_ptr->on_day_close_with_prices(std::chrono::system_clock::from_time_t(std::mktime(&tm_day3)), {{"AAPL", 102.0}});
+    strat3_ptr->on_day_close_with_prices(
+        std::chrono::system_clock::from_time_t(std::mktime(&tm_day3)), {{"AAPL", 102.0}});
 
     // Final NAV & position
     double pos = om->get_position("AAPL");
@@ -115,4 +125,4 @@ TEST_F(FactorIntegrationTest, FillsMatchWeights) {
     double pos_pct = (pos * 102.0) / nav;
 
     EXPECT_NEAR(std::abs(pos_pct), 0.0, 0.001); // <=0.1%
-} 
+}

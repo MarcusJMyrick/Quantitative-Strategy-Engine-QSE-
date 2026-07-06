@@ -38,17 +38,17 @@ public:
 
 private:
     // interval and state
-    std::chrono::seconds     bar_interval_;
-    Timestamp           current_bar_start_time_;
-    std::optional<Bar>  current_bar_;
+    std::chrono::seconds bar_interval_;
+    Timestamp current_bar_start_time_;
+    std::optional<Bar> current_bar_;
 
     // buffers and ready queue
-    std::vector<Tick>   tick_buffer_;
-    std::deque<Bar>     ready_bars_;
+    std::vector<Tick> tick_buffer_;
+    std::deque<Bar> ready_bars_;
 
     // internals
     void process_buffered_ticks();
     void start_new_bar(const Tick& tick);
 };
 
-} // namespace qse 
+} // namespace qse

@@ -26,4 +26,4 @@ bool MovingAverage::is_ready() const {
     return prices_.size() == window_size_;
 }
 
-} // namespace qse 
+} // namespace qse

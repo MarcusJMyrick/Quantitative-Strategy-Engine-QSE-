@@ -64,20 +64,24 @@ int main(int argc, char** argv) {
     for (int i = 1; i + 1 < argc; i += 2) {
         std::string flag = argv[i];
         std::string value = argv[i + 1];
-        if (flag == "--ticks") ticks_path = value;
-        else if (flag == "--out") out_path = value;
-        else if (flag == "--samples") n_samples = std::stoul(value);
-        else if (flag == "--levels") n_levels = std::stoul(value);
+        if (flag == "--ticks")
+            ticks_path = value;
+        else if (flag == "--out")
+            out_path = value;
+        else if (flag == "--samples")
+            n_samples = std::stoul(value);
+        else if (flag == "--levels")
+            n_levels = std::stoul(value);
         else {
             std::cerr << "Unknown flag: " << flag << "\n";
             return 1;
         }
     }
 
-    const double tick_size = 0.01;      // price grid behind the touch
-    const qse::Volume base_size = 100;  // shares at the touch level
-    const std::vector<qse::Volume> order_sizes = {
-        50, 100, 200, 400, 800, 1600, 3200, 6400, 12800, 25600, 51200};
+    const double tick_size = 0.01;     // price grid behind the touch
+    const qse::Volume base_size = 100; // shares at the touch level
+    const std::vector<qse::Volume> order_sizes = {50,   100,  200,   400,   800,  1600,
+                                                  3200, 6400, 12800, 25600, 51200};
     const std::vector<std::string> profiles = {"uniform", "linear"};
 
     std::vector<TradeTick> ticks;
@@ -122,8 +126,7 @@ int main(int argc, char** argv) {
                                        "lvl_" + std::to_string(lvl), size);
                 }
 
-                auto result = book.fill_market(qse::Order::Side::BUY,
-                                               static_cast<std::int64_t>(q));
+                auto result = book.fill_market(qse::Order::Side::BUY, static_cast<std::int64_t>(q));
                 const qse::Volume filled = result.first;
                 const double vwap = result.second;
                 if (filled == 0) {
@@ -132,9 +135,8 @@ int main(int argc, char** argv) {
                 const double slip_touch = (vwap - best_ask) / mid * 1e4;
                 const double slip_mid = (vwap - mid) / mid * 1e4;
 
-                out << profile << ',' << s << ',' << mid << ',' << q << ','
-                    << filled << ',' << vwap << ',' << slip_touch << ','
-                    << slip_mid << '\n';
+                out << profile << ',' << s << ',' << mid << ',' << q << ',' << filled << ',' << vwap
+                    << ',' << slip_touch << ',' << slip_mid << '\n';
                 ++rows;
             }
         }

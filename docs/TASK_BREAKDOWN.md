@@ -5,7 +5,7 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** D1 → C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Remaining work, recommended order:** C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
 **Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1
 
 ---
@@ -23,7 +23,7 @@ to this checklist — full phase descriptions including completed work — is
 | 6 CI / format / lint | 🟡 CI green as of 2026-07-04 (C1+C4 done); formatting (C2) and clang-tidy (C3) remain |
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
-| Docker | ❌ No Dockerfile |
+| Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ❌ New track (added 2026-07-05) — not started |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
 
@@ -138,14 +138,17 @@ to this checklist — full phase descriptions including completed work — is
 
 ## Track D — Docker
 
-### D1. Multi-stage Dockerfile
-- Stage 1 (build): `ubuntu:24.04` + g++, cmake, libarrow/parquet, protobuf,
-  libzmq, yaml-cpp → compile. Stage 2 (runtime): copy binaries + runtime libs +
-  Python analysis env. `docker-compose.yml` optional for the pub/sub demo.
-- **Done when:** `docker build -t qse . && docker run qse` completes a sample
-  backtest and writes results to a mounted volume, on a machine with only Docker.
-- Note: also gives you a Linux build environment matching CI (C1), which is
-  why D1 pairs well with Track C.
+### D1. ✅ Multi-stage Dockerfile (done 2026-07-05)
+- Stage 1 compiles on the same ubuntu:24.04 + Arrow-apt toolchain as CI;
+  stage 2 ships binaries (`strategy_engine`, `impact_sweep`, `ab_audit`),
+  runtime libs, sample data, and the Python analysis stack (apt pandas/
+  numpy/matplotlib). `docker/entrypoint.sh` runs the SMA demo and emits the
+  tearsheet; README gained a "Running with Docker" section.
+- Done-when verified: `docker build -t qse . && docker run -v "$PWD/out:/results" qse`
+  wrote equity_curve.csv, tradelog.csv, and tearsheet.pdf to the host, with
+  metrics **identical to the native macOS run** (Sharpe −2.404, 456 trades) —
+  a cross-platform determinism check for free. Image 1.74 GB (runtime keeps
+  dev packages for version-proof Arrow libs; slimming is possible later).
 
 ---
 

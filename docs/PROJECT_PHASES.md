@@ -206,10 +206,12 @@ market impact — implemented, not just cited.
 - **7.3 Formatting ⏳ (C2).** `.clang-format` + `black`/`flake8`, enforced in CI.
 - **7.4 Static analysis ⏳ (C3).** `clang-tidy` (bugprone/performance/modernize)
   as a CI gate.
-- **7.5 Docker ⏳ (D1).** Multi-stage `Dockerfile` (ubuntu:24.04 build stage →
-  slim runtime): `docker build -t qse . && docker run qse` reproduces a
-  backtest on any machine with only Docker installed — the "it just works"
-  distribution standard.
+- **7.5 Docker ✅ (D1).** Multi-stage `Dockerfile`: stage 1 compiles on the
+  same ubuntu:24.04 + Arrow toolchain as CI, stage 2 ships binaries + runtime
+  libs + the Python analysis stack. `docker run -v "$PWD/out:/results" qse`
+  runs the SMA demo and writes equity curve, tradelog, and tearsheet PDF to
+  the host — with metrics identical to the native macOS run, doubling as a
+  cross-platform determinism check.
 
 **Proves:** the difference between code that works here and software that
 works anywhere.

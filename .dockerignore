@@ -1,0 +1,19 @@
+# Keep the build context to source + tracked data
+.git
+build/
+venv/
+results/
+plots/
+organized_runs/
+test_output/
+Testing/
+docs/
+__pycache__/
+*.log
+*.parquet
+*.pdf
+equity_curve.csv
+tradelog.csv
+direct_test
+test_spearman
+Dockerfile

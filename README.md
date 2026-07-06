@@ -104,6 +104,36 @@ Our PairsTrading strategy demonstrates sophisticated statistical arbitrage capab
 - **Risk Management**: Position sizing based on volatility and correlation strength
 - **Performance**: Consistent returns with controlled drawdowns
 
+## 🐳 Running with Docker (zero setup)
+
+The fastest way to run the engine on any OS — no compiler, no libraries, just
+Docker:
+
+```bash
+# Clone the repository (with the Eigen submodule)
+git clone --recurse-submodules <repository-url>
+cd Quantitative-Strategy-Engine-QSE-
+
+# Build the image and run a sample backtest
+docker build -t qse .
+docker run -v "$PWD/out:/results" qse
+```
+
+That single `docker run` executes an SMA 20/50 crossover backtest over the
+bundled AAPL minute-tick data (~19k ticks in ~25 ms) and writes
+`equity_curve.csv`, `tradelog.csv`, and a full performance `tearsheet.pdf`
+into `./out/` on your machine.
+
+The image is a multi-stage build: stage 1 compiles the C++20 engine on the
+same `ubuntu:24.04` + Apache Arrow toolchain as CI; stage 2 ships only the
+binaries, runtime libraries, sample data, and the Python analysis stack.
+Other bundled tools are available too:
+
+```bash
+docker run -v "$PWD/out:/results" qse /app/bin/impact_sweep --out /results/impact.csv
+docker run -v "$PWD/out:/results" qse /app/bin/ab_audit --out-dir /results
+```
+
 ## 🛠️ Installation & Setup
 
 ### Prerequisites

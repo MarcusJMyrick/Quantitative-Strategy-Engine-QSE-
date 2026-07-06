@@ -5,8 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** F2 → F3 → F4 (A5 optional)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3
+**Remaining work, recommended order:** F2 → F3 → F4
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5
 
 ---
 
@@ -17,7 +17,7 @@ to this checklist — full phase descriptions including completed work — is
 | 1–3 (costs, perf, threading, ticks, ZeroMQ) | ✅ Done, tested |
 | 4.1 Pairs trading | ✅ Done, tested |
 | 4.2 Factor model | ✅ Done **far beyond spec**: MultiFactorCalculator, UniverseFilter, CrossSectionalRegression, ICMonitor, AlphaBlender, RiskModel, PortfolioBuilder (QP), FactorExecutionEngine, rebalance guard, YAML config |
-| 4.3 Portfolio optimizer | ✅ Mostly done (constrained QP exists); mean-variance extension optional (A5) |
+| 4.3 Portfolio optimizer | ✅ Complete incl. A5 mean-variance extension 2026-07-06 (efficient frontier in docs/research/factor) |
 | **OrderBookFullDepth** | ✅ Committed 2026-07-04: all 38 tests pass (PriceLevel, QueuePosition, Impact) |
 | 5 Data & tearsheet | ✅ Track B complete 2026-07-05 (B1 ffill, B2 corporate actions, B3 tearsheet) |
 | 6 CI / format / lint | ✅ Track C complete 2026-07-05 (CI, hygiene, format, clang-tidy gates) |
@@ -66,11 +66,20 @@ to this checklist — full phase descriptions including completed work — is
 - **Done when:** `python scripts/analysis/impact_study.py` produces
   `impact_curve.png` + `results_summary.md` with the fitted exponent.
 
-### A5 (optional). Mean-variance extension of PortfolioBuilder
-- Add a risk-aversion term (`α·w − λ/2·wᵀΣw`) using RiskModel's covariance;
-  expose λ in YAML.
-- **Done when:** gtest shows λ=0 reproduces current weights and λ→∞ drives
-  weights toward minimum variance; sweep script plots an efficient frontier.
+### A5. ✅ Mean-variance extension of PortfolioBuilder (done 2026-07-06)
+- Objective gains `−λ/2·wᵀΣw` with the single-factor covariance
+  `Σ = σ_m²ββᵀ + diag(σ_resid²)` from RiskModel outputs, applied as an O(n)
+  operator (never materialized); step size obeys the Lipschitz bound so any
+  λ converges while λ=0 keeps the legacy step bit-for-bit. New 4-arg
+  `optimize(α, β, σ_resid, symbols)` overload; `risk_aversion` +
+  `market_variance` are optional YAML keys (pre-A5 configs load unchanged).
+- Done-when verified: 4 gtest cases — λ=0 identical to legacy weights to
+  1e-12; rising λ tilts monotonically toward low-vol assets with the ratio
+  hitting the closed-form σ_h²/σ_l² limit (15.85 at λ=200); portfolio
+  variance strictly decreasing; the σ_m²ββᵀ channel shrinks a factor-exposed
+  book; YAML round-trip both ways. `frontier_sweep` + `efficient_frontier.py`
+  trace the frontier (alpha 0.32→0.003, stdev 0.35→0.002 over 20 λ points)
+  into `docs/research/factor/`. 253/253 ctest; all gates clean.
 
 ---
 

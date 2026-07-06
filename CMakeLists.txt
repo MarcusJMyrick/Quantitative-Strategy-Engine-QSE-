@@ -161,6 +161,7 @@ add_executable(run_tests
     tests/cpp/ExecutionHandlerTest.cpp
     tests/cpp/AlpacaExecutionHandlerTest.cpp
     tests/cpp/LiveEngineTest.cpp
+    tests/cpp/MeanVarianceTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp
@@ -215,6 +216,9 @@ target_link_libraries(ab_audit PRIVATE qse)
 
 add_executable(arena_bench src/tools/arena_bench.cpp)
 target_link_libraries(arena_bench PRIVATE qse)
+
+add_executable(frontier_sweep src/tools/frontier_sweep.cpp)
+target_link_libraries(frontier_sweep PRIVATE qse)
 
 add_executable(spsc_bench src/tools/spsc_bench.cpp)
 target_link_libraries(spsc_bench PRIVATE qse_math Threads::Threads)

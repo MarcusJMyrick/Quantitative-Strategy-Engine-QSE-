@@ -29,6 +29,13 @@ void PortfolioBuilder::load_config(const std::string& yaml_path) {
         config_.beta_tolerance = opt_config["beta_tolerance"].as<double>();
         config_.max_iterations = opt_config["max_iterations"].as<int>();
         config_.convergence_tol = opt_config["convergence_tol"].as<double>();
+        // Mean-variance keys are optional so pre-A5 configs keep loading
+        if (opt_config["risk_aversion"]) {
+            config_.risk_aversion = opt_config["risk_aversion"].as<double>();
+        }
+        if (opt_config["market_variance"]) {
+            config_.market_variance = opt_config["market_variance"].as<double>();
+        }
     }
 }
 
@@ -50,8 +57,29 @@ PortfolioBuilder::optimize(const std::vector<double>& alpha_scores,
         Eigen::Map<const Eigen::VectorXd>(alpha_scores.data(), alpha_scores.size());
     Eigen::VectorXd beta = Eigen::Map<const Eigen::VectorXd>(betas.data(), betas.size());
 
-    // Solve the QP problem
-    return solve_qp(alpha, beta);
+    // No idiosyncratic vols supplied: Σ degenerates to the market term only
+    return solve_qp(alpha, beta, Eigen::VectorXd::Zero(alpha.size()));
+}
+
+PortfolioBuilder::OptimizationResult PortfolioBuilder::optimize(
+    const std::vector<double>& alpha_scores, const std::vector<double>& betas,
+    const std::vector<double>& resid_sigmas, const std::vector<std::string>& symbols) {
+
+    if (alpha_scores.size() != betas.size() || alpha_scores.size() != symbols.size() ||
+        alpha_scores.size() != resid_sigmas.size()) {
+        throw std::invalid_argument("Input vectors must have the same size");
+    }
+    if (alpha_scores.empty()) {
+        throw std::invalid_argument("Input vectors cannot be empty");
+    }
+
+    Eigen::VectorXd alpha =
+        Eigen::Map<const Eigen::VectorXd>(alpha_scores.data(), alpha_scores.size());
+    Eigen::VectorXd beta = Eigen::Map<const Eigen::VectorXd>(betas.data(), betas.size());
+    Eigen::VectorXd resid_sigma =
+        Eigen::Map<const Eigen::VectorXd>(resid_sigmas.data(), resid_sigmas.size());
+
+    return solve_qp(alpha, beta, resid_sigma);
 }
 
 PortfolioBuilder::OptimizationResult
@@ -104,23 +132,53 @@ PortfolioBuilder::optimize_from_table(const std::shared_ptr<arrow::Table>& facto
     return optimize(alpha_scores, betas, symbols);
 }
 
-PortfolioBuilder::OptimizationResult PortfolioBuilder::solve_qp(const Eigen::VectorXd& alpha,
-                                                                const Eigen::VectorXd& beta) {
+PortfolioBuilder::OptimizationResult
+PortfolioBuilder::solve_qp(const Eigen::VectorXd& alpha, const Eigen::VectorXd& beta,
+                           const Eigen::VectorXd& resid_sigma) {
 
     OptimizationResult result;
     int n = alpha.size();
     result.converged = false;
 
+    // Single-factor covariance Σ = σ_m²ββᵀ + diag(σ_resid²), applied as an
+    // O(n) operator so the matrix is never materialized
+    const double lambda = config_.risk_aversion;
+    const Eigen::VectorXd resid_var = resid_sigma.array().square();
+    auto sigma_times = [&](const Eigen::VectorXd& w) -> Eigen::VectorXd {
+        return config_.market_variance * beta * beta.dot(w) +
+               (resid_var.array() * w.array()).matrix();
+    };
+
     // Initialize weights to zero
     Eigen::VectorXd weights = Eigen::VectorXd::Zero(n);
 
-    // Projected gradient descent
+    // Projected gradient ascent. The legacy step is kept exactly at λ = 0;
+    // with risk aversion the objective's curvature grows, so the step obeys
+    // the Lipschitz bound of ∇f to stay convergent at any λ
     double step_size = 0.01;
+    if (lambda > 0.0) {
+        const double lipschitz =
+            2.0 * config_.gamma +
+            lambda * (config_.market_variance * beta.squaredNorm() + resid_var.maxCoeff());
+        step_size = std::min(step_size, 1.0 / std::max(lipschitz, 1e-9));
+    }
+
+    auto objective_at = [&](const Eigen::VectorXd& w) {
+        double obj = alpha.dot(w) - config_.gamma * w.squaredNorm();
+        if (lambda > 0.0) {
+            obj -= 0.5 * lambda * w.dot(sigma_times(w));
+        }
+        return obj;
+    };
+
     double prev_objective = std::numeric_limits<double>::lowest();
 
     for (int iter = 0; iter < config_.max_iterations; ++iter) {
-        // Compute gradient: ∇f = α - 2γw
+        // Gradient: ∇f = α - 2γw - λΣw
         Eigen::VectorXd gradient = alpha - 2.0 * config_.gamma * weights;
+        if (lambda > 0.0) {
+            gradient -= lambda * sigma_times(weights);
+        }
 
         // Update weights: w = w + step_size * gradient
         weights = weights + step_size * gradient;
@@ -128,8 +186,7 @@ PortfolioBuilder::OptimizationResult PortfolioBuilder::solve_qp(const Eigen::Vec
         // Project onto constraint set
         weights = project_to_constraints(weights, beta);
 
-        // Compute objective value: Σ αᵢwᵢ - γ Σ wᵢ²
-        double objective = alpha.dot(weights) - config_.gamma * weights.squaredNorm();
+        double objective = objective_at(weights);
 
         // Check convergence
         if (std::abs(objective - prev_objective) < config_.convergence_tol) {
@@ -149,7 +206,7 @@ PortfolioBuilder::OptimizationResult PortfolioBuilder::solve_qp(const Eigen::Vec
     result.weights.resize(n);
     Eigen::Map<Eigen::VectorXd>(result.weights.data(), n) = weights;
 
-    result.objective_value = alpha.dot(weights) - config_.gamma * weights.squaredNorm();
+    result.objective_value = objective_at(weights);
     result.net_exposure = compute_net_exposure(weights);
     result.gross_exposure = compute_gross_exposure(weights);
     result.portfolio_beta = compute_portfolio_beta(weights, beta);

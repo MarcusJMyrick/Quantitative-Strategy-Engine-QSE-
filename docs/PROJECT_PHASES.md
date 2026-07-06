@@ -118,7 +118,11 @@ Apple clang at C++17).
 - **4.3 Portfolio optimization.** `PortfolioBuilder` is a constrained
   **quadratic-programming optimizer**: maximizes blended alpha subject to
   gross/net exposure caps and beta neutrality, with projection back to the
-  feasible set. `FactorStrategy` + `FactorExecutionEngine` turn target
+  feasible set. The A5 extension (2026-07-06) adds true **mean-variance**:
+  `−λ/2·wᵀΣw` with the single-factor covariance Σ = σ_m²ββᵀ + diag(σ_resid²)
+  from RiskModel, λ in YAML; λ=0 reproduces pure alpha-maximization exactly
+  and the λ-sweep traces a textbook efficient frontier
+  (`docs/research/factor/efficient_frontier.png`). `FactorStrategy` + `FactorExecutionEngine` turn target
   weights into delta orders behind a rebalance guard (no churn below
   threshold), from `WeightsLoader`-provided daily weight files.
 

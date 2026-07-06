@@ -27,12 +27,19 @@ namespace qse {
 class PortfolioBuilder {
 public:
     struct OptimizationConfig {
-        double gamma = 0.01;           // Risk aversion parameter
+        double gamma = 0.01;           // L2 regularization strength
         double gross_cap = 2.0;        // Maximum gross exposure
         double beta_target = 0.0;      // Target portfolio beta
         double beta_tolerance = 1e-6;  // Beta constraint tolerance
         int max_iterations = 1000;     // Maximum optimization iterations
         double convergence_tol = 1e-6; // Convergence tolerance
+
+        // Mean-variance extension (A5): objective gains -λ/2·wᵀΣw with the
+        // single-factor covariance Σ = σ_m²ββᵀ + diag(σ_resid²) built from
+        // RiskModel outputs. λ = 0 (default) reproduces the pure
+        // alpha-maximizing behavior exactly.
+        double risk_aversion = 0.0;   // λ
+        double market_variance = 1.0; // σ_m² (units follow the caller's returns)
     };
 
     struct OptimizationResult {
@@ -72,6 +79,19 @@ public:
                                 const std::vector<std::string>& symbols);
 
     /**
+     * @brief Optimize with the full mean-variance objective: idiosyncratic
+     * volatilities feed Σ's diagonal (RiskModel's resid_sigma column).
+     * @param resid_sigmas Per-asset residual volatility (same order as alphas)
+     */
+    OptimizationResult optimize(const std::vector<double>& alpha_scores,
+                                const std::vector<double>& betas,
+                                const std::vector<double>& resid_sigmas,
+                                const std::vector<std::string>& symbols);
+
+    /// Read access for tests and tooling.
+    const OptimizationConfig& config() const { return config_; }
+
+    /**
      * @brief Optimize from Arrow table with factor data
      * @param factor_table Table containing alpha scores and betas
      * @param alpha_col Column name for alpha scores
@@ -95,7 +115,8 @@ public:
 
 private:
     // Core optimization using projected gradient descent
-    OptimizationResult solve_qp(const Eigen::VectorXd& alpha, const Eigen::VectorXd& beta);
+    OptimizationResult solve_qp(const Eigen::VectorXd& alpha, const Eigen::VectorXd& beta,
+                                const Eigen::VectorXd& resid_sigma);
 
     // Constraint checking functions
     double compute_net_exposure(const Eigen::VectorXd& weights);

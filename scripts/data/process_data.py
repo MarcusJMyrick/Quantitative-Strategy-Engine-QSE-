@@ -2,9 +2,13 @@ import pandas as pd
 import logging
 from pathlib import Path
 
+from corporate_actions import adjust_for_corporate_actions, load_actions
+
 # --- Configuration ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+ACTIONS_FILE = Path("config/corporate_actions.csv")
 
 
 def forward_fill_ticks(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
@@ -77,6 +81,14 @@ def process_raw_tick_data(symbol: str) -> str | None:
         df, report = forward_fill_ticks(df)
         if any(report.values()):
             logger.warning(f"Data quality for {symbol}: {report}")
+
+        # Back-adjust for splits/dividends so returns across event dates
+        # reflect economics, not bookkeeping
+        if ACTIONS_FILE.exists():
+            actions = load_actions(ACTIONS_FILE)
+            df, ca_report = adjust_for_corporate_actions(df, actions, symbol)
+            for event in ca_report:
+                logger.info(f"Corporate action applied: {event}")
 
         # --- CHANGE: Save to a new Parquet file for ticks ---
         output_file = Path(f"data/ticks_{symbol}.parquet")

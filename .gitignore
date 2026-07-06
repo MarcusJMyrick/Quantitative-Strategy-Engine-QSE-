@@ -49,6 +49,9 @@ organized_runs/
 *.log
 temp_*.csv
 
+# Reference data that must stay tracked despite *.csv
+!config/corporate_actions.csv
+
 # CTest output
 Testing/
 

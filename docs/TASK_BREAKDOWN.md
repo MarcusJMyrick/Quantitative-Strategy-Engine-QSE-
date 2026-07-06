@@ -5,7 +5,7 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** B2 → D1 → C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Remaining work, recommended order:** D1 → C2 → C3 → G1 → G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
 **Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1
 
 ---
@@ -19,7 +19,7 @@ to this checklist — full phase descriptions including completed work — is
 | 4.2 Factor model | ✅ Done **far beyond spec**: MultiFactorCalculator, UniverseFilter, CrossSectionalRegression, ICMonitor, AlphaBlender, RiskModel, PortfolioBuilder (QP), FactorExecutionEngine, rebalance guard, YAML config |
 | 4.3 Portfolio optimizer | ✅ Mostly done (constrained QP exists); mean-variance extension optional (A5) |
 | **OrderBookFullDepth** | ✅ Committed 2026-07-04: all 38 tests pass (PriceLevel, QueuePosition, Impact) |
-| 5 Data & tearsheet | 🟡 B3 tearsheet + B1 missing-data done 2026-07-05; B2 (corporate actions) remains |
+| 5 Data & tearsheet | ✅ Track B complete 2026-07-05 (B1 ffill, B2 corporate actions, B3 tearsheet) |
 | 6 CI / format / lint | 🟡 CI green as of 2026-07-04 (C1+C4 done); formatting (C2) and clang-tidy (C3) remain |
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
@@ -85,12 +85,17 @@ to this checklist — full phase descriptions including completed work — is
 - ParquetDataReader left as-is (Arrow handles nulls upstream) — revisit if it
   becomes a primary ingest path.
 
-### B2. Corporate actions handler
-- `CorporateActionsHandler` (C++ or Python — pick one layer, don't do both)
-  applying split/dividend back-adjustments from an actions CSV.
-- **Done when:** test with a known event (e.g., AAPL 4:1 split 2020-08-31)
-  shows pre-split prices ÷4, volumes ×4, and an equity curve unchanged across
-  the split date for a buy-and-hold backtest.
+### B2. ✅ Corporate actions handler (done 2026-07-05)
+- Landed in the Python layer: `scripts/data/corporate_actions.py` back-adjusts
+  splits (price ÷ ratio, volume × ratio) and dividends (proportional,
+  CRSP-style) from `config/corporate_actions.csv` (real split history for
+  AAPL/TSLA/NVDA/GOOG/AMZN); factors computed on the raw series and applied
+  as a cumulative product so multiple events compound correctly; wired into
+  `process_data.py` behind the ffill step.
+- Done-when verified: 10 pytest cases including the flagship AAPL 4:1
+  2020-08-31 test — pre-split prices ÷4, volumes ×4, and a buy-and-hold
+  equity curve flat across the split date (raw data shows the fake −75%
+  crash).
 
 ### B3. ✅ Institutional tearsheet (done 2026-07-05)
 - Landed as `scripts/analysis/tearsheet.py` (new module instead of extending

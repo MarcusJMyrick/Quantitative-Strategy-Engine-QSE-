@@ -164,7 +164,7 @@ IC, blending, risk models, constrained portfolio construction.
 **Proves:** microstructure literacy — priority rules, adverse selection,
 market impact — implemented, not just cited.
 
-## Phase 6 — Data Quality & Analysis 🟡
+## Phase 6 — Data Quality & Analysis ✅
 
 **Goal:** institutional-grade inputs and outputs.
 
@@ -181,10 +181,12 @@ market impact — implemented, not just cited.
   repair instead of silently dropping rows; `CSVDataReader` counts
   unparseable rows (one bad row no longer aborts a load) and surfaces
   time-grid holes via `gap_count()`, with a data-quality warning at load.
-- **6.3 Corporate actions ⏳ (B2).** Split/dividend back-adjustment from an
-  actions file, verified against a known event (AAPL 4:1, 2020-08-31): prices
-  ÷4, volumes ×4, and a buy-and-hold equity curve that does **not** jump
-  across the split date.
+- **6.3 Corporate actions ✅ (B2).** `corporate_actions.py` back-adjusts
+  splits and dividends from `config/corporate_actions.csv` (real split
+  history for five names), with factors computed on the raw series and
+  compounded correctly across multiple events. Verified against the AAPL 4:1
+  split (2020-08-31): prices ÷4, volumes ×4, and a buy-and-hold equity curve
+  flat across the split date where the raw series shows a fake −75% crash.
 
 **Proves:** results you can hand to a PM, from inputs you can trust.
 

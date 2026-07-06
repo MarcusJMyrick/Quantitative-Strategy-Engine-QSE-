@@ -493,10 +493,13 @@ mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
 (s-score), stay dollar-neutral. **Prove it on 10–15 names before scaling to
 100** — this keeps compute and debugging sane.
 
-- **12.1 Universe + returns matrix (QR4.1).** 10–15 liquid names in one
-  sector (correlated → PCA has structure to find), adjusted daily bars
-  through the existing corporate-actions (B2) + ffill (B1) pipeline,
-  standardized returns matrix with documented as-of alignment.
+- **12.1 Universe + returns matrix ✅ (QR4.1, done 2026-07-06).** 15
+  large-cap tech names (mean pairwise correlation 0.44 — real factor
+  structure); raw Alpaca daily bars adjusted through B2 and cleaned
+  B1-style with every repair counted; 1,432 × 15 standardized matrix with
+  zero NaNs; the as-of alignment (trailing window, warm-up dropped, trade
+  ≥ t+1) is documented in docs/research/statarb/ and enforced by a
+  causality test — appending future data leaves emitted rows bit-identical.
 - **12.2 Rolling PCA + principled factor count (QR4.2).** Eigendecomposition
   of the rolling correlation matrix; retained-factor count from the
   **Marchenko-Pastur cutoff** `λ+ = (1 + √q)²` (random-matrix theory), not an

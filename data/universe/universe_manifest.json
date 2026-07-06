@@ -1,0 +1,104 @@
+{
+  "generated": "2026-07-06",
+  "symbols": [
+    "AAPL",
+    "MSFT",
+    "GOOG",
+    "AMZN",
+    "META",
+    "NVDA",
+    "AVGO",
+    "AMD",
+    "INTC",
+    "QCOM",
+    "TXN",
+    "MU",
+    "ADBE",
+    "CRM",
+    "ORCL"
+  ],
+  "window": 60,
+  "panel": {
+    "rows": 1492,
+    "start": "2020-07-27",
+    "end": "2026-07-06",
+    "leading_rows_dropped": 0,
+    "fills_per_symbol": {
+      "AAPL": 0,
+      "MSFT": 0,
+      "GOOG": 0,
+      "AMZN": 0,
+      "META": 0,
+      "NVDA": 0,
+      "AVGO": 0,
+      "AMD": 0,
+      "INTC": 0,
+      "QCOM": 0,
+      "TXN": 0,
+      "MU": 0,
+      "ADBE": 0,
+      "CRM": 3,
+      "ORCL": 3
+    }
+  },
+  "returns_rows": 1491,
+  "standardized_rows": 1432,
+  "standardized_start": "2020-10-20",
+  "standardized_end": "2026-07-06",
+  "corporate_actions_applied": [
+    {
+      "symbol": "AAPL",
+      "date": "2020-08-31",
+      "action": "split",
+      "value": 4.0,
+      "factor": 0.25,
+      "rows_adjusted": 25
+    },
+    {
+      "symbol": "GOOG",
+      "date": "2022-07-18",
+      "action": "split",
+      "value": 20.0,
+      "factor": 0.05,
+      "rows_adjusted": 497
+    },
+    {
+      "symbol": "AMZN",
+      "date": "2022-06-06",
+      "action": "split",
+      "value": 20.0,
+      "factor": 0.05,
+      "rows_adjusted": 469
+    },
+    {
+      "symbol": "NVDA",
+      "date": "2021-07-20",
+      "action": "split",
+      "value": 4.0,
+      "factor": 0.25,
+      "rows_adjusted": 247
+    },
+    {
+      "symbol": "NVDA",
+      "date": "2024-06-10",
+      "action": "split",
+      "value": 10.0,
+      "factor": 0.1,
+      "rows_adjusted": 974
+    },
+    {
+      "symbol": "AVGO",
+      "date": "2024-07-15",
+      "action": "split",
+      "value": 10.0,
+      "factor": 0.1,
+      "rows_adjusted": 997
+    }
+  ],
+  "extreme_returns_flagged": [],
+  "as_of_alignment": "Row t standardizes r_t against the trailing 60-day window r_{t-w+1}..r_t (inclusive), all observable at the close of day t; warm-up rows are dropped. Consumers must not execute before t+1.",
+  "files": {
+    "returns": "data/universe/universe_returns.parquet",
+    "standardized": "data/universe/universe_standardized.parquet"
+  }
+}

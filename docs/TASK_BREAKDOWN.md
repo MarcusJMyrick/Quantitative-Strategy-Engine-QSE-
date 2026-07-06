@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | ❌ Not started — Track QR added 2026-07-06 |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1 universe done 2026-07-06 (1,432×15 standardized matrix, zero NaNs) |
 
 ---
 
@@ -336,15 +336,27 @@ Market-neutral, daily frequency (inside what Alpaca can execute), documented
 edge — the one item in the track with a real shot at net-positive PnL.
 **Prove it on 10–15 names before scaling to 100.***
 
-#### QR4.1 Universe + returns matrix
-- Pick 10–15 liquid names in one sector first (correlated → PCA has structure
-  to find). Pull adjusted daily bars through the existing corporate-actions
-  (B2) + ffill (B1) pipeline. Build a returns matrix `R` (T×N), standardize
-  per name `Y_i = (R_i − mean_i)/std_i` over the rolling window.
-- Files: new `scripts/research/statarb/build_universe.py`
-- **Done when:** the script emits a clean standardized-returns Parquet with no
-  NaNs and a documented as-of alignment (no forward-looking bars in any
-  window).
+#### QR4.1 ✅ Universe + returns matrix (done 2026-07-06)
+- Landed as `scripts/research/statarb/build_universe.py`: 15-name large-cap
+  tech universe (AAPL MSFT GOOG AMZN META NVDA AVGO AMD INTC QCOM TXN MU
+  ADBE CRM ORCL — one sector so PCA has structure; measured mean pairwise
+  correlation 0.44). Bars are fetched **raw** from Alpaca (SIP→IEX fallback;
+  committed as CSVs in `data/universe/` for offline rebuild) and adjusted by
+  the audited B2 handler — AVGO 10:1 2024-07-15 added to
+  `config/corporate_actions.csv`, six splits apply in-window. Cleaning is
+  B1-style: interior gaps ffilled + counted (CRM 3, ORCL 3), leading rows
+  dropped, and any |return| > 45% flagged loudly as a suspected missing
+  corporate action (none flagged). Emits `universe_returns.parquet`,
+  `universe_standardized.parquet`, and a manifest recording every repair,
+  adjustment, and the as-of contract.
+- Done-when verified: 1,432 standardized rows × 15 names (2020-10-20 →
+  2026-07-06; IEX daily history starts 2020-07-27), **zero NaNs** in both
+  matrices; as-of alignment documented in `docs/research/statarb/README.md`
+  (trailing inclusive window, warm-up rows dropped, consumers trade ≥ t+1)
+  and enforced by 13 pytest cases — including a causality test (appending
+  future data leaves emitted rows bit-identical) and the split flagship
+  (AAPL split day +3.4% adjusted vs −75% raw). 46/46 pytest;
+  black/flake8 gates clean.
 
 #### QR4.2 Rolling PCA + eigenvalue count
 - On each rolling window (start ~60 trading days), compute the correlation

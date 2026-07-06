@@ -51,6 +51,7 @@ temp_*.csv
 
 # Reference data that must stay tracked despite *.csv
 !config/corporate_actions.csv
+!data/universe/*.csv
 
 # CTest output
 Testing/

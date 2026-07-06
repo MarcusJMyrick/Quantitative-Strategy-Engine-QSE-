@@ -137,6 +137,7 @@ add_executable(run_tests
     tests/cpp/FactorIntegrationTest.cpp
     tests/cpp/ConfigParseTest.cpp
     tests/cpp/ArenaTest.cpp
+    tests/cpp/SPSCRingBufferTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp
@@ -191,6 +192,16 @@ target_link_libraries(ab_audit PRIVATE qse)
 
 add_executable(arena_bench src/tools/arena_bench.cpp)
 target_link_libraries(arena_bench PRIVATE qse)
+
+add_executable(spsc_bench src/tools/spsc_bench.cpp)
+target_link_libraries(spsc_bench PRIVATE qse_math Threads::Threads)
+
+# ThreadSanitizer harness for the lock-free ring buffer (G2): a clean run
+# certifies the acquire/release protocol has no data race
+add_executable(spsc_tsan_stress src/tools/spsc_tsan_stress.cpp)
+target_link_libraries(spsc_tsan_stress PRIVATE qse_math Threads::Threads)
+target_compile_options(spsc_tsan_stress PRIVATE -fsanitize=thread -g -O1)
+target_link_options(spsc_tsan_stress PRIVATE -fsanitize=thread)
 
 # --- Testing Setup ---
 enable_testing()

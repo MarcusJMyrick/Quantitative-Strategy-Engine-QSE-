@@ -221,7 +221,7 @@ market impact — implemented, not just cited.
 **Proves:** the difference between code that works here and software that
 works anywhere.
 
-## Phase 8 — Low-Latency Engineering 🟡 (Track G)
+## Phase 8 — Low-Latency Engineering ✅ (Track G)
 
 **Goal:** hardware-sympathy — the layer trading firms actually interview on.
 
@@ -268,10 +268,20 @@ design:
     index advance before the payload write, while each side reads its own
     index relaxed.
 
-*The payoff.* Verified by a ≥10M-item two-thread stress test with checksum,
-run clean under ThreadSanitizer, plus a throughput benchmark vs a mutexed
-queue (`docs/benchmarks/05_spsc_ring_buffer.md`). This structure is the
-prerequisite for Phase 10's live feed.
+*The result (measured 2026-07-06).* Two 10M-item stress tests (strict
+ordering + checksum) pass and ThreadSanitizer certifies both consumer paths
+race-free. The benchmark (`docs/benchmarks/05_spsc_ring_buffer.md`) reports
+the honest pair of findings: raw throughput is at *parity* with a mutexed
+queue in item-at-a-time chase mode (~23M items/s — both designs are bound by
+the same cross-core cache-line round-trip), while the ring wins where it
+matters: with a consumer doing 200ns of work per tick, producer push latency
+is p99 **42ns vs 16,334ns** for the locked design (389×), worst case 71µs vs
+**1.15ms** (lock-holder preemption), and 1.75× total wall time from pipeline
+overlap. Market-data hand-off is a tail-latency problem, and locks have
+unbounded tails by construction. Integrated as `qse::LiveTickPipeline`
+(ZeroMQ subscriber thread → ring → strategy thread, dropped ticks counted) —
+the prerequisite for Phase 10's live feed, tested end to end over real
+ZeroMQ.
 
 **Proves:** cache lines, atomics, and allocation behavior — the exact
 territory of a C++ trading-systems interview.
@@ -372,4 +382,4 @@ a live brokerage session.
 | CI wall time | ~2.5 min per push | GitHub Actions |
 | Phantom profit at 25k sh/signal | $813,700 (naive Sharpe +1.93 vs real −5.26) | docs/research/microstructure |
 | Arena vs heap allocation | 3.5 ns/op vs 57–70 ns/op (16–20×); book workload 2.4× | docs/benchmarks/04 |
-| SPSC vs mutex throughput | *pending G2* | — |
+| SPSC ring vs locked queue | p99 push 42ns vs 16,334ns (389×); max 71µs vs 1.15ms; TSan clean | docs/benchmarks/05 |

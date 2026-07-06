@@ -5,8 +5,8 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** G2 → E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1
+**Remaining work, recommended order:** E1 → E2 → E3 → F1 → F2 → F3 → F4 (A5 optional)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2
 
 ---
 
@@ -24,7 +24,7 @@ to this checklist — full phase descriptions including completed work — is
 | 7 Live trading | ❌ Not started |
 | 8 Presentation | ❌ Not started |
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
-| G Low-latency engineering (arena, SPSC) | ❌ New track (added 2026-07-05) — not started |
+| G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
 
 ---
@@ -218,23 +218,20 @@ memory ordering. Each chunk produces a committed benchmark artifact, not just co
   pmr-container integration, arena-vs-heap book equivalence); 218/218 ctest;
   format + tidy gates clean.
 
-### G2. SPSC lock-free ring buffer
-- Implement `qse::SPSCRingBuffer<T>`: fixed power-of-two capacity; the
-  producer owns an atomic `write_index`, the consumer owns an atomic
-  `read_index`; **`alignas(64)` on each index** so the two cores never share a
-  cache line (false sharing kills exactly this structure); acquire/release
-  ordering on the hand-off, relaxed loads on the owner's own index.
-- Integrate: the ZeroMQ subscriber (network thread, producer) hands ticks to
-  the strategy thread (consumer) through the ring instead of any locked
-  structure — this is the prerequisite for live mode (E3), where a blocked
-  network thread means dropped market data.
-- Files: new `include/qse/core/SPSCRingBuffer.h`, the subscriber/live-feed
-  path, new `tests/cpp/SPSCRingBufferTest.cpp`
-- **Done when:** unit tests cover empty/full/wraparound/ordering; a two-thread
-  stress test moves ≥10M items with a checksum match and runs clean under
-  ThreadSanitizer (`-fsanitize=thread`); a throughput benchmark vs a
-  `std::mutex`+`std::queue` baseline is committed to
-  `docs/benchmarks/05_spsc_ring_buffer.md`.
+### G2. ✅ SPSC lock-free ring buffer (done 2026-07-06)
+- `qse::SPSCRingBuffer<T>`: power-of-two capacity, alignas(64) on both
+  indices AND each side's cached copy of the opposite index,
+  acquire/release hand-off, `consume_all` batch drain (one acquire+release
+  per batch). Integrated as `qse::LiveTickPipeline`: ZeroMQ subscriber
+  thread → ring → strategy thread, with dropped-tick counting on overflow;
+  end-to-end pipeline gtest over real ZeroMQ.
+- Done-when verified: 9 gtest cases incl. two 10M-item stress tests
+  (ordering + checksum); **ThreadSanitizer clean** over both consumer paths;
+  benchmark in `docs/benchmarks/05_spsc_ring_buffer.md`.
+- Honest headline: throughput parity with mutex+queue in chase mode (both
+  coherence-bound, ~23M items/s) — the win is **jitter**: with a working
+  consumer, producer push p99 is 42ns (ring) vs 16,334ns (locked, 389×) and
+  max 71µs vs 1.15ms, plus 1.75× wall time from pipeline overlap.
 
 ## Track H — The Business Proof: A/B Slippage Audit 🎓
 

@@ -13,7 +13,7 @@ displayed liquidity — and then **measures the difference**. The engine is
 paired with the low-latency machinery real trading systems use (arena
 allocation, lock-free queues), a **live paper-trading mode** that runs the
 same strategy code against a real venue, and the software discipline both
-demand (254 C++ / 95 Python tests, three CI gates, cross-platform
+demand (254 C++ / 108 Python tests, three CI gates, cross-platform
 determinism).
 
 On top of the execution engine sits a **quantitative-research track** (in
@@ -126,8 +126,17 @@ dollar-neutral s-score trading. Built so far:
   net to 10⁻¹⁶**, dated one day after the signal (no look-ahead). The
   Python→C++ handoff is locked by a gtest that loads one of these books
   through the real `WeightsLoader`.
+- **Cheap baselines (QR4.6):** cross-sectional reversal and 12-1 momentum,
+  built in the same harness (same dollar-neutral weight files) so the
+  comparison is honest. The **cost-free** floor is already telling: stat arb
+  **0.97** only *ties* plain momentum **0.99**, while both clear reversal
+  **−0.28**. Whether the complexity is worth it comes down to net-of-cost
+  Sharpe — the stat arb turns over 16% daily vs momentum's 4% — which is
+  exactly what the Engine B gauntlet decides next.
 
-Next in the pipeline: run this book through the same Engine B gauntlet as
+![Stat arb vs cheap baselines, cost-free paper PnL](docs/research/statarb/baseline_comparison.png)
+
+Next in the pipeline: run all three through the same Engine B gauntlet as
 everything else, with the Sharpe deflated for every configuration tested along
 the way. Full plan: [Track QR in TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
 
@@ -220,15 +229,16 @@ market-hours session: 5 signals, 5 fills, 5/5 reconciled.
 ## Engineering quality
 
 - **254 C++ tests** (GoogleTest, includes two 10M-item lock-free stress tests
-  with strict ordering + checksum) and **95 Python tests** (pytest, metrics
+  with strict ordering + checksum) and **108 Python tests** (pytest, metrics
   asserted against hand-computed values — including the stat-arb research
   layer, where a causality test proves appending future data leaves every
   emitted row bit-identical, the Marchenko-Pastur cutoff is verified to
   retain 0 factors on pure noise and exactly the planted factor otherwise,
   idiosyncratic residuals are checked orthogonal to their factors to machine
   precision, the OU estimator recovers known (κ, m, σ) from a simulated
-  mean-reverting path, and the generated dollar-neutral weight files are
-  loaded back through the real C++ `WeightsLoader` to lock the handoff)
+  mean-reverting path, and the generated dollar-neutral weight files — for the
+  stat arb and both baselines alike — are loaded back through the real C++
+  `WeightsLoader` to lock the handoff)
 - **Three CI gates on every push:** build + full test suite, `clang-format`/
   `black`/`flake8`, and a `clang-tidy` static-analysis gate
   (warnings-as-errors) — all tool versions pip-pinned so local == CI
@@ -298,6 +308,7 @@ python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 ./venv/bin/python scripts/research/statarb/residuals.py       # idiosyncratic residuals
 ./venv/bin/python scripts/research/statarb/ou_sscore.py       # OU fit + s-score
 ./venv/bin/python scripts/research/statarb/signals.py         # dollar-neutral weight files
+./venv/bin/python scripts/research/statarb/baselines.py       # reversal + momentum baselines
 ./build/arena_bench && ./build/spsc_bench                   # latency benchmarks
 ./build/spsc_tsan_stress                                    # TSan certification
 ```
@@ -313,7 +324,8 @@ include/qse/, src/       C++17/20 engine: core, data, order, strategy, factor,
 tests/cpp/               254 GoogleTest cases incl. mocks and stress tests
 scripts/analysis/        tearsheet, impact study, slippage audit
 scripts/data/            download/process pipeline, forward-fill, corporate actions
-scripts/research/statarb/ eigenportfolio stat arb: universe builder, rolling PCA
+scripts/research/statarb/ eigenportfolio stat arb: universe, PCA, residuals, OU
+                         s-score, dollar-neutral weights, reversal/momentum baselines
 tests/python/            57 pytest cases with hand-computed expected values
 docs/research/           committed research artifacts (microstructure, factor, statarb)
 docs/benchmarks/         benchmark write-ups with reproduction commands

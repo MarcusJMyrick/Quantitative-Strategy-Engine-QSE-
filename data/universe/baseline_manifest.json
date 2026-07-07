@@ -1,0 +1,31 @@
+{
+  "generated": "2026-07-07",
+  "frac_per_side": 0.3333333333333333,
+  "gross_cap": 1.0,
+  "execution_lag_days": 1,
+  "reversal_lookback": 5,
+  "momentum": {
+    "lookback": 252,
+    "skip": 21
+  },
+  "paper_pnl_caveat": "Sharpes below are COST-FREE and PROVISIONAL (candidates, not results); QR4.7 runs Engine B fills and QR-P2 deflates for the search.",
+  "strategies": {
+    "reversal": {
+      "weight_files_written": 1490,
+      "days_with_a_book": 1486,
+      "mean_daily_turnover": 0.28718980549966466,
+      "max_abs_net_exposure": 2.7755575615628914e-17,
+      "paper_sharpe": -0.27679666224762745
+    },
+    "momentum": {
+      "weight_files_written": 1490,
+      "days_with_a_book": 1239,
+      "mean_daily_turnover": 0.03735747820254862,
+      "max_abs_net_exposure": 2.7755575615628914e-17,
+      "paper_sharpe": 0.9944706832359642
+    },
+    "stat_arb": {
+      "paper_sharpe": 0.9695494977128395
+    }
+  }
+}

@@ -351,3 +351,64 @@ venv/bin/python -m pytest tests/python/test_signals.py -q
 Outputs: `data/universe/weights/weights_YYYYMMDD.csv` (per execution date,
 gitignored), `data/universe/signal_{weights,positions,diagnostics}.parquet`,
 `data/universe/signal_manifest.json`, and the committed plot above.
+
+## QR4.6 — Cheap baselines (the floor)
+
+[`scripts/research/statarb/baselines.py`](../../../scripts/research/statarb/baselines.py)
+builds the two dumb strategies the elaborate stat arb has to beat to justify
+its complexity: **cross-sectional short-term reversal** (buy recent losers,
+sell winners — reversal on *raw* returns, vs the stat arb's reversal on
+*idiosyncratic residuals*) and **12-1 momentum** (buy 12-month winners skipping
+the last month, the standard Jegadeesh-Titman construction). Each ranks the
+universe daily, longs the top third / shorts the bottom third, and — reusing
+QR4.5's `weights_from_positions` and `write_weight_files` *unchanged* — emits
+the **identical** dollar-neutral `weights_YYYYMMDD.csv` format on the same
+universe with the same execution lag. That shared path is what makes QR4.7's
+Engine B comparison apples-to-apples.
+
+> **Deviation from the proposal, on purpose.** The QR-track spec framed the
+> baselines as additions to the C++ `MultiFactorCalculator`. They live in the
+> Python harness instead so all three strategies share the stat-arb weight
+> path rather than running through a separate one — the done-when's "same
+> harness" requirement, satisfied by construction.
+
+### Result — the cost-free floor (1,490 days, provisional)
+
+![Stat arb vs cheap baselines, cost-free paper PnL](baseline_comparison.png)
+
+| Strategy | Cost-free paper Sharpe | Mean daily turnover |
+|---|---|---|
+| eigen stat arb (QR4.5) | **0.97** | 0.16 |
+| 12-1 momentum | **0.99** | **0.04** |
+| short-term reversal | **−0.28** | 0.29 |
+
+The honest read: **cost-free, the fancy stat arb only ties plain momentum and
+both clear the reversal floor** (which loses money outright). This is exactly
+why QR4.6 exists — and why the number is not the end of the story. The three
+strategies have very different turnover (momentum 4%, stat arb 16%, reversal
+29%), and Engine B charges for turnover. QR4.7 re-runs all three through the
+full-depth book at 1×/10×/50× size, and QR-P2 deflates every Sharpe for the
+configurations tried. **These paper Sharpes are candidates, not results.**
+
+### Verification (`tests/python/test_baselines.py`, 13 cases)
+
+Signal correctness (reversal longs the loser; momentum longs the 12-1 winner
+*and skips the recent month*, verified by showing a name that trends up then
+crashes is still a momentum winner while reversal ranks it oppositely);
+cross-sectional selection (long top-k / short bottom-k, disjoint equal sets,
+<2 valid → flat); the paper-PnL lag (signal at t earns the return at
+t+lag+1, to the day); dollar-neutral weights and loader-compatible files
+identical to QR4.5; momentum warm-up flat until the 252-day lookback fills;
+and causality.
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/statarb/signals.py    # stat-arb weights first
+venv/bin/python scripts/research/statarb/baselines.py  # baselines + 3-way compare
+venv/bin/python -m pytest tests/python/test_baselines.py -q
+```
+
+Outputs: `data/universe/weights_{reversal,momentum}/weights_YYYYMMDD.csv`
+(gitignored), `data/universe/baseline_{reversal,momentum}_{weights,positions}.parquet`,
+`data/universe/baseline_manifest.json`, and the committed comparison plot.

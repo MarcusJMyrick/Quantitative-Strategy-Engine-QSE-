@@ -541,10 +541,14 @@ mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
   gross = 1 on 94% of days, ~2.7 long / 2.3 short, 16% turnover. The
   Python→C++ handoff is proven in C++ — a gtest loads a book in this format
   through the real `WeightsLoader` and checks net ≈ 0.
-- **12.6 Cheap baselines (QR4.6).** Cross-sectional short-term reversal and
-  12-1 momentum through the same harness. If the eigen stat arb can't beat
-  *reversal* net of Engine B costs, that's a finding — the fancy version
-  isn't earning its complexity.
+- **12.6 Cheap baselines ✅ (QR4.6, done 2026-07-07).** Cross-sectional
+  short-term reversal and 12-1 momentum, built in the same Python harness so
+  all three emit the identical dollar-neutral weight-file format (the baselines
+  reuse QR4.5's weight construction unchanged). The cost-free floor is already
+  a finding: **stat arb (0.97) only ties plain momentum (0.99)** and both clear
+  reversal (−0.28) — so the elaborate machinery has to earn its keep on
+  *net-of-cost* Sharpe, where its 16% turnover vs momentum's 4% is the swing
+  factor QR4.7 measures. Provisional until Engine B (QR4.7) and DSR (Phase 13).
 - **12.7 Survive Engine B (QR4.7).** The whole thing through `ab_audit` at
   1×/10×/50× sizes; the summary states the net Sharpe under Engine B at each
   size. Positive-but-modest is the win; a clean negative with the

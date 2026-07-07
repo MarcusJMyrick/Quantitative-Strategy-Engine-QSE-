@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1–QR4.5 done 2026-07-07 (universe → PCA → residuals → OU s-score → dollar-neutral weight files; 1,431 weight files load through the C++ engine, net 1.4e-16) |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1–QR4.6 done 2026-07-07 (full signal pipeline + reversal/momentum baselines; cost-free floor: stat arb 0.97 ≈ momentum 0.99, reversal −0.28 — QR4.7 adds Engine B) |
 
 ---
 
@@ -459,13 +459,27 @@ edge — the one item in the track with a real shot at net-positive PnL.
   gross = 1, inactive names load flat. 95/95 pytest; 254/254 ctest;
   black/flake8 clean.
 
-#### QR4.6 Cheap baselines (the floor)
-- Add two baselines to `MultiFactorCalculator` for honest comparison:
-  cross-sectional short-term reversal (buy losers / sell winners) and 12-1
-  momentum. If the eigen stat arb can't beat *reversal* net of Engine B
-  costs, that's a finding — the fancy version isn't earning its complexity.
-- **Done when:** all three (stat arb, reversal, momentum) run through the
-  same harness and produce comparable tearsheets.
+#### QR4.6 ✅ Cheap baselines (the floor) (done 2026-07-07)
+- Landed as `scripts/research/statarb/baselines.py`: cross-sectional
+  short-term reversal (buy raw-return losers) and 12-1 momentum (Jegadeesh-
+  Titman, skip the recent month). Each ranks the universe daily → long top
+  third / short bottom third → **reuses QR4.5's `weights_from_positions` +
+  `write_weight_files` unchanged**, so all three strategies emit the identical
+  dollar-neutral `weights_YYYYMMDD.csv` on the same universe/lag — the
+  apples-to-apples harness QR4.7 runs through Engine B. (Deliberate deviation:
+  the proposal said add to the C++ `MultiFactorCalculator`; putting them in the
+  Python harness is what makes "the same harness" literally true instead of a
+  parallel path.)
+- Cost-free floor (provisional — candidates, not results): **stat arb Sharpe
+  0.97 ≈ 12-1 momentum 0.99, both clear reversal −0.28** (which loses outright).
+  Turnover differs sharply (momentum 0.04, stat arb 0.16, reversal 0.29), which
+  is exactly what Engine B will charge for in QR4.7. Committed comparison plot:
+  `docs/research/statarb/baseline_comparison.png`.
+- **Done when — verified:** all three run through the same harness and produce
+  comparable (paper) tearsheets; 13 pytest cases — signal correctness (momentum
+  skips the recent month, reversal ranks oppositely), cross-sectional selection,
+  paper-PnL lag to the day, dollar-neutral + loader-compatible files identical
+  to QR4.5, momentum warm-up, causality. 108/108 pytest; black/flake8 clean.
 
 #### QR4.7 Survive Engine B
 - Run QR4 through `ab_audit` at 1×/10×/50× size regimes (Engine A naive vs

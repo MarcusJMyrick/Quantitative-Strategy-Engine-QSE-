@@ -213,3 +213,72 @@ Outputs: `data/universe/residual_r2.parquet`,
 `data/universe/residual_market_beta.parquet`,
 `data/universe/residual_diagnostics.parquet`,
 `data/universe/residual_manifest.json`, and the committed plot above.
+
+## QR4.4 — OU fit + s-score
+
+[`scripts/research/statarb/ou_sscore.py`](../../../scripts/research/statarb/ou_sscore.py)
+models each name's cumulative residual `X_i` as a mean-reverting
+Ornstein-Uhlenbeck process, fit per window as its AR(1) discretization
+`X_{n+1} = a + b·X_n + ζ` (OLS on the lagged series). With step `Δt = 1/252`:
+
+```
+κ        = −ln(b)/Δt                 mean-reversion speed
+m        = a/(1 − b)                 equilibrium level
+σ_eq     = √( Var(ζ)/(1 − b²) )      equilibrium std
+s        = (X_last − m)/σ_eq         the s-score
+```
+
+**Speed filter (critical).** A slow-reverting fit is a spurious signal — over
+a short window a near-random-walk (`b → 1`) produces a huge, meaningless
+s-score. A name is kept only if its mean-reversion time `τ = 1/κ` is short
+relative to the window: `τ < ½·window`. In step units `τ = −1/ln(b)`, so the
+filter is `Δt`-independent — keep `b < e^{−2/window} ≈ 0.967` at window 60.
+`b` outside `(0, 1)` is not mean-reverting at all and is rejected outright.
+
+**The sum-to-zero handoff, resolved.** QR4.3's residuals sum to zero
+in-window, so `X_last ≈ 0` and the s-score reduces to `s ≈ −m/σ_eq`: the
+signal is carried by where the OU equilibrium sits relative to the pinned
+endpoint. A large positive `m` (equilibrium above the current 0) means the
+residual is expected to revert *up* → the name is cheap → a *negative*
+s-score → a buy under the Avellaneda-Lee bands (QR4.5). The estimators are
+written for a general `X` (the unit tests recover `κ/m/σ_eq` from genuine OU
+paths that do not end at zero); the pinned case is just where real data lands.
+
+### Results on the current build (1,432 windows, 2020-10-20 → 2026-07-06)
+
+![Pooled s-score distribution and the speed filter](ou_sscore.png)
+
+- **The s-score is genuinely standardized:** pooled over 21,297 valid
+  name-days it has **mean 0.01, std 0.95** — no directional bias and unit-ish
+  scale, exactly what a correct OU/σ_eq normalization should produce (a strong
+  end-to-end sanity check that the whole PCA → residual → OU chain is
+  calibrated). Tails run to ±4.
+- **Idiosyncratic residuals revert fast:** median half-life **5.8 days**, so
+  **99.1%** of name-days clear the speed filter — the mean-reversion regime
+  Avellaneda-Lee stat arb needs. Half-life oscillates 4–10 days with the
+  market regime.
+- **~19% of valid name-days sit beyond the ±1.25 open bands** — a plausible
+  trade frequency before QR4.5 converts crossings into dollar-neutral
+  positions.
+
+### Verification (`tests/python/test_ou_sscore.py`, 13 cases)
+
+The two done-when tests: on a simulated OU path with known `(κ, m, σ)` the
+estimator recovers all three within tolerance (20k steps), and the speed
+filter keeps fast reversion (`τ ≈ 10 < 30`) while rejecting slow (`τ ≈ 100`)
+and near-random-walk (`b = 0.9995`) series — filtered names emit no s-score.
+Plus: the threshold flips exactly at `½·window`, the s-score matches its
+formula and its sign tracks `X_last − m`, the pinned-endpoint case gives
+exactly `−m/σ_eq` (the QR4.3 handoff), constant-series rejection, and the
+same causality guarantee as the rest of the pipeline.
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/statarb/ou_sscore.py   # reads universe_returns.parquet
+venv/bin/python -m pytest tests/python/test_ou_sscore.py -q
+```
+
+Outputs: `data/universe/ou_sscore.parquet`, `data/universe/ou_kappa.parquet`,
+`data/universe/ou_speed_ok.parquet`, `data/universe/ou_manifest.json`, and the
+committed plot above.

@@ -519,10 +519,17 @@ mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
   intercept makes residuals both orthogonal *and* sum-to-zero in-window (so
   `X` ends at ~0); flagged and tested so QR4.4 builds the s-score from the OU
   fit of the path, not the endpoint. Committed diagnostics plot.
-- **12.4 OU fit + s-score (QR4.4).** AR(1) fit backs out mean-reversion speed
-  κ, equilibrium level m, and equilibrium std σ_eq → s-score. **Speed
-  filter:** names whose reversion time is slower than ~half the estimation
-  window are rejected — slow reversion is a spurious signal.
+- **12.4 OU fit + s-score ✅ (QR4.4, done 2026-07-06).** Per window, an AR(1)
+  fit of each name's cumulative residual backs out mean-reversion speed κ,
+  equilibrium m, and equilibrium std σ_eq → the s-score. The **speed filter**
+  rejects names whose reversion time exceeds ½·window (b→1, spurious). On the
+  real universe the s-score comes out genuinely standardized (pooled mean
+  0.01, std 0.95 — an end-to-end calibration check on the whole
+  PCA→residual→OU chain), median half-life is 5.8 days so 99% of name-days
+  pass the filter, and ~19% breach the ±1.25 bands. With QR4.3's sum-to-zero
+  residuals the s-score reduces to −m/σ_eq (a large positive equilibrium →
+  cheap name → buy); the estimators are tested against genuine OU paths with
+  known parameters. Committed s-score distribution plot.
 - **12.5 Dollar-neutral weights (QR4.5).** Avellaneda-Lee entry/exit bands
   (±1.25 open, asymmetric close) as *starting points* — these are exactly the
   overfitting-prone knobs Phase 13 must protect. Output is the same

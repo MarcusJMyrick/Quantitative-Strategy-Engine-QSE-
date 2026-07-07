@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1 universe + QR4.2 rolling PCA + QR4.3 residuals done 2026-07-06 (MP retains 1–2 factors; ~51% factor-explained variance; residuals orthogonal to 7e-15) |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1–QR4.4 done 2026-07-06 (universe → PCA → residuals → OU s-score; s-score mean 0.01/std 0.95, half-life 5.8d, 99% pass speed filter) |
 
 ---
 
@@ -408,16 +408,32 @@ edge — the one item in the track with a real shot at net-positive PnL.
   factor-driven / ~0 for noise; intercept-only edge case; causality
   bit-identical. 67/67 pytest; black/flake8 clean.
 
-#### QR4.4 OU fit + s-score
-- Fit AR(1) to the discrete cumulative residual `X_{n+1} = a + b·X_n + ζ`
-  (OLS). Back out, with step `Δt` (e.g. 1/252): mean-reversion speed
-  `κ = −ln(b)/Δt`, equilibrium level `m = a/(1−b)`, equilibrium std
-  `σ_eq = √( Var(ζ)/(1−b²) )`, and **s-score** `s_i = (X_i − m_i)/σ_eq,i`.
-- **Speed filter (critical):** require mean-reversion time `τ = 1/κ` short vs
-  the window — reject names where reversion is slower than ~half the
-  estimation window (`b` too close to 1). Slow reversion = spurious signal.
-- **Done when:** on a simulated OU path with known `(κ, m, σ)`, the estimator
-  recovers them within tolerance; names with `b→1` are filtered out.
+#### QR4.4 ✅ OU fit + s-score (done 2026-07-06)
+- Landed as `scripts/research/statarb/ou_sscore.py`: per window, fit AR(1)
+  `X_{n+1} = a + b·X_n + ζ` (closed-form OLS) to each name's cumulative
+  residual and back out `κ = −ln(b)/Δt`, `m = a/(1−b)`,
+  `σ_eq = √(Var(ζ)/(1−b²))`, and the **s-score** `s = (X_last − m)/σ_eq`.
+  **Speed filter** keeps a name only if `τ = 1/κ < ½·window` — in step units
+  `τ = −1/ln(b)`, so it's Δt-independent (`b < e^{−2/window} ≈ 0.967`); `b`
+  outside `(0,1)` rejected outright. Filtered names emit NaN. Same as-of
+  contract as QR4.1–4.3.
+- **Sum-to-zero handoff resolved:** with QR4.3's `X_last ≈ 0`, the s-score is
+  `≈ −m/σ_eq` (signal carried by the equilibrium vs the pinned endpoint);
+  large `+m` → residual reverts up → cheap name → negative s → a buy under
+  the Avellaneda-Lee bands. Estimators are general (recover κ/m/σ_eq from
+  genuine non-pinned OU paths in the tests).
+- Measured on the real universe (1,432 windows, 21,297 valid name-days): the
+  s-score is genuinely standardized — **mean 0.01, std 0.95** (a strong
+  end-to-end calibration check on the whole PCA→residual→OU chain); median
+  half-life **5.8 days** so **99.1%** of name-days pass the speed filter;
+  ~19% sit beyond the ±1.25 open bands. Committed plot:
+  `docs/research/statarb/ou_sscore.png`.
+- Done-when verified: 13 pytest cases — known `(κ, m, σ)` recovered from a
+  simulated OU path (20k steps); speed filter keeps fast (τ≈10), rejects slow
+  (τ≈100) and near-random-walk (b=0.9995) with the threshold flipping at
+  ½·window; s-score formula + sign + the exact `−m/σ_eq` pinned case;
+  constant-series rejection; causality bit-identical. 80/80 pytest;
+  black/flake8 clean.
 
 #### QR4.5 Signals + dollar-neutral weights
 - Avellaneda-Lee default rules (**starting points only — these thresholds are

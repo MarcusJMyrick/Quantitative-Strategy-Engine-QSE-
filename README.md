@@ -111,10 +111,18 @@ dollar-neutral s-score trading. Built so far:
   median **50.9%** of each name's daily variance — the other half is tradeable
   residual — and the residuals come out orthogonal to their factors to
   **7×10⁻¹⁵**, the correctness guarantee the next stage relies on.
+- **OU fit → s-score (QR4.4):** each residual is fit to a mean-reverting
+  Ornstein-Uhlenbeck process, with a speed filter that discards names too slow
+  to revert within the window. The resulting s-score is genuinely
+  standardized — pooled **mean 0.01, std 0.95** — an end-to-end calibration
+  check on the whole PCA → residual → OU chain, with a median mean-reversion
+  half-life of **5.8 days**.
 
-Next in the pipeline: OU fit → s-score signals → dollar-neutral weights → the
-same Engine B gauntlet as everything else, with the Sharpe deflated for every
-configuration tested along the way. Full plan:
+![Pooled s-score distribution and the speed filter](docs/research/statarb/ou_sscore.png)
+
+Next in the pipeline: s-score → dollar-neutral weights → the same Engine B
+gauntlet as everything else, with the Sharpe deflated for every configuration
+tested along the way. Full plan:
 [Track QR in TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
 
 ---
@@ -206,13 +214,14 @@ market-hours session: 5 signals, 5 fills, 5/5 reconciled.
 ## Engineering quality
 
 - **253 C++ tests** (GoogleTest, includes two 10M-item lock-free stress tests
-  with strict ordering + checksum) and **67 Python tests** (pytest, metrics
+  with strict ordering + checksum) and **80 Python tests** (pytest, metrics
   asserted against hand-computed values — including the stat-arb research
   layer, where a causality test proves appending future data leaves every
   emitted row bit-identical, the Marchenko-Pastur cutoff is verified to
   retain 0 factors on pure noise and exactly the planted factor otherwise,
-  and idiosyncratic residuals are checked orthogonal to their factors to
-  machine precision)
+  idiosyncratic residuals are checked orthogonal to their factors to machine
+  precision, and the OU estimator recovers known (κ, m, σ) from a simulated
+  mean-reverting path)
 - **Three CI gates on every push:** build + full test suite, `clang-format`/
   `black`/`flake8`, and a `clang-tidy` static-analysis gate
   (warnings-as-errors) — all tool versions pip-pinned so local == CI
@@ -280,6 +289,7 @@ python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 ./venv/bin/python scripts/research/statarb/build_universe.py  # stat-arb returns matrix
 ./venv/bin/python scripts/research/statarb/rolling_pca.py     # rolling PCA + MP cutoff
 ./venv/bin/python scripts/research/statarb/residuals.py       # idiosyncratic residuals
+./venv/bin/python scripts/research/statarb/ou_sscore.py       # OU fit + s-score
 ./build/arena_bench && ./build/spsc_bench                   # latency benchmarks
 ./build/spsc_tsan_stress                                    # TSan certification
 ```

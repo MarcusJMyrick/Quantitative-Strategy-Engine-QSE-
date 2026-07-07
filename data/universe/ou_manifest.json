@@ -1,0 +1,27 @@
+{
+  "generated": "2026-07-06",
+  "window": 60,
+  "dt": 0.003968253968253968,
+  "mode": "mp",
+  "max_tau_fraction": 0.5,
+  "windows_evaluated": 1432,
+  "span": [
+    "2020-10-20",
+    "2026-07-06"
+  ],
+  "speed_filter_pass_rate": 0.9914804469273742,
+  "median_half_life_days": 5.801462495002962,
+  "sscore_distribution": {
+    "count": 21297,
+    "mean": 0.007326160195963484,
+    "std": 0.9488344958063599,
+    "min": -4.140683850946127,
+    "max": 3.6734113130029478
+  },
+  "open_bands": {
+    "open_long": -1.25,
+    "open_short": 1.25
+  },
+  "as_of_alignment": "The window ending at date t fits the OU to each name's cumulative residual over r_{t-60+1}..r_t; s-scores at t use data <= t only. Consumers must not execute before t+1.",
+  "note": "On the real pipeline X_last ~ 0 (QR4.3 residuals sum to zero), so the s-score reduces to ~ -m/sigma_eq; the OU equilibrium m carries the signal."
+}

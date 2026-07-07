@@ -484,7 +484,7 @@ The elegant composition: **CPCV produces a distribution of out-of-sample
 Sharpes**, and **DSR consumes that distribution's variance** plus the trial
 count. They are built to fit together.
 
-## Phase 12 — Alpha Discovery: Eigen Stat Arb + Baselines ⏳ (QR-P1) 🎓
+## Phase 12 — Alpha Discovery: Eigen Stat Arb + Baselines ✅ (QR-P1) 🎓
 
 **Goal:** a flagship strategy that is market-neutral and resilient to
 full-depth execution costs. Avellaneda-Lee residual reversion: rolling PCA on
@@ -549,12 +549,23 @@ mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
   reversal (−0.28) — so the elaborate machinery has to earn its keep on
   *net-of-cost* Sharpe, where its 16% turnover vs momentum's 4% is the swing
   factor QR4.7 measures. Provisional until Engine B (QR4.7) and DSR (Phase 13).
-- **12.7 Survive Engine B (QR4.7).** The whole thing through `ab_audit` at
-  1×/10×/50× sizes; the summary states the net Sharpe under Engine B at each
-  size. Positive-but-modest is the win; a clean negative with the
-  phantom-cost decomposition is still a result. Either way the number is
-  provisional — a candidate, not a result — until Phase 13 deflates it for
-  the parameter search (QR2.5).
+- **12.7 Survive Engine B ✅ (QR4.7, done 2026-07-07).** The `statarb_audit`
+  tool runs all three strategies' weight files through the real OrderManager
+  fill models at 1×/10×/50× — Engine A (naive) vs Engine B (full-depth VWAP
+  walk), the daily analogue of the Phase 9 H1 audit. **The result is a
+  credible negative:** under Engine B at 50×, net Sharpe is momentum 0.84 >
+  stat arb 0.69 > reversal −0.71 — cheap 12-1 momentum *beats* the elaborate
+  eigen stat arb once fills are charged, because the stat arb's 16% turnover
+  bleeds 17–25% phantom cost against momentum's 4%/~6%. The fancy machinery
+  does not earn its complexity over a one-line rule. Provisional — a
+  candidate, not a result — until Phase 13 deflates it for the parameter
+  search.
+
+**Phase 12 (QR-P1) is complete:** the industry-standard market-neutral
+stat-arb pipeline end to end — RMT-based factor selection, OU residual
+modeling, dollar-neutral construction — judged against realistic fills and
+cheap baselines, with an honest provisional finding. The credibility layer
+that turns "provisional" into "judged" is Phase 13.
 
 **Proves:** the industry-standard market-neutral stat-arb pipeline end to
 end — RMT-based factor selection, OU residual modeling, dollar-neutral
@@ -709,8 +720,8 @@ question, judged under CPCV like everything else.
 
 | Evidence | Target | Where |
 |---|---|---|
-| QR4 net Sharpe under Engine B | positive-but-modest, or clean negative | docs/research/statarb |
-| QR4 vs reversal/momentum baselines | stat arb beats the floor net of costs? | docs/research/statarb |
+| QR4 net Sharpe under Engine B | ✅ 0.69 (50×); clean negative vs momentum | docs/research/statarb |
+| QR4 vs reversal/momentum baselines | ✅ momentum 0.84 > stat arb 0.69 > reversal −0.71 net of costs | docs/research/statarb |
 | DSR of chosen QR4 config | deflated for N trials | validation registry |
 | CPCV multiple-testing penalty | 100 noise variants → DSR collapses | tests/python |
 | HMM drawdown reduction | max-DD down in high-vol states | docs/research/regime |

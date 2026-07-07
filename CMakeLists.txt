@@ -219,6 +219,9 @@ target_link_libraries(impact_sweep PRIVATE qse)
 add_executable(ab_audit src/tools/ab_audit.cpp)
 target_link_libraries(ab_audit PRIVATE qse)
 
+add_executable(statarb_audit src/tools/statarb_audit.cpp)
+target_link_libraries(statarb_audit PRIVATE qse)
+
 add_executable(arena_bench src/tools/arena_bench.cpp)
 target_link_libraries(arena_bench PRIVATE qse)
 

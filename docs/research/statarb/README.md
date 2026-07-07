@@ -412,3 +412,72 @@ venv/bin/python -m pytest tests/python/test_baselines.py -q
 Outputs: `data/universe/weights_{reversal,momentum}/weights_YYYYMMDD.csv`
 (gitignored), `data/universe/baseline_{reversal,momentum}_{weights,positions}.parquet`,
 `data/universe/baseline_manifest.json`, and the committed comparison plot.
+
+## QR4.7 — Survive Engine B (the QR-P1 capstone)
+
+The cost-free floor above is where the story would end for a naive backtester.
+QR4.7 runs all three strategies' weight files through the **real full-depth
+book** — the same OrderManager fill models the H1 audit used — at 1×/10×/50×
+order-size regimes. The C++ tool `statarb_audit`
+([src/tools/statarb_audit.cpp](../../../src/tools/statarb_audit.cpp)) drives
+the dollar-neutral rebalances through Engine A (naive, fills at mid, infinite
+liquidity) and Engine B (depth, market orders walk the seeded book and pay
+VWAP); [scripts/analysis/statarb_audit.py](../../../scripts/analysis/statarb_audit.py)
+reports the net Sharpe and phantom profit.
+
+> **Stated approximation.** We have only daily bars for the 15-name universe
+> (no intraday L2), so each symbol's book is re-seeded every day with a uniform
+> depth profile whose visible size is a fraction of that day's volume (scaled
+> from the IEX-partial tape toward a consolidated-ADV estimate). This is the
+> honest daily analogue of H1's synthetic depth. The **A-vs-B gap growing with
+> size** is the robust finding; the absolute level depends on these documented
+> assumptions.
+
+### Result — net Sharpe under Engine B (the finding)
+
+![Net-of-cost Sharpe and phantom profit by size](statarb_ab_audit.png)
+
+| Strategy | Net Sharpe 1× | 10× | 50× | Phantom % | Daily turnover |
+|---|---|---|---|---|---|
+| **12-1 momentum** | 0.81 | 0.85 | **0.84** | ~6–7% | 0.04 |
+| eigen stat arb | 0.71 | 0.76 | **0.69** | 17–25% | 0.16 |
+| short-term reversal | −0.63 | −0.63 | **−0.71** | 130–160% | 0.29 |
+
+**The headline is a negative result, and a credible one: cheap 12-1 momentum
+beats the elaborate eigen stat arb once realistic fills are charged.** The
+mechanism is turnover — momentum turns over 4% of the book daily and pays ~6%
+phantom cost; the stat arb turns over 16% and pays 17–25%, which erases the
+slight edge it held cost-free. Reversal loses outright and impact makes it
+worse (phantom exceeds 100% of its already-negative naive PnL). Phantom profit
+grows super-linearly with size for the stat arb (17%→25%), exactly where a
+profitable-looking book would scale in.
+
+This is the QR-P1 payoff: **after realistic fills, the fancy machinery does not
+earn its complexity over a one-line momentum rule.** That is a more defensible
+result than a Sharpe-2 backtest — and it is still *provisional*. Every Sharpe
+here is a candidate until QR-P2 deflates it for the number of configurations
+tried (bands, windows, factor count, depth assumptions). Whether *anything*
+survives is settled there.
+
+### Verification
+
+`statarb_audit`'s fill mechanics — the VWAP walk, FIFO queue, and short-selling
+— are the same code paths covered by the A1–A3 order-book gtests. The analysis
+layer has 5 pytest cases (`tests/python/test_statarb_audit.py`): phantom and
+net-Sharpe computation on hand-built equity curves, the losing-strategy sign
+(depth worse than naive), missing-run handling, and the summary/headline
+generation.
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/statarb/build_universe.py     # emits prices.csv
+./build/statarb_audit --name stat_arb --weights-dir data/universe/weights
+./build/statarb_audit --name reversal --weights-dir data/universe/weights_reversal
+./build/statarb_audit --name momentum --weights-dir data/universe/weights_momentum
+venv/bin/python scripts/analysis/statarb_audit.py             # summary + plot
+venv/bin/python -m pytest tests/python/test_statarb_audit.py -q
+```
+
+Outputs: `results/statarb_audit/<strategy>/{naive,depth}_<size>_{equity,tradelog}.csv`
+(gitignored), and the committed `statarb_ab_summary.md` + `statarb_ab_audit.png`.

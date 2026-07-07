@@ -13,7 +13,7 @@ displayed liquidity — and then **measures the difference**. The engine is
 paired with the low-latency machinery real trading systems use (arena
 allocation, lock-free queues), a **live paper-trading mode** that runs the
 same strategy code against a real venue, and the software discipline both
-demand (254 C++ / 108 Python tests, three CI gates, cross-platform
+demand (254 C++ / 113 Python tests, three CI gates, cross-platform
 determinism).
 
 On top of the execution engine sits a **quantitative-research track** (in
@@ -38,6 +38,7 @@ tried. Everything else is a candidate, not a result.
 | **Live paper trading verified end-to-end** | 15-min market-hours session: 5 crossover signals → 5 real fills → **5/5 orders reconciled** local == venue | `live_engine` (Alpaca REST → lock-free ring → strategy → venue) |
 | Mean-variance optimizer traces a textbook efficient frontier | alpha 0.32 → 0.003, portfolio σ 0.35 → 0.002 across a 20-point λ-sweep | [factor research](docs/research/factor/) |
 | Market factor structure via random-matrix theory | market eigenvalue clears the Marchenko-Pastur noise edge (λ+ = 2.25) in **100% of 1,432 rolling windows** (median 47% of variance); MP retains 1–2 factors while "explain 55%" wobbles 1–4 | [stat-arb research](docs/research/statarb/README.md) |
+| Stat arb vs baselines under Engine B | **credible negative:** cheap 12-1 momentum (net Sharpe **0.84**) beats the eigen stat arb (**0.69**) once realistic fills are charged — the stat arb's 16% turnover bleeds 17–25% phantom cost (provisional pending DSR deflation) | [stat-arb research](docs/research/statarb/README.md) |
 
 ---
 
@@ -130,15 +131,22 @@ dollar-neutral s-score trading. Built so far:
   built in the same harness (same dollar-neutral weight files) so the
   comparison is honest. The **cost-free** floor is already telling: stat arb
   **0.97** only *ties* plain momentum **0.99**, while both clear reversal
-  **−0.28**. Whether the complexity is worth it comes down to net-of-cost
-  Sharpe — the stat arb turns over 16% daily vs momentum's 4% — which is
-  exactly what the Engine B gauntlet decides next.
+  **−0.28**.
 
-![Stat arb vs cheap baselines, cost-free paper PnL](docs/research/statarb/baseline_comparison.png)
+- **Survive Engine B (QR4.7):** all three run through the real full-depth book
+  at 1×/10×/50× size. The result is a **credible negative** — under realistic
+  fills, cheap **momentum (net Sharpe 0.84) beats the elaborate stat arb
+  (0.69)**, because the stat arb turns over 16% of its book daily (17–25%
+  phantom cost) against momentum's 4% (~6%). Reversal loses outright.
 
-Next in the pipeline: run all three through the same Engine B gauntlet as
-everything else, with the Sharpe deflated for every configuration tested along
-the way. Full plan: [Track QR in TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
+![Net-of-cost Sharpe and phantom profit by size](docs/research/statarb/statarb_ab_audit.png)
+
+**That is the QR-P1 payoff, and the honest one:** after realistic fills, the
+sophisticated machinery does not earn its complexity over a one-line rule —
+a far more defensible finding than a Sharpe-2 backtest. And it is still
+*provisional*: every Sharpe here is a candidate until the CPCV + Deflated
+Sharpe layer (QR-P2, next) deflates it for the number of configurations tried.
+Full plan: [Track QR in TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
 
 ---
 
@@ -229,7 +237,7 @@ market-hours session: 5 signals, 5 fills, 5/5 reconciled.
 ## Engineering quality
 
 - **254 C++ tests** (GoogleTest, includes two 10M-item lock-free stress tests
-  with strict ordering + checksum) and **108 Python tests** (pytest, metrics
+  with strict ordering + checksum) and **113 Python tests** (pytest, metrics
   asserted against hand-computed values — including the stat-arb research
   layer, where a causality test proves appending future data leaves every
   emitted row bit-identical, the Marchenko-Pastur cutoff is verified to
@@ -309,6 +317,8 @@ python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 ./venv/bin/python scripts/research/statarb/ou_sscore.py       # OU fit + s-score
 ./venv/bin/python scripts/research/statarb/signals.py         # dollar-neutral weight files
 ./venv/bin/python scripts/research/statarb/baselines.py       # reversal + momentum baselines
+./build/statarb_audit --name stat_arb --weights-dir data/universe/weights   # Engine A/B audit
+./venv/bin/python scripts/analysis/statarb_audit.py           # net Sharpe + phantom summary
 ./build/arena_bench && ./build/spsc_bench                   # latency benchmarks
 ./build/spsc_tsan_stress                                    # TSan certification
 ```
@@ -320,7 +330,7 @@ python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 ```
 include/qse/, src/       C++17/20 engine: core, data, order, strategy, factor,
                          messaging, exe, live + tools (impact_sweep, ab_audit,
-                         live_engine, alpaca_smoke, benches)
+                         statarb_audit, live_engine, alpaca_smoke, benches)
 tests/cpp/               254 GoogleTest cases incl. mocks and stress tests
 scripts/analysis/        tearsheet, impact study, slippage audit
 scripts/data/            download/process pipeline, forward-fill, corporate actions

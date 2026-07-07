@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-06",
+  "generated": "2026-07-07",
   "symbols": [
     "AAPL",
     "MSFT",
@@ -99,6 +99,7 @@
   "as_of_alignment": "Row t standardizes r_t against the trailing 60-day window r_{t-w+1}..r_t (inclusive), all observable at the close of day t; warm-up rows are dropped. Consumers must not execute before t+1.",
   "files": {
     "returns": "data/universe/universe_returns.parquet",
-    "standardized": "data/universe/universe_standardized.parquet"
+    "standardized": "data/universe/universe_standardized.parquet",
+    "prices": "data/universe/prices.csv"
   }
 }

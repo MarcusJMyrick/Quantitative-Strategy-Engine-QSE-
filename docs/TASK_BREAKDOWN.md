@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2
 
 ---
 
@@ -536,14 +536,19 @@ first.*
   2% on n=1432), clipped at the series end, composing with purge across
   multi-block test sets. black/flake8 clean.
 
-#### QR2.2 Combinatorial path generation (CPCV)
-- Partition the series into `N` blocks; choose `k` as test, rest as train →
-  `C(N,k)` splits. Reconstruct the `C(N−1,k−1)` full out-of-sample **backtest
-  paths** from the recombined test blocks. Each path is a complete equity
-  curve → a *distribution* of Sharpes, not a single point estimate.
-- **Done when:** a test confirms the correct number of splits/paths for small
-  `(N,k)` and that every observation appears in the test set the expected
-  number of times.
+#### QR2.2 ✅ Combinatorial path generation (CPCV) (done 2026-07-07)
+- Landed as `scripts/research/validation/cpcv.py` (composes on QR2.1): partition
+  into N contiguous groups, every k-subset as test → C(N,k) splits, each with a
+  purged+embargoed training complement. `path_assignments` tiles the splits into
+  **φ = C(N−1,k−1)** full-length backtest paths (each (split, test-group) pair
+  used once); `assemble_paths` stitches per-split test predictions into the φ
+  out-of-sample equity curves — the distribution QR2.4's DSR consumes.
+- **Done when — verified:** 12 pytest cases — split/path counts for small (N,k)
+  (N=6,k=2 → 15 splits, 5 paths, the AFML example), every observation tested in
+  exactly φ splits, train/test disjoint + purged at block boundaries, and path
+  reconstruction covers every bar exactly once from a split that tested it. On
+  the real QR4 series (n=1,432, N=6, k=2, 1% embargo): 15 splits, 5 paths, every
+  bar tested 5×, mean train 933/1,432. black/flake8 clean.
 
 #### QR2.3 Trial registry
 - Every backtest variation (each s-score threshold set, window length, factor

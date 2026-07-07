@@ -588,7 +588,7 @@ strategy that survives correction for having tried 400 variants."
   after each test region against serial correlation. Built general (arbitrary
   information windows) so CPCV and QR5's triple-barrier labels reuse it; 12
   pytest cases prove no residual overlap and exact-fraction embargo.
-- **13.2 Combinatorial paths (QR2.2).** N blocks, k test → C(N,k) splits,
+- **13.2 Combinatorial paths ✅ (QR2.2, done 2026-07-07).** N blocks, k test → C(N,k) splits,
   recombined into C(N−1,k−1) complete out-of-sample equity curves — a
   *distribution* of Sharpes, not a point estimate.
 - **13.3 Trial registry (QR2.3).** Every backtest variation logs params

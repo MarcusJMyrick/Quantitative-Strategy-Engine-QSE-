@@ -37,7 +37,30 @@ embargo removes *exactly* `int(n · embargo_pct)` bars after a test block (5 / 1
 series end, composing cleanly with purge and across the multi-block test sets
 CPCV produces.
 
-## QR2.2 — Combinatorial Purged CV — *next*
+## QR2.2 — Combinatorial Purged CV ✅
+
+[`scripts/research/validation/cpcv.py`](../../../scripts/research/validation/cpcv.py)
+(verified by `tests/python/test_cpcv.py`, 12 cases). Standard k-fold gives one
+out-of-sample estimate; CPCV (AFML ch. 12) gives a *distribution*. Partition the
+series into N contiguous groups, use every k-subset as the test set —
+**C(N, k)** splits — and purge+embargo the training complement of each (QR2.1).
+Because each group is tested in **C(N−1, k−1) = φ** splits, the per-split test
+predictions recombine into **φ full-length backtest paths**, each a complete
+out-of-sample equity curve. The spread of Sharpes across those paths is exactly
+the variance QR2.4's Deflated Sharpe consumes.
+
+`path_assignments` tiles the C(N, k) splits into φ paths × N groups (each
+(split, test-group) pair used exactly once); `assemble_paths` stitches per-split
+test predictions into the φ curves.
+
+**Verified (the done-when):** split and path counts for small (N, k) —
+N=6,k=2 → **15 splits, 5 paths** (AFML's worked example) — and every observation
+appears in the test set of exactly φ splits. Train/test are disjoint and purge
+bites at block boundaries under multi-bar labels. On the real QR4 series
+(n=1,432, N=6, k=2, 1% embargo): 15 splits, 5 paths, every bar tested exactly
+5×, mean training set 933/1,432 bars after purge+embargo.
+
+## QR2.3 — Trial registry — *next*
 
 ## QR2.3 — Trial registry — *pending*
 

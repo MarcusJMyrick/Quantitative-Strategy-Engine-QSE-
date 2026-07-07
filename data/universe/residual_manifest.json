@@ -1,0 +1,20 @@
+{
+  "generated": "2026-07-06",
+  "window": 60,
+  "mode": "mp",
+  "n_assets": 15,
+  "windows_evaluated": 1432,
+  "span": [
+    "2020-10-20",
+    "2026-07-06"
+  ],
+  "mean_r2": {
+    "median": 0.5091543775531968,
+    "min": 0.24287666622463389,
+    "max": 0.7852733363719693
+  },
+  "market_beta_median": 0.005567910705837377,
+  "max_orthogonality_corr_over_all_windows": 7.11310735281729e-15,
+  "as_of_alignment": "The window ending at date t regresses r_{t-60+1}..r_t on the same-window factor returns; betas, residuals, and diagnostics at t use data <= t only. Consumers must not execute before t+1.",
+  "note": "OLS-with-intercept residuals sum to zero in-window, so the cumulative residual X returns to ~0 at the window's right edge; QR4.4 builds the s-score from the OU fit of the X path, not the endpoint level."
+}

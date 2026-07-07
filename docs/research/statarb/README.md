@@ -146,3 +146,70 @@ venv/bin/python -m pytest tests/python/test_rolling_pca.py -q
 Outputs: `data/universe/eigen_spectrum.parquet`,
 `data/universe/factor_counts.parquet`, `data/universe/factor_returns.parquet`,
 `data/universe/rolling_pca_manifest.json`, and the committed plot above.
+
+## QR4.3 — Idiosyncratic residuals
+
+[`scripts/research/statarb/residuals.py`](../../../scripts/research/statarb/residuals.py)
+decomposes each name's return into its exposure to the retained
+eigenportfolio factors and an idiosyncratic residual. Per trailing window
+ending at date t, using the same-window factor returns from QR4.2:
+
+```
+R_i = α_i + Σ_j β_ij F_j + ε_i      (OLS — one design [1 | F] for all names)
+X_i = cumsum(ε_i)                    (the mean-reverting process QR4.4 trades)
+```
+
+`ε_i` is the idiosyncratic return; the cumulative residual `X_i` is the
+auxiliary process the OU/AR(1) fit in QR4.4 consumes. A single least-squares
+solve of the shared design handles the whole cross-section per window.
+
+### Results on the current build (1,432 windows, 2020-10-20 → 2026-07-06)
+
+![Factor-explained variance and residual orthogonality](residual_diagnostics.png)
+
+- **Half of each name's daily variance is idiosyncratic:** the cross-name
+  mean in-window R² has median **50.9%** (range 24–79%), tracking the
+  market regime — factor-explained variance peaks in the 2022 stress and
+  recedes in calm stretches. The complement is the tradeable residual, so
+  the strategy has real signal to work with.
+- **Per-name idiosyncratic share ranges widely:** ORCL (median R² 0.35) and
+  INTC (0.39) are the most idiosyncratic; MSFT and AVGO (both 0.65) the most
+  market-driven — a sensible cross-section for a sector portfolio.
+- **Residuals are orthogonal to the factors to machine precision:** the
+  worst residual-factor \|corr\| across all 1,432 windows is **7.1×10⁻¹⁵**
+  (bottom panel) — the QR4.3 done-when, confirmed on real data.
+
+### Two structural facts QR4.4 depends on
+
+1. **Orthogonality (the done-when).** OLS residuals with an intercept are
+   orthogonal to every regressor by construction, so `corr(ε_i, F_j) ≈ 0` to
+   numerical precision. This is the correctness test — drop the intercept and
+   it breaks.
+2. **Sum-to-zero.** That same intercept forces `Σ_n ε_i(n) = 0` over the fit
+   window, so the cumulative residual returns to ~0 at the window's right
+   edge: `X_i(t) ≈ 0`. The tradeable information is the *path* of `X` across
+   the window — its excursions and mean-reversion speed — which QR4.4's OU
+   fit captures through the estimated equilibrium `m` and speed `κ`, **not**
+   the endpoint level. Flagged here (and enforced by a test) so QR4.4 builds
+   the s-score from the OU parameters rather than a naive "current X".
+
+### Verification (`tests/python/test_residuals.py`, 10 cases)
+
+The done-when — residuals orthogonal to the retained factors, both when the
+factors are handed in and through the real window-PCA path (max \|corr\|
+below 1e-9). Plus: known-beta recovery on a low-noise factor model, the
+cumulative-residual identity and its sum-to-zero property, R² high for
+factor-driven returns and ~0 for noise-vs-unrelated-factor, the intercept-only
+(m=0) edge case, and the same causality guarantee as QR4.1/QR4.2.
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/statarb/residuals.py   # reads universe_returns.parquet
+venv/bin/python -m pytest tests/python/test_residuals.py -q
+```
+
+Outputs: `data/universe/residual_r2.parquet`,
+`data/universe/residual_market_beta.parquet`,
+`data/universe/residual_diagnostics.parquet`,
+`data/universe/residual_manifest.json`, and the committed plot above.

@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1 universe + QR4.2 rolling PCA done 2026-07-06 (MP retains 1–2 factors; market mode 47% of variance) |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1 universe + QR4.2 rolling PCA + QR4.3 residuals done 2026-07-06 (MP retains 1–2 factors; ~51% factor-explained variance; residuals orthogonal to 7e-15) |
 
 ---
 
@@ -383,12 +383,30 @@ edge — the one item in the track with a real shot at net-positive PnL.
   causality (future data leaves emitted windows bit-identical). 57/57
   pytest; black/flake8 clean.
 
-#### QR4.3 Idiosyncratic residuals
-- Regress each name's returns on the retained factor returns to get betas;
-  the residual `ε_i` is the idiosyncratic return. Form the cumulative residual
-  `X_i(t) = Σ ε_i` — this is the process you trade.
-- **Done when:** residuals are (approximately) orthogonal to the retained
-  factors in-window (test the max abs correlation is below tolerance).
+#### QR4.3 ✅ Idiosyncratic residuals (done 2026-07-06)
+- Landed as `scripts/research/statarb/residuals.py`: per trailing 60-day
+  window, OLS-regress every name's returns on the retained eigenportfolio
+  factor returns (one shared design `[1 | F]`, one least-squares solve for
+  the whole cross-section) → betas, alphas, idiosyncratic residuals `ε_i`,
+  and the cumulative residual `X_i = cumsum(ε_i)` — the OU process QR4.4
+  consumes via `residuals_for_window`. Same as-of contract as QR4.1/QR4.2.
+  Emits per-name R² + market-beta panels, window diagnostics, and a plot.
+- Two structural facts flagged for QR4.4, both tested: OLS-with-intercept
+  residuals are **orthogonal** to the factors (the done-when) *and*
+  **sum to zero** in-window, so `X` returns to ~0 at the window's right edge
+  — the s-score must come from the OU fit of the `X` path (equilibrium `m`,
+  speed `κ`), not the endpoint level.
+- Measured on the real universe (1,432 windows): median factor-explained
+  variance **50.9%** (range 24–79%, tracking the market regime), so ~half of
+  each name's daily variance is idiosyncratic (the tradeable residual);
+  per-name median R² spans 0.35 (ORCL) to 0.65 (MSFT/AVGO); worst
+  residual-factor \|corr\| across all windows **7.1×10⁻¹⁵** (machine
+  precision). Committed plot: `docs/research/statarb/residual_diagnostics.png`.
+- Done-when verified: 10 pytest cases — orthogonality both with handed-in
+  factors and through the real PCA path (max \|corr\| < 1e-9); known-beta
+  recovery; cumulative-residual identity + sum-to-zero; R² high for
+  factor-driven / ~0 for noise; intercept-only edge case; causality
+  bit-identical. 67/67 pytest; black/flake8 clean.
 
 #### QR4.4 OU fit + s-score
 - Fit AR(1) to the discrete cumulative residual `X_{n+1} = a + b·X_n + ζ`

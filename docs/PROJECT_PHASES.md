@@ -509,9 +509,16 @@ mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
   comparison rule wobbles between 1 and 4 — the arbitrariness MP removes.
   Block-matrix eigenvector recovery, pure-noise rejection, and causality
   all unit-tested; spectrum plot committed to docs/research/statarb/.
-- **12.3 Idiosyncratic residuals (QR4.3).** Regress each name on the retained
-  factor returns; the cumulative residual is the tradeable process, verified
-  orthogonal to the factors in-window.
+- **12.3 Idiosyncratic residuals ✅ (QR4.3, done 2026-07-06).** Per window,
+  OLS-regress each name on the retained factor returns (one shared design for
+  the whole cross-section); the residual is the idiosyncratic return and its
+  cumulative sum `X_i = Σε_i` is the tradeable OU process QR4.4 fits. On the
+  real universe, factors explain a median 50.9% of each name's variance
+  (24–79%, tracking the market regime) — the other half is the tradeable
+  residual — and residuals are orthogonal to the factors to 7×10⁻¹⁵. The
+  intercept makes residuals both orthogonal *and* sum-to-zero in-window (so
+  `X` ends at ~0); flagged and tested so QR4.4 builds the s-score from the OU
+  fit of the path, not the endpoint. Committed diagnostics plot.
 - **12.4 OU fit + s-score (QR4.4).** AR(1) fit backs out mean-reversion speed
   κ, equilibrium level m, and equilibrium std σ_eq → s-score. **Speed
   filter:** names whose reversion time is slower than ~half the estimation

@@ -150,7 +150,7 @@ TEST_F(WeightsLoaderTest, LoadsDollarNeutralStatArbBook) {
         net += w;
         gross += std::abs(w);
     }
-    EXPECT_NEAR(net, 0.0, 1e-9);   // dollar-neutral
-    EXPECT_NEAR(gross, 1.0, 1e-9); // gross cap
+    EXPECT_NEAR(net, 0.0, 1e-9);               // dollar-neutral
+    EXPECT_NEAR(gross, 1.0, 1e-9);             // gross cap
     EXPECT_DOUBLE_EQ((*weights)["AMZN"], 0.0); // inactive name loads as a flat target
 }

@@ -13,7 +13,7 @@ displayed liquidity — and then **measures the difference**. The engine is
 paired with the low-latency machinery real trading systems use (arena
 allocation, lock-free queues), a **live paper-trading mode** that runs the
 same strategy code against a real venue, and the software discipline both
-demand (253 C++ / 57 Python tests, three CI gates, cross-platform
+demand (254 C++ / 95 Python tests, three CI gates, cross-platform
 determinism).
 
 On top of the execution engine sits a **quantitative-research track** (in
@@ -120,10 +120,16 @@ dollar-neutral s-score trading. Built so far:
 
 ![Pooled s-score distribution and the speed filter](docs/research/statarb/ou_sscore.png)
 
-Next in the pipeline: s-score → dollar-neutral weights → the same Engine B
-gauntlet as everything else, with the Sharpe deflated for every configuration
-tested along the way. Full plan:
-[Track QR in TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
+- **Signals → dollar-neutral book (QR4.5):** a hysteresis state machine turns
+  s-scores into positions and writes a dollar-neutral daily book in the exact
+  `weights_YYYYMMDD.csv` format the C++ engine already loads — **1,431 files,
+  net to 10⁻¹⁶**, dated one day after the signal (no look-ahead). The
+  Python→C++ handoff is locked by a gtest that loads one of these books
+  through the real `WeightsLoader`.
+
+Next in the pipeline: run this book through the same Engine B gauntlet as
+everything else, with the Sharpe deflated for every configuration tested along
+the way. Full plan: [Track QR in TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
 
 ---
 
@@ -213,15 +219,16 @@ market-hours session: 5 signals, 5 fills, 5/5 reconciled.
 
 ## Engineering quality
 
-- **253 C++ tests** (GoogleTest, includes two 10M-item lock-free stress tests
-  with strict ordering + checksum) and **80 Python tests** (pytest, metrics
+- **254 C++ tests** (GoogleTest, includes two 10M-item lock-free stress tests
+  with strict ordering + checksum) and **95 Python tests** (pytest, metrics
   asserted against hand-computed values — including the stat-arb research
   layer, where a causality test proves appending future data leaves every
   emitted row bit-identical, the Marchenko-Pastur cutoff is verified to
   retain 0 factors on pure noise and exactly the planted factor otherwise,
   idiosyncratic residuals are checked orthogonal to their factors to machine
-  precision, and the OU estimator recovers known (κ, m, σ) from a simulated
-  mean-reverting path)
+  precision, the OU estimator recovers known (κ, m, σ) from a simulated
+  mean-reverting path, and the generated dollar-neutral weight files are
+  loaded back through the real C++ `WeightsLoader` to lock the handoff)
 - **Three CI gates on every push:** build + full test suite, `clang-format`/
   `black`/`flake8`, and a `clang-tidy` static-analysis gate
   (warnings-as-errors) — all tool versions pip-pinned so local == CI
@@ -262,7 +269,7 @@ performance `tearsheet.pdf` into `./out/`.
 git clone --recurse-submodules <repository-url>
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j8
-cd build && ctest              # 253 tests
+cd build && ctest              # 254 tests
 ./strategy_engine              # sample backtest (from repo root)
 ```
 
@@ -290,6 +297,7 @@ python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 ./venv/bin/python scripts/research/statarb/rolling_pca.py     # rolling PCA + MP cutoff
 ./venv/bin/python scripts/research/statarb/residuals.py       # idiosyncratic residuals
 ./venv/bin/python scripts/research/statarb/ou_sscore.py       # OU fit + s-score
+./venv/bin/python scripts/research/statarb/signals.py         # dollar-neutral weight files
 ./build/arena_bench && ./build/spsc_bench                   # latency benchmarks
 ./build/spsc_tsan_stress                                    # TSan certification
 ```
@@ -302,7 +310,7 @@ python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 include/qse/, src/       C++17/20 engine: core, data, order, strategy, factor,
                          messaging, exe, live + tools (impact_sweep, ab_audit,
                          live_engine, alpaca_smoke, benches)
-tests/cpp/               253 GoogleTest cases incl. mocks and stress tests
+tests/cpp/               254 GoogleTest cases incl. mocks and stress tests
 scripts/analysis/        tearsheet, impact study, slippage audit
 scripts/data/            download/process pipeline, forward-fill, corporate actions
 scripts/research/statarb/ eigenportfolio stat arb: universe builder, rolling PCA

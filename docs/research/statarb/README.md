@@ -282,3 +282,72 @@ venv/bin/python -m pytest tests/python/test_ou_sscore.py -q
 Outputs: `data/universe/ou_sscore.parquet`, `data/universe/ou_kappa.parquet`,
 `data/universe/ou_speed_ok.parquet`, `data/universe/ou_manifest.json`, and the
 committed plot above.
+
+## QR4.5 — Signals + dollar-neutral weights
+
+[`scripts/research/statarb/signals.py`](../../../scripts/research/statarb/signals.py)
+turns the QR4.4 s-scores into a dollar-neutral daily target book and writes it
+in the exact `weights_YYYYMMDD.csv` / `symbol,weight` format the C++
+`WeightsLoader` + `FactorStrategy` already consume — the handoff from the
+Python research pipeline to the execution engine.
+
+**Trading rules** (Avellaneda-Lee defaults — *starting points only*, the
+overfitting-prone knobs QR-P2's deflated Sharpe must protect). A per-name state
+machine with hysteresis:
+
+```
+flat  → long   if s < −1.25      (name cheap: residual reverts up)
+flat  → short  if s > +1.25      (name rich)
+long  → flat   if s > −0.50      (asymmetric close = drift-aware)
+short → flat   if s < +0.75
+any   → flat   if s is NaN       (speed filter rejected → stop trusting it)
+```
+
+**Dollar-neutral construction.** Active longs and shorts are each
+equal-weighted so the sides cancel: each long `+gross/(2·n_long)`, each short
+`−gross/(2·n_short)`. Net is then 0 regardless of how the counts split, and
+gross exposure is `gross` (default 1.0 → 50% long / 50% short of NAV, since the
+engine sizes `target_notional = weight · NAV`). A day with positions on only
+one side cannot be neutralized, so the book goes flat. Every universe name is
+written every day (inactive at 0.0) so the engine *closes* exited positions —
+a name omitted from the file would keep its prior target.
+
+**Execution lag (no look-ahead).** `FactorStrategy` loads `weights_<date>.csv`
+at that date's close and rebalances then, so a signal from the window ending at
+`t` (which uses the close of `t`) is written to `weights_<t+1>.csv` and executed
+one trading day later. No order ever uses data beyond its own signal date.
+
+### Results on the current build (1,432 signal dates, 2020-10-20 → 2026-07-06)
+
+![Dollar-neutral book exposure over time](signal_exposure.png)
+
+- **1,431 daily weight files**, dollar-neutral to machine precision:
+  **max |net| = 1.4×10⁻¹⁶** across every day.
+- **Gross is exactly the 1.0 cap on the 1,338 days a two-sided book exists**
+  (94% of days); the other 6% have positions on only one side and correctly go
+  flat.
+- Average **2.7 long / 2.3 short** names, **16% mean daily turnover** — a
+  plausible daily stat-arb book, not a hyperactive one.
+
+### Verification (`tests/python/test_signals.py`, 15 cases + 1 C++ gtest)
+
+The done-when — emitted files parse under the loader's exact rules (header,
+finite doubles, `|w| ≤ 10`), are dated one day after the signal, and net to ~0
+each day. Plus the hysteresis state machine (open/hold-through-dead-band/close,
+NaN→flat, same-bar long↔short flip), the dollar-neutral algebra (net 0, gross
+cap, one-sided→flat, gross scaling), diagnostics bounds, and causality. The
+**C++ handoff is proven in C++**: `WeightsLoaderTest.LoadsDollarNeutralStatArbBook`
+loads a book in this exact format through the real `WeightsLoader` and asserts
+net ≈ 0, gross = 1, and that inactive names load as flat (0.0) targets.
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/statarb/signals.py   # reads universe_returns.parquet
+venv/bin/python -m pytest tests/python/test_signals.py -q
+./build/run_tests --gtest_filter='WeightsLoaderTest.LoadsDollarNeutralStatArbBook'
+```
+
+Outputs: `data/universe/weights/weights_YYYYMMDD.csv` (per execution date,
+gitignored), `data/universe/signal_{weights,positions,diagnostics}.parquet`,
+`data/universe/signal_manifest.json`, and the committed plot above.

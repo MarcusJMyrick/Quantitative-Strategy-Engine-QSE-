@@ -127,3 +127,30 @@ TEST_F(WeightsLoaderTest, HandlesInvalidCSV) {
     EXPECT_DOUBLE_EQ((*weights)["MSFT"], 0.08);
     EXPECT_EQ(weights->count("GOOG"), 0); // GOOG should be skipped
 }
+// QR4.5: a dollar-neutral book emitted by scripts/research/statarb/signals.py
+// (every universe name written, inactive at 0.0, net ~ 0) must load unchanged
+// through the same loader the engine uses. This locks the Python->C++ handoff.
+TEST_F(WeightsLoaderTest, LoadsDollarNeutralStatArbBook) {
+    // Exactly the format signals.py writes: header + symbol,weight for every
+    // name, longs/shorts equal-weighted to +/- gross/2, inactive names at 0.
+    std::string content = "symbol,weight\n"
+                          "AAPL,0.25\n"
+                          "MSFT,0.25\n"
+                          "GOOG,-0.5\n"
+                          "AMZN,0\n"; // exited/inactive -> engine targets flat
+
+    create_test_file("weights_20241216.csv", content);
+
+    auto weights = WeightsLoader::load_weights_from_file(test_dir_ + "/weights_20241216.csv");
+    ASSERT_TRUE(weights.has_value());
+    EXPECT_EQ(weights->size(), 4); // all names present, including the zero
+
+    double net = 0.0, gross = 0.0;
+    for (const auto& [sym, w] : *weights) {
+        net += w;
+        gross += std::abs(w);
+    }
+    EXPECT_NEAR(net, 0.0, 1e-9);   // dollar-neutral
+    EXPECT_NEAR(gross, 1.0, 1e-9); // gross cap
+    EXPECT_DOUBLE_EQ((*weights)["AMZN"], 0.0); // inactive name loads as a flat target
+}

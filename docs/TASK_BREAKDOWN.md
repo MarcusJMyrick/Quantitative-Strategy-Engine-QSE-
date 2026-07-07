@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1–QR4.4 done 2026-07-06 (universe → PCA → residuals → OU s-score; s-score mean 0.01/std 0.95, half-life 5.8d, 99% pass speed filter) |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1–QR4.5 done 2026-07-07 (universe → PCA → residuals → OU s-score → dollar-neutral weight files; 1,431 weight files load through the C++ engine, net 1.4e-16) |
 
 ---
 
@@ -435,16 +435,29 @@ edge — the one item in the track with a real shot at net-positive PnL.
   constant-series rejection; causality bit-identical. 80/80 pytest;
   black/flake8 clean.
 
-#### QR4.5 Signals + dollar-neutral weights
-- Avellaneda-Lee default rules (**starting points only — these thresholds are
-  exactly the overfitting-prone knobs QR-P2 must protect**): open long if
-  `s < −1.25`; open short if `s > +1.25`; close long if `s > −0.50`; close
-  short if `s < +0.75` (asymmetric = drift-aware). Convert active positions
-  into **dollar-neutral daily target weights** (gross cap, net ≈ 0), written
-  to the same weight-file format `WeightsLoader` / `FactorExecutionEngine`
-  already consume.
-- **Done when:** the Python pipeline emits daily target-weight files the C++
-  engine loads unchanged; net exposure ≈ 0 each day within tolerance.
+#### QR4.5 ✅ Signals + dollar-neutral weights (done 2026-07-07)
+- Landed as `scripts/research/statarb/signals.py`: a per-name hysteresis state
+  machine on the QR4.4 s-scores (open ±1.25, asymmetric close −0.50/+0.75,
+  NaN→flat) → dollar-neutral daily target weights (each side equal-weighted to
+  ±gross/2, net 0, gross cap; one-sided days go flat) → `weights_YYYYMMDD.csv`
+  files in the exact `symbol,weight` format `WeightsLoader`/`FactorStrategy`
+  consume. Bands are a validated frozen dataclass — the overfitting-prone
+  knobs QR-P2 protects. Every universe name is written each day (inactive at
+  0.0) so the engine closes exits. **Execution lag:** signal from date t is
+  written to `weights_<t+1>.csv` and executed at that later close — no order
+  uses data beyond its own signal date.
+- Measured on the real universe: **1,431 weight files**, dollar-neutral to
+  **max |net| = 1.4×10⁻¹⁶**; gross exactly 1.0 on the 1,338 two-sided days
+  (94%); ~2.7 long / 2.3 short names; 16% mean daily turnover. Committed
+  exposure plot: `docs/research/statarb/signal_exposure.png`.
+- **Done when — verified both sides of the handoff:** 15 pytest cases (emitted
+  files satisfy the loader's exact constraints — header, finite doubles,
+  |w|≤10 — dated t+1, net ~0 each day; the state machine incl. NaN→flat and
+  same-bar long↔short flip; dollar-neutral algebra; causality) **and** a new
+  C++ gtest `WeightsLoaderTest.LoadsDollarNeutralStatArbBook` that loads a book
+  in this exact format through the real `WeightsLoader` asserting net ≈ 0,
+  gross = 1, inactive names load flat. 95/95 pytest; 254/254 ctest;
+  black/flake8 clean.
 
 #### QR4.6 Cheap baselines (the floor)
 - Add two baselines to `MultiFactorCalculator` for honest comparison:

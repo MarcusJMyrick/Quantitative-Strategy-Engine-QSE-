@@ -1,0 +1,25 @@
+{
+  "generated": "2026-07-07",
+  "window": 60,
+  "gross_cap": 1.0,
+  "execution_lag_days": 1,
+  "bands": {
+    "open_long": -1.25,
+    "open_short": 1.25,
+    "close_long": -0.5,
+    "close_short": 0.75
+  },
+  "signal_dates": 1432,
+  "weight_files_written": 1431,
+  "span": [
+    "2020-10-20",
+    "2026-07-06"
+  ],
+  "max_abs_net_exposure": 1.3877787807814457e-16,
+  "days_with_a_book": 1338,
+  "mean_gross_on_active_days": 1.0,
+  "mean_n_long": 2.7360335195530725,
+  "mean_n_short": 2.3233240223463687,
+  "mean_daily_turnover": 0.15960694333599362,
+  "as_of_alignment": "Signal from the window ending at date t is written to weights_<t+1>.csv and executed at that later date's close; no order uses data beyond its own signal date."
+}

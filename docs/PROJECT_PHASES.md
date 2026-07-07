@@ -530,11 +530,17 @@ mean-reverting Ornstein-Uhlenbeck process, trade the standardized deviation
   residuals the s-score reduces to −m/σ_eq (a large positive equilibrium →
   cheap name → buy); the estimators are tested against genuine OU paths with
   known parameters. Committed s-score distribution plot.
-- **12.5 Dollar-neutral weights (QR4.5).** Avellaneda-Lee entry/exit bands
-  (±1.25 open, asymmetric close) as *starting points* — these are exactly the
-  overfitting-prone knobs Phase 13 must protect. Output is the same
-  weight-file format `WeightsLoader` / `FactorExecutionEngine` already
-  consume, net exposure ≈ 0 daily.
+- **12.5 Dollar-neutral weights ✅ (QR4.5, done 2026-07-07).** A per-name
+  hysteresis state machine on the s-scores (Avellaneda-Lee bands — ±1.25 open,
+  asymmetric −0.50/+0.75 close — as *starting points*, the overfitting-prone
+  knobs Phase 13 protects) drives a dollar-neutral daily book: each side
+  equal-weighted to ±gross/2, net 0, gross cap, one-sided days flat. Emitted
+  as `weights_YYYYMMDD.csv` in the exact format `WeightsLoader` / `FactorStrategy`
+  consume, dated one trading day after the signal (the look-ahead-safe
+  execution lag). On the real universe: 1,431 files, net to 1.4×10⁻¹⁶,
+  gross = 1 on 94% of days, ~2.7 long / 2.3 short, 16% turnover. The
+  Python→C++ handoff is proven in C++ — a gtest loads a book in this format
+  through the real `WeightsLoader` and checks net ≈ 0.
 - **12.6 Cheap baselines (QR4.6).** Cross-sectional short-term reversal and
   12-1 momentum through the same harness. If the eigen stat arb can't beat
   *reversal* net of Engine B costs, that's a finding — the fancy version

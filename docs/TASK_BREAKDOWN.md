@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**)
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR4.1–QR4.6 done 2026-07-07 (full signal pipeline + reversal/momentum baselines; cost-free floor: stat arb 0.97 ≈ momentum 0.99, reversal −0.28 — QR4.7 adds Engine B) |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1 complete** 2026-07-07 (QR4.1–4.7). Engine B finding: cheap momentum (net Sharpe 0.84) beats the eigen stat arb (0.69) net-of-cost; both clear reversal (−0.71). Provisional until QR-P2 deflation. Next: QR-P2 CPCV/DSR |
 
 ---
 
@@ -481,16 +481,35 @@ edge — the one item in the track with a real shot at net-positive PnL.
   paper-PnL lag to the day, dollar-neutral + loader-compatible files identical
   to QR4.5, momentum warm-up, causality. 108/108 pytest; black/flake8 clean.
 
-#### QR4.7 Survive Engine B
-- Run QR4 through `ab_audit` at 1×/10×/50× size regimes (Engine A naive vs
-  Engine B full-depth). Generate the tearsheet.
-- **Done when:** `ab_audit` + `tearsheet.py` run clean; the summary states the
-  net Sharpe under **Engine B** at each size. (Positive-but-modest is the
-  win; a clean negative with the phantom-cost decomposition is still a
-  result.)
-- **Note:** the Sharpe reported here is provisional — a candidate, not a
-  result — until QR2.5 deflates it for the parameter search and the tearsheet
-  carries the DSR + trial count.
+#### QR4.7 ✅ Survive Engine B (done 2026-07-07)
+- Landed as the `statarb_audit` C++ tool (`src/tools/statarb_audit.cpp`) +
+  `scripts/analysis/statarb_audit.py`. A multi-symbol daily analogue of H1:
+  all three strategies' dollar-neutral weight files run through the **real**
+  OrderManager fill models at 1×/10×/50× gross-notional regimes — Engine A
+  (naive, fills at mid) vs Engine B (depth, market orders walk the seeded book
+  and pay VWAP). Daily depth is synthesized from IEX-partial volume (a stated
+  approximation; no intraday L2 for the 15 names). `build_universe.py` gained
+  a `prices.csv` (adjusted close+volume) emit to feed it.
+- **The finding (a credible negative):** under Engine B at 50×, net Sharpe is
+  **momentum 0.84 > stat arb 0.69 > reversal −0.71** — cheap 12-1 momentum
+  *beats* the elaborate eigen stat arb once fills are charged, because the stat
+  arb's 16% turnover pays 17–25% phantom cost vs momentum's 4%/~6%. Phantom
+  profit grows super-linearly with size for the stat arb. The fancy machinery
+  does not earn its complexity over a one-line rule.
+- **Done when — verified:** the tool + analysis run clean; the summary states
+  the net Sharpe under Engine B at each size (`docs/research/statarb/statarb_ab_summary.md`)
+  with the phantom-cost decomposition, plus a committed plot. 5 pytest cases
+  cover the analysis (phantom + net-Sharpe, losing-strategy sign, missing-run
+  handling, summary generation); fill mechanics are the A1–A3 gtest paths.
+  254/254 ctest, 113/113 pytest; black/flake8/clang-format clean.
+- **Provisional:** every Sharpe here is a candidate, not a result, until QR2.5
+  deflates it for the parameter search and carries the DSR + trial count.
+
+**QR-P1 (Phase 12) is complete** — the industry-standard market-neutral
+stat-arb pipeline end to end (universe → RMT factor selection → OU residual
+modeling → dollar-neutral construction → Engine B + baselines), with an honest
+provisional result. Next: **QR-P2** builds the CPCV + Deflated Sharpe machinery
+that turns these provisional Sharpes into judged ones.
 
 ### QR-P2 — The Truth Serum: CPCV + Deflated Sharpe (QR2) 🎓
 

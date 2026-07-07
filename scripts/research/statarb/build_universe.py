@@ -216,6 +216,29 @@ def build_close_panel(bars: dict) -> tuple[pd.DataFrame, dict]:
     return panel, report
 
 
+def build_price_panel(bars: dict, close_panel: pd.DataFrame) -> pd.DataFrame:
+    """Long-format adjusted close + volume aligned to the close panel's dates:
+    columns date, symbol, close, volume. Volume is forward-filled on the same
+    grid (an ADV proxy for the QR4.7 audit's depth seeding). Split-adjusted, so
+    it matches the returns matrix the weights were built from."""
+    volume = pd.DataFrame({sym: df.get("volume") for sym, df in bars.items()})
+    volume = volume.reindex(close_panel.index).ffill().fillna(0.0)
+    rows = []
+    for sym in close_panel.columns:
+        rows.append(
+            pd.DataFrame(
+                {
+                    "date": close_panel.index,
+                    "symbol": sym,
+                    "close": close_panel[sym].to_numpy(),
+                    "volume": volume[sym].to_numpy(),
+                }
+            )
+        )
+    long = pd.concat(rows, ignore_index=True).sort_values(["date", "symbol"])
+    return long.reset_index(drop=True)
+
+
 def compute_returns(panel: pd.DataFrame) -> pd.DataFrame:
     """Simple daily returns R_t = P_t / P_{t-1} - 1; the first row (no prior
     close) is dropped, so the result is NaN-free by construction."""
@@ -290,8 +313,11 @@ def build(
     out_dir.mkdir(parents=True, exist_ok=True)
     returns_path = out_dir / "universe_returns.parquet"
     standardized_path = out_dir / "universe_standardized.parquet"
+    prices_path = out_dir / "prices.csv"
     returns.to_parquet(returns_path)
     standardized.to_parquet(standardized_path)
+    prices = build_price_panel(bars, panel)
+    prices.to_csv(prices_path, index=False, date_format="%Y-%m-%d")
 
     manifest = {
         "generated": date.today().isoformat(),
@@ -309,7 +335,11 @@ def build(
             "r_{t-w+1}..r_t (inclusive), all observable at the close of day t; "
             "warm-up rows are dropped. Consumers must not execute before t+1."
         ),
-        "files": {"returns": str(returns_path), "standardized": str(standardized_path)},
+        "files": {
+            "returns": str(returns_path),
+            "standardized": str(standardized_path),
+            "prices": str(prices_path),
+        },
     }
     manifest_path = out_dir / "universe_manifest.json"
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n")

@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1 complete** 2026-07-07 (QR4.1–4.7). Engine B finding: cheap momentum (net Sharpe 0.84) beats the eigen stat arb (0.69) net-of-cost; both clear reversal (−0.71). Provisional until QR-P2 deflation. Next: QR-P2 CPCV/DSR |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 complete (QR4.1–4.7); QR-P2 started 2026-07-07 with QR2.1 purge/embargo primitives. Engine B finding (provisional): momentum 0.84 > stat arb 0.69 > reversal −0.71 net-of-cost |
 
 ---
 
@@ -521,13 +521,20 @@ the trial count. Build before tuning anything: it judges QR4 and everything
 after, including the ML layer. This is the section a skeptical PM checks
 first.*
 
-#### QR2.1 Purge + embargo primitives
-- Purging: drop training samples whose label/evaluation window overlaps the
-  test window. Embargo: drop a fraction of training samples immediately
-  *after* each test block, to stop forward leakage from serial correlation.
-- **Done when:** `pytest` proves no training index's evaluation window
-  overlaps any test window, and the embargo removes exactly the configured
-  fraction.
+#### QR2.1 ✅ Purge + embargo primitives (done 2026-07-07)
+- Landed as `scripts/research/validation/purge_embargo.py`: the López de Prado
+  leak fixes (AFML ch. 7) as pure functions on integer bar positions, so QR2.2's
+  CPCV and QR5's triple-barrier labels reuse them. Each observation carries an
+  information window `[start, end]`; **purge** drops a train obs whose window
+  overlaps any test window (symmetric check — catches leakage both directions),
+  **embargo** drops `int(n·embargo_pct)` train bars right after each test region
+  (serial-correlation guard). Defaults to one-bar (daily) labels; multi-bar
+  holds supported via explicit windows.
+- **Done when — verified:** 12 pytest cases — after purge, no surviving train
+  window overlaps any test window (brute-forced on multi-bar labels); embargo
+  removes *exactly* the configured fraction (5/10/20 at 5/10/20% on n=100; 28 at
+  2% on n=1432), clipped at the series end, composing with purge across
+  multi-block test sets. black/flake8 clean.
 
 #### QR2.2 Combinatorial path generation (CPCV)
 - Partition the series into `N` blocks; choose `k` as test, rest as train →

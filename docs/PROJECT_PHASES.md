@@ -581,9 +581,13 @@ is almost always a fluke. Two composing pieces: **Combinatorial Purged CV**
 the difference between "I found a Sharpe-2 strategy" and "I found a Sharpe-2
 strategy that survives correction for having tried 400 variants."
 
-- **13.1 Purge + embargo (QR2.1).** Drop training samples whose evaluation
-  window overlaps the test window; embargo a fraction of training samples
-  immediately after each test block against serial-correlation leakage.
+- **13.1 Purge + embargo ✅ (QR2.1, done 2026-07-07).** The López de Prado
+  leak fixes (AFML ch. 7) on integer bar positions: purge drops training
+  samples whose information window overlaps any test window (symmetric — both
+  leak directions); embargo drops `int(n·embargo_pct)` samples immediately
+  after each test region against serial correlation. Built general (arbitrary
+  information windows) so CPCV and QR5's triple-barrier labels reuse it; 12
+  pytest cases prove no residual overlap and exact-fraction embargo.
 - **13.2 Combinatorial paths (QR2.2).** N blocks, k test → C(N,k) splits,
   recombined into C(N−1,k−1) complete out-of-sample equity curves — a
   *distribution* of Sharpes, not a point estimate.

@@ -571,7 +571,7 @@ that turns "provisional" into "judged" is Phase 13.
 end — RMT-based factor selection, OU residual modeling, dollar-neutral
 construction — judged against realistic fills and cheap baselines.
 
-## Phase 13 — The Truth Serum: CPCV + Deflated Sharpe ⏳ (QR-P2) 🎓
+## Phase 13 — The Truth Serum: CPCV + Deflated Sharpe ✅ (QR-P2) 🎓
 
 **Goal:** prove Phase 12 (and everything after) is not overfit. Financial
 time series have heavy serial correlation, so vanilla k-fold CV leaks the
@@ -599,13 +599,21 @@ strategy that survives correction for having tried 400 variants."
   benchmark set to the expected max Sharpe under the null across N trials.
   Acceptance test: **100 random-noise strategy variations must severely
   deflate the final DSR** vs a single-hypothesis run.
-- **13.5 Wire Phase 12 through it (QR2.5).** QR4's parameter search runs
-  under CPCV; its tearsheet carries a DSR line and the trial count it was
-  deflated against.
+- **13.5 Wire Phase 12 through it ✅ (QR2.5, done 2026-07-07).** A 12-config
+  sweep of QR4's bands × window, logged to the registry and deflated: the
+  Avellaneda-Lee default won (cost-free Sharpe 0.92, PSR(0) 0.987) but
+  **DSR = 0.610** — the best per-period Sharpe (0.058) barely clears the null's
+  expected max (0.051). It survives the search correction only modestly, and
+  cost-free; the Engine B haircut applies on top. QR4's tearsheet
+  (docs/research/statarb/qr4_dsr_summary.md) now carries the DSR line and N=12.
 
 **Proves:** understanding of the single most important trap in quant research
 — and the machinery (purging, embargo, combinatorial paths, deflation) to
 avoid it. This is the section a skeptical PM checks first.
+
+**Phase 13 (QR-P2) is complete** — the truth serum end to end. Every Sharpe the
+track reports (including the QR-P4/P5 layers still to come) can now be deflated
+for the search that produced it.
 
 ## Phase 14 — Risk Architecture: HMM Regime Overlay ⏳ (QR-P3)
 
@@ -726,8 +734,8 @@ question, judged under CPCV like everything else.
 |---|---|---|
 | QR4 net Sharpe under Engine B | ✅ 0.69 (50×); clean negative vs momentum | docs/research/statarb |
 | QR4 vs reversal/momentum baselines | ✅ momentum 0.84 > stat arb 0.69 > reversal −0.71 net of costs | docs/research/statarb |
-| DSR of chosen QR4 config | deflated for N trials | validation registry |
-| CPCV multiple-testing penalty | 100 noise variants → DSR collapses | tests/python |
+| DSR of chosen QR4 config | ✅ DSR 0.61, deflated for N=12 trials (cost-free) | docs/research/statarb/qr4_dsr_summary.md |
+| CPCV multiple-testing penalty | ✅ 100 noise variants: PSR(0) 0.99 → DSR 0.47 | docs/research/validation |
 | HMM drawdown reduction | max-DD down in high-vol states | docs/research/regime |
 | OFI/VPIN filter | measurable slippage reduction vs blind market order | ab_audit |
 | Meta-layer | meta-on vs meta-off DSR under Engine B | docs/research/statarb |

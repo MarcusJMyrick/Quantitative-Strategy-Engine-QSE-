@@ -54,6 +54,8 @@ temp_*.csv
 !data/universe/*.csv
 # ...but prices.csv is a regenerable QR4.1 artifact (build_universe emits it), not a source
 data/universe/prices.csv
+# Regenerable QR2.5 trial registry (params.json + returns.parquet per swept config)
+data/universe/qr4_trials/
 
 # CTest output
 Testing/

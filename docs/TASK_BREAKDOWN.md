@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**)
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 complete (QR4.1–4.7); QR-P2 started 2026-07-07 with QR2.1 purge/embargo primitives. Engine B finding (provisional): momentum 0.84 > stat arb 0.69 > reversal −0.71 net-of-cost |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1 + QR-P2 complete** 2026-07-07 (QR4.1–4.7, QR2.1–2.5). Engine B: momentum 0.84 > stat arb 0.69 > reversal −0.71 net-of-cost; QR4 best config **DSR = 0.61** deflated against 12 trials. Next: QR-P3 HMM regime overlay |
 
 ---
 
@@ -579,11 +579,25 @@ first.*
   single hypothesis surviving (deflation bites search, not skill). black/flake8
   clean.
 
-#### QR2.5 Wire QR4 through it
-- Run QR4's parameter search under CPCV; report the DSR of the chosen config
-  from the path distribution.
-- **Done when:** QR4's tearsheet carries a DSR line and the number of trials
-  it was deflated against.
+#### QR2.5 ✅ Wire QR4 through it (done 2026-07-07)
+- Landed as `scripts/research/statarb/deflate_qr4.py`: sweeps QR4's entry/exit
+  bands × estimation window (the overfitting-prone knobs), logs each config +
+  return series to the registry, and deflates the best against the trial count.
+- **The tearsheet DSR line** (`docs/research/statarb/qr4_dsr_summary.md`): swept
+  **N = 12** configs; the **Avellaneda-Lee default** won (cost-free annualized
+  Sharpe **0.92**, undeflated PSR(0) 0.987), but **DSR = 0.610** — clears chance
+  but only just (best per-period Sharpe 0.058 vs SR*₀ = 0.051). Honest: this is
+  the cost-free series; the Engine B haircut (QR4.7) applies on top, so the
+  net-of-cost + search-deflated verdict is lower still. The AL default winning
+  (not a contorted corner) is itself reassuring. CPCV gives the temporal-
+  stability read (per-block OOS Sharpe mean 0.054 / std 0.053).
+- **Done when — verified:** QR4's tearsheet carries the DSR line + N=12 trials;
+  4 pytest cases (grid coverage, run_config produces a daily series, block
+  Sharpes, end-to-end deflate carries DSR + trial count). black/flake8 clean.
+
+**QR-P2 (Phase 13) is complete** — the truth serum end to end (purge/embargo →
+CPCV → registry → PSR/DSR → wired through QR4). Every Sharpe the track reports
+can now be deflated for the search that produced it.
 
 ### QR-P3 — Risk Architecture: HMM regime overlay (QR3)
 

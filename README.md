@@ -13,7 +13,7 @@ displayed liquidity — and then **measures the difference**. The engine is
 paired with the low-latency machinery real trading systems use (arena
 allocation, lock-free queues), a **live paper-trading mode** that runs the
 same strategy code against a real venue, and the software discipline both
-demand (254 C++ / 113 Python tests, three CI gates, cross-platform
+demand (254 C++ / 158 Python tests, three CI gates, cross-platform
 determinism).
 
 On top of the execution engine sits a **quantitative-research track** (in
@@ -38,7 +38,8 @@ tried. Everything else is a candidate, not a result.
 | **Live paper trading verified end-to-end** | 15-min market-hours session: 5 crossover signals → 5 real fills → **5/5 orders reconciled** local == venue | `live_engine` (Alpaca REST → lock-free ring → strategy → venue) |
 | Mean-variance optimizer traces a textbook efficient frontier | alpha 0.32 → 0.003, portfolio σ 0.35 → 0.002 across a 20-point λ-sweep | [factor research](docs/research/factor/) |
 | Market factor structure via random-matrix theory | market eigenvalue clears the Marchenko-Pastur noise edge (λ+ = 2.25) in **100% of 1,432 rolling windows** (median 47% of variance); MP retains 1–2 factors while "explain 55%" wobbles 1–4 | [stat-arb research](docs/research/statarb/README.md) |
-| Stat arb vs baselines under Engine B | **credible negative:** cheap 12-1 momentum (net Sharpe **0.84**) beats the eigen stat arb (**0.69**) once realistic fills are charged — the stat arb's 16% turnover bleeds 17–25% phantom cost (provisional pending DSR deflation) | [stat-arb research](docs/research/statarb/README.md) |
+| Stat arb vs baselines under Engine B | **credible negative:** cheap 12-1 momentum (net Sharpe **0.84**) beats the eigen stat arb (**0.69**) once realistic fills are charged — the stat arb's 16% turnover bleeds 17–25% phantom cost | [stat-arb research](docs/research/statarb/README.md) |
+| Deflated Sharpe catches multiple-testing | 100 noise strategies: luckiest shows **PSR(0) = 0.99** but **DSR = 0.47**; QR4's best swept config **DSR = 0.61** deflated against 12 trials | [validation research](docs/research/validation/README.md) |
 
 ---
 
@@ -143,9 +144,24 @@ dollar-neutral s-score trading. Built so far:
 
 **That is the QR-P1 payoff, and the honest one:** after realistic fills, the
 sophisticated machinery does not earn its complexity over a one-line rule —
-a far more defensible finding than a Sharpe-2 backtest. And it is still
-*provisional*: every Sharpe here is a candidate until the CPCV + Deflated
-Sharpe layer (QR-P2, next) deflates it for the number of configurations tried.
+a far more defensible finding than a Sharpe-2 backtest.
+
+- **The truth serum (QR-P2):** the credibility layer that judges all of the
+  above — purging + embargo, **Combinatorial Purged CV**, a trial registry, and
+  the **Deflated Sharpe Ratio** (Bailey & López de Prado). Its calibration test
+  is stark: 100 pure-noise strategies, the luckiest with **PSR(0) = 0.99**
+  (looks like near-certain skill) but **DSR = 0.47** once deflated for the
+  search. Wired through QR4, the band/window sweep's best config has a cost-free
+  Sharpe of 0.92 but a **DSR of 0.61** deflated against 12 trials — it clears
+  chance only modestly, and *before* the Engine B haircut.
+
+![100 noise strategies: PSR looks great, DSR deflates to chance](docs/research/validation/dsr_deflation.png)
+
+So the track's verdict on its own flagship is deliberately unglamorous and
+**defensible**: a market-neutral stat arb whose paper edge barely survives
+correction for search and is beaten by cheap momentum once fills are charged.
+That honest "does not clearly survive" — backed by realistic fills *and* a
+search-deflated Sharpe — is the entire point of building the guardrails first.
 Full plan: [Track QR in TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
 
 ---
@@ -237,16 +253,18 @@ market-hours session: 5 signals, 5 fills, 5/5 reconciled.
 ## Engineering quality
 
 - **254 C++ tests** (GoogleTest, includes two 10M-item lock-free stress tests
-  with strict ordering + checksum) and **113 Python tests** (pytest, metrics
+  with strict ordering + checksum) and **158 Python tests** (pytest, metrics
   asserted against hand-computed values — including the stat-arb research
   layer, where a causality test proves appending future data leaves every
   emitted row bit-identical, the Marchenko-Pastur cutoff is verified to
   retain 0 factors on pure noise and exactly the planted factor otherwise,
   idiosyncratic residuals are checked orthogonal to their factors to machine
   precision, the OU estimator recovers known (κ, m, σ) from a simulated
-  mean-reverting path, and the generated dollar-neutral weight files — for the
+  mean-reverting path, the generated dollar-neutral weight files — for the
   stat arb and both baselines alike — are loaded back through the real C++
-  `WeightsLoader` to lock the handoff)
+  `WeightsLoader` to lock the handoff, and the validation layer proves purging
+  leaves no train/test overlap, CPCV yields the right split/path counts, and
+  100 noise strategies collapse the Deflated Sharpe from PSR 0.99 to 0.47)
 - **Three CI gates on every push:** build + full test suite, `clang-format`/
   `black`/`flake8`, and a `clang-tidy` static-analysis gate
   (warnings-as-errors) — all tool versions pip-pinned so local == CI
@@ -319,6 +337,8 @@ python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 ./venv/bin/python scripts/research/statarb/baselines.py       # reversal + momentum baselines
 ./build/statarb_audit --name stat_arb --weights-dir data/universe/weights   # Engine A/B audit
 ./venv/bin/python scripts/analysis/statarb_audit.py           # net Sharpe + phantom summary
+./venv/bin/python scripts/research/validation/deflated_sharpe.py  # DSR multiple-testing demo
+./venv/bin/python scripts/research/statarb/deflate_qr4.py     # QR4 sweep + Deflated Sharpe
 ./build/arena_bench && ./build/spsc_bench                   # latency benchmarks
 ./build/spsc_tsan_stress                                    # TSan certification
 ```
@@ -335,9 +355,10 @@ tests/cpp/               254 GoogleTest cases incl. mocks and stress tests
 scripts/analysis/        tearsheet, impact study, slippage audit
 scripts/data/            download/process pipeline, forward-fill, corporate actions
 scripts/research/statarb/ eigenportfolio stat arb: universe, PCA, residuals, OU
-                         s-score, dollar-neutral weights, reversal/momentum baselines
-tests/python/            57 pytest cases with hand-computed expected values
-docs/research/           committed research artifacts (microstructure, factor, statarb)
+                         s-score, dollar-neutral weights, reversal/momentum baselines, DSR wiring
+scripts/research/validation/ CPCV truth serum: purge/embargo, CPCV, trial registry, Deflated Sharpe
+tests/python/            158 pytest cases with hand-computed expected values
+docs/research/           committed research artifacts (microstructure, factor, statarb, validation)
 docs/benchmarks/         benchmark write-ups with reproduction commands
 docs/PROJECT_PHASES.md   full narrative: every phase, design rationale, results
 docs/TASK_BREAKDOWN.md   execution checklist with per-task done-when criteria
@@ -354,7 +375,8 @@ config/                  YAML strategy configs + real corporate-actions history
 - **[Benchmarks](docs/benchmarks/)** · **Research:
   [microstructure](docs/research/microstructure/) ·
   [factor](docs/research/factor/) ·
-  [stat arb](docs/research/statarb/README.md)**
+  [stat arb](docs/research/statarb/README.md) ·
+  [validation (CPCV/DSR)](docs/research/validation/README.md)**
 
 ## Status
 

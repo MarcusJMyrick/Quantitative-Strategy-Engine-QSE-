@@ -111,6 +111,42 @@ the gap between 0.99 and 0.47. Tested: the best-of-100 sits on SR*₀ to within
 0.05, PSR(0) > 0.85 while DSR < 0.60, and a genuinely skilled single hypothesis
 keeps PSR > 0.9 (the deflation bites *search*, not skill).
 
-## QR2.5 — Wire QR4 through it (DSR on the tearsheet) — *next*
+## QR2.5 — Wire QR4 through it ✅
+
+[`scripts/research/statarb/deflate_qr4.py`](../../../scripts/research/statarb/deflate_qr4.py)
+(verified by `tests/python/test_deflate_qr4.py`, 4 cases). Ties QR-P1 to QR-P2:
+sweep QR4's entry/exit bands × estimation window — the overfitting-prone knobs —
+log every configuration and its return series to the registry, and deflate the
+best config's Sharpe against the trial count.
+
+### The result — QR4's tearsheet DSR line
+
+Swept **N = 12** configurations. The **Avellaneda-Lee default** (bands
+±1.25, close −0.50/+0.75, window 60) won with a cost-free annualized Sharpe of
+**0.92** and an undeflated PSR(0) of **0.987** — but deflating for the search
+gives **DSR = 0.610**. The best config's per-period Sharpe (0.058) sits only
+just above the null's expected max (SR*₀ = 0.051), which is exactly why the DSR
+lands near chance rather than near 1.
+
+![QR4 sweep Sharpe distribution with SR*₀](../statarb/qr4_dsr.png)
+
+**Reading it honestly:** DSR 0.61 > 0.5, so the paper edge is *not purely* a
+band/window search artifact — but it is modest, and this is the **cost-free**
+series. The Engine B haircut (QR4.7: 0.92 → ~0.69 net) applies on top, so the
+net-of-cost *and* search-deflated verdict is lower still. That the AL default
+won the sweep (rather than some contorted corner) is itself reassuring — the
+literature thresholds weren't overfit here.
+
+QR4 is a rolling, re-fit-free signal, so CPCV's per-split model re-fitting does
+not apply; the active correction is the trial-count deflation, and CPCV is used
+for the temporal-stability read (per-block out-of-sample Sharpe: mean 0.054,
+std 0.053 across 6 time blocks — positive on average but not uniformly).
+
+---
+
+**QR-P2 (Phase 13) is complete.** The truth serum is built end to end: purge +
+embargo → CPCV → trial registry → PSR/DSR → wired through QR4. Every Sharpe the
+track reports can now be deflated for the search that produced it — the
+credibility layer a skeptical PM checks first.
 
 ## QR2.5 — Wire QR4 through it (DSR on the tearsheet) — *pending*

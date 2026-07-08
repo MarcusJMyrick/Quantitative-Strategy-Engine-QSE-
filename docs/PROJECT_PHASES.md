@@ -594,7 +594,7 @@ strategy that survives correction for having tried 400 variants."
 - **13.3 Trial registry ✅ (QR2.3, done 2026-07-07).** Every backtest variation logs params
   **and its return series**; the DSR is only meaningful if trial count and
   dispersion are real.
-- **13.4 PSR → DSR (QR2.4).** The Probabilistic Sharpe Ratio (accounts for
+- **13.4 PSR → DSR ✅ (QR2.4, done 2026-07-07).** The Probabilistic Sharpe Ratio (accounts for
   return skew/kurtosis and sample length), then the Deflated Sharpe with the
   benchmark set to the expected max Sharpe under the null across N trials.
   Acceptance test: **100 random-noise strategy variations must severely

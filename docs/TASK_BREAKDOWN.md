@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4
 
 ---
 
@@ -563,21 +563,21 @@ first.*
   exactly (datetime index round-trips through parquet); identical params keep
   the count at 1; distinct params are distinct. black/flake8 clean.
 
-#### QR2.4 PSR → DSR
-- **PSR** (Probabilistic Sharpe Ratio), the building block:
-  `PSR(SR*) = Z[ (SR − SR*)·√(n−1) / √(1 − skew·SR + ((kurt−1)/4)·SR²) ]`
-  where `n` = number of returns, `skew`/`kurt` from the return distribution,
-  `Z` the standard-normal CDF — probability the true Sharpe exceeds `SR*`.
-- **DSR** = `PSR(SR*₀)` with the benchmark set to the **expected max Sharpe
-  under the null** across `N` trials:
-  `SR*₀ = √(V[SR]) · [ (1−γ)·Z⁻¹(1 − 1/N) + γ·Z⁻¹(1 − 1/(N·e)) ]`
-  where `V[SR]` = variance of Sharpes across trials, `γ ≈ 0.5772`
-  (Euler-Mascheroni), `Z⁻¹` inverse normal, `e` Euler's number.
-- Files: new `scripts/research/validation/deflated_sharpe.py`
-- **Done when:** the script takes the trial registry and computes DSR, and a
-  `pytest` shows **100 random-noise strategy variations severely deflate**
-  the final DSR vs a single-hypothesis run — the penalty for multiple testing
-  is visible and correct.
+#### QR2.4 ✅ PSR → DSR (done 2026-07-07)
+- Landed as `scripts/research/validation/deflated_sharpe.py` (Bailey & López de
+  Prado). **PSR(SR\*)** = `Φ[(SR − SR*)·√(n−1) / √(1 − skew·SR + ((kurt−1)/4)·SR²)]`
+  — probability the true per-period Sharpe beats SR\*, penalizing negative skew
+  and fat tails. **DSR** = `PSR(SR*₀)` with `SR*₀ = √(V[SR])·[(1−γ)·Z⁻¹(1−1/N) +
+  γ·Z⁻¹(1−1/(N·e))]`, the expected max Sharpe under the null across N trials.
+  All per-period for unit consistency; biased moments per the reference impl;
+  `deflate_registry` deflates the best trial against the QR2.3 registry.
+- **Done when — verified:** 10 pytest cases — the flagship: **100 noise
+  strategies, best PSR(0) = 0.994 but DSR = 0.475** (SR*₀ = 0.166 ≈ the best
+  Sharpe), a >0.30 collapse — the multiple-testing penalty visible and correct,
+  committed as `docs/research/validation/dsr_deflation.png`. Plus PSR = 0.5 at
+  its own Sharpe, PSR rising with n, skew/kurtosis lowering PSR, and a skilled
+  single hypothesis surviving (deflation bites search, not skill). black/flake8
+  clean.
 
 #### QR2.5 Wire QR4 through it
 - Run QR4's parameter search under CPCV; report the DSR of the chosen config

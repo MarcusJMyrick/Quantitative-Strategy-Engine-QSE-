@@ -79,6 +79,38 @@ directory, and the loader reconstructs every trial's params and return series
 exactly (datetime index round-trips through parquet). Re-logging identical
 params keeps the count at 1; distinct params are distinct trials.
 
-## QR2.4 — PSR → Deflated Sharpe — *next*
+## QR2.4 — PSR → Deflated Sharpe ✅
+
+[`scripts/research/validation/deflated_sharpe.py`](../../../scripts/research/validation/deflated_sharpe.py)
+(verified by `tests/python/test_deflated_sharpe.py`, 10 cases). The headline
+metric (Bailey & López de Prado).
+
+- **PSR(SR\*)** — probability the *true* per-period Sharpe exceeds a benchmark,
+  given the estimate's standard error, which grows with non-normality:
+  `Φ[(SR − SR*)·√(n−1) / √(1 − skew·SR + ((kurt−1)/4)·SR²)]`. Negative skew and
+  fat tails widen the error and *lower* the PSR for the same Sharpe.
+- **DSR** = `PSR(SR*₀)` with the benchmark set to the **expected maximum Sharpe
+  under the null** across N trials,
+  `SR*₀ = √(V[SR])·[(1−γ)·Z⁻¹(1−1/N) + γ·Z⁻¹(1−1/(N·e))]` (γ = Euler-
+  Mascheroni). DSR asks whether the selected strategy clears the bar the
+  luckiest of N skill-less strategies would have set.
+
+Everything is per-period (non-annualized) so PSR's SR and V[SR] share units.
+`deflate_registry` reads the QR2.3 registry, picks the best trial, and deflates
+it against the dispersion of all logged trials.
+
+### The multiple-testing penalty, made visible (the done-when)
+
+![100 noise strategies: PSR looks great, DSR deflates to chance](dsr_deflation.png)
+
+100 pure-noise strategies (true Sharpe 0). The luckiest has per-period Sharpe
+**0.162**, and its undeflated **PSR(0) = 0.994** — it looks like near-certain
+skill. But the expected max under the null is **SR*₀ = 0.166**, so the
+**DSR = 0.475** — deflated below chance. The penalty for searching is exactly
+the gap between 0.99 and 0.47. Tested: the best-of-100 sits on SR*₀ to within
+0.05, PSR(0) > 0.85 while DSR < 0.60, and a genuinely skilled single hypothesis
+keeps PSR > 0.9 (the deflation bites *search*, not skill).
+
+## QR2.5 — Wire QR4 through it (DSR on the tearsheet) — *next*
 
 ## QR2.5 — Wire QR4 through it (DSR on the tearsheet) — *pending*

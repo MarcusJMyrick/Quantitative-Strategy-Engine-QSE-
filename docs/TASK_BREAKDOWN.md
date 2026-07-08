@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1 + QR-P2 complete** 2026-07-07 (QR4.1–4.7, QR2.1–2.5). Engine B: momentum 0.84 > stat arb 0.69 > reversal −0.71 net-of-cost; QR4 best config **DSR = 0.61** deflated against 12 trials. Next: QR-P3 HMM regime overlay |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 complete; QR-P3 started 2026-07-07 with QR3.1 causal regime features (SPY, 5 trailing-window features, strict as-of). Next: QR3.2 Gaussian HMM |
 
 ---
 
@@ -606,12 +606,22 @@ overfit easily — **don't expect added return.** What they reliably do is cut
 drawdown (flip to min-variance / reduce gross in high-vol states), lifting
 Sharpe by shrinking the denominator. Risk management, correctly attributed.*
 
-#### QR3.1 Regime features
-- Engineer causal features: rolling realized vol, bid-ask spread expansion,
-  volume profile, maybe realized-vol-of-vol. All strictly as-of (no future
-  data).
-- **Done when:** a feature Parquet with a documented no-look-ahead alignment;
-  test that the feature at time `t` uses only data `≤ t`.
+#### QR3.1 ✅ Regime features (done 2026-07-07)
+- Landed as `scripts/research/regime/regime_features.py`: five causal
+  trailing-window features on the SPY proxy — `rv_21`, `rv_5` (realized vol),
+  `vov_21` (vol-of-vol), `range_5` ((high−low)/close, a spread-expansion proxy),
+  `vol_ratio_63` (log volume / 63d mean, the volume profile). SPY is fetched via
+  the same Alpaca IEX path as the QR4 universe, so the frame (2020-10-22 →
+  2026-07-07, 1,431 rows, zero NaNs) aligns with the stat-arb signal dates. It
+  captures the 2022 bear (rv≈0.24) and the April 2025 selloff (peak rv≈0.49);
+  misses March 2020 COVID (stated coverage limit). Committed plot +
+  data/regime/SPY.csv for offline rebuild.
+- **Done when — verified:** a clean feature parquet + manifest documenting the
+  as-of contract (row t is a trailing-window stat of rows ≤ t; consumers act at
+  ≥ t+1); 7 pytest cases — expected columns, no NaNs, features separate a
+  synthetic calm→turbulent shift, and **strict causality** (appending *or*
+  perturbing future data leaves emitted rows bit-identical; rv_21 at t matches
+  the trailing-21 std). black/flake8 clean.
 
 #### QR3.2 Gaussian HMM (fit causally)
 - Fit a Gaussian HMM (`scikit-learn`/`hmmlearn`) with `K` states. **States

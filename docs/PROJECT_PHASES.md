@@ -624,7 +624,7 @@ and overfit easily, so don't expect added return; what they reliably do is
 **cut drawdown**, lifting Sharpe by shrinking the denominator — a legitimate
 gain, correctly attributed.
 
-- **14.1 Causal regime features (QR3.1).** Rolling realized vol, spread
+- **14.1 Causal regime features ✅ (QR3.1, done 2026-07-07).** Rolling realized vol, spread
   expansion, volume profile — all strictly as-of, with a no-look-ahead test.
 - **14.2 Gaussian HMM, fit causally (QR3.2).** States discovered then labeled
   by inspection (sorted by emission variance); the "crash" state may or may

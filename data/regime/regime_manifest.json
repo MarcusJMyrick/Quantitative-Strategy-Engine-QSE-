@@ -1,0 +1,24 @@
+{
+  "generated": "2026-07-07",
+  "market_proxy": "SPY",
+  "features": [
+    "rv_21",
+    "rv_5",
+    "vov_21",
+    "range_5",
+    "vol_ratio_63"
+  ],
+  "windows": {
+    "rv_fast": 5,
+    "rv_slow": 21,
+    "vov_window": 21,
+    "range_window": 5,
+    "volume_window": 63
+  },
+  "rows": 1431,
+  "span": [
+    "2020-10-22",
+    "2026-07-07"
+  ],
+  "as_of_alignment": "Every feature at date t is a trailing-window statistic using only rows <= t; warm-up rows are dropped. The HMM (QR3.2) must consume the filtered feature at t and act no earlier than t+1."
+}

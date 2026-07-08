@@ -1,0 +1,25 @@
+{
+  "generated": "2026-07-07",
+  "n_states": 3,
+  "warmup": 252,
+  "refit_every": 63,
+  "seed": 0,
+  "rows": 1180,
+  "span": [
+    "2021-10-21",
+    "2026-07-07"
+  ],
+  "state_labeling": "sorted ascending by rv_21 emission mean: 0 = calmest, K-1 = most turbulent",
+  "occupancy": {
+    "0": 0.4254,
+    "1": 0.3517,
+    "2": 0.2229
+  },
+  "mean_rv_21_by_state": {
+    "0": 0.1085,
+    "1": 0.1715,
+    "2": 0.2278
+  },
+  "as_of_alignment": "state at t uses an HMM refit on data <= t and the FILTERED posterior P(s_t | y_1..y_t); no future data. Consumers act at >= t+1.",
+  "note": "States are discovered then labelled by vol; a distinct 'crash' state emerges only if the data supports it \u2014 reported, not assumed."
+}

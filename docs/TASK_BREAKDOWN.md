@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 complete; QR-P3 started 2026-07-07 with QR3.1 causal regime features (SPY, 5 trailing-window features, strict as-of). Next: QR3.2 Gaussian HMM |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 complete; QR-P3 underway (QR3.1 features + QR3.2 causal Gaussian HMM, 2026-07-08). SPY regimes: calm/elevated/turbulent (no distinct crash state); filtered + expanding-window, no look-ahead. Next: QR3.3 anti-whipsaw |
 
 ---
 
@@ -623,17 +623,28 @@ Sharpe by shrinking the denominator. Risk management, correctly attributed.*
   perturbing future data leaves emitted rows bit-identical; rv_21 at t matches
   the trailing-21 std). black/flake8 clean.
 
-#### QR3.2 Gaussian HMM (fit causally)
-- Fit a Gaussian HMM (`scikit-learn`/`hmmlearn`) with `K` states. **States
-  are discovered, then labeled by inspection** (sort by emission variance →
-  "low / high / crash"); you don't get to name them a priori, and the "crash"
-  state may or may not emerge — report honestly.
-- **Correctness trap (the sophistication point):** for any live/backtest use,
-  use **filtered** state probabilities (info up to `t`) — Viterbi/**smoothed**
-  states use the *whole* series and are a look-ahead bug. Fit on a
-  rolling/expanding window, never once over all history.
-- **Done when:** a test asserts the live state at `t` is unchanged when
-  future data is appended (i.e. it's genuinely filtered, not smoothed).
+#### QR3.2 ✅ Gaussian HMM (fit causally) (done 2026-07-08)
+- Landed as `scripts/research/regime/regime_hmm.py`: a diagonal-covariance
+  Gaussian HMM in **pure numpy** (Baum-Welch EM + a separate log-space forward
+  filter), no hmmlearn/sklearn — specifically so the filtered-vs-smoothed
+  distinction is explicit. States discovered by EM, labelled by rv_21 emission
+  mean (0 calm … K−1 turbulent). **Both look-ahead traps avoided:** filtered
+  posterior `P(sₜ|y₁..yₜ)` (not the smoothed/Viterbi whole-series inference),
+  AND an expanding-window refit (model params only ever see data ≤ t), with
+  per-refit frozen standardization. Segment-based filtering keeps the real
+  build ~9s.
+- Result on SPY (3 states, 1,180 days): cleanly vol-ordered **calm (rv 10.9%,
+  43%) / elevated (17.2%, 35%) / turbulent (22.8%, 22%)**. Honest finding — a
+  distinct "crash" state did **not** separate (state 2 is turbulent, not a 40%+
+  crash cluster). April 2025 selloff = 21/21 turbulent. States flip-flop between
+  adjacent regimes → motivates QR3.3. Committed plot + manifest.
+- **Done when — verified:** 8 pytest cases, centered on the operational test —
+  **the live state at t is unchanged when future data is appended** (states +
+  filtered probs bit-identical on the overlap of a prefix vs full run). Plus:
+  the forward filter ignoring t+1, filtered ≠ smoothed on overlapping regimes,
+  regime recovery (checked only where the model has seen both regimes — causal
+  detection lags onset), vol-ordered labels, normalized probs, seed determinism.
+  black/flake8 clean.
 
 #### QR3.3 Anti-whipsaw
 - Regimes flip-flopping cause turnover. Add a minimum dwell time / hysteresis

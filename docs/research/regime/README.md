@@ -60,8 +60,63 @@ venv/bin/python -m pytest tests/python/test_regime_features.py -q
 Outputs: `data/regime/regime_features.parquet`, `data/regime/regime_manifest.json`,
 and the committed plot above.
 
-## QR3.2 — Gaussian HMM (filtered, no look-ahead) — *next*
+## QR3.2 — Gaussian HMM, fit causally ✅
 
-## QR3.3 — Anti-whipsaw — *pending*
+[`scripts/research/regime/regime_hmm.py`](../../../scripts/research/regime/regime_hmm.py)
+(verified by `tests/python/test_regime_hmm.py`, 8 cases). A diagonal-covariance
+Gaussian HMM clusters the QR3.1 features into K states, **discovered** by EM then
+**labelled by vol** (sorted by the rv_21 emission mean → 0 calm … K−1
+turbulent). Implemented in pure numpy — no hmmlearn/sklearn — specifically so
+the filtered-vs-smoothed distinction is explicit, not hidden behind a library
+call.
+
+**The sophistication point — two look-ahead traps, both avoided:**
+
+1. **Smoothed vs filtered inference.** `hmmlearn`'s `predict` / `predict_proba`
+   return the Viterbi path / smoothed posterior `P(sₜ | y₁..y_T)`, which use the
+   *whole* series — a look-ahead bug. The live quantity is the **filtered**
+   posterior `P(sₜ | y₁..yₜ)` from the forward pass alone. We compute it
+   ourselves (`forward_filter`).
+2. **The model parameters themselves.** Fitting one HMM over all history and
+   then filtering *still* leaks — the means/covariances/transitions saw the
+   future. So the state series is produced on an **expanding window**: refit
+   only on data ≤ t (periodically, for cost), standardization frozen at each
+   refit, filtered state at t from observations ≤ t.
+
+The done-when is the operational test of both: **the live state at t is
+unchanged when future data is appended** — a prefix run and a full run agree
+bit-for-bit on their overlap.
+
+### Result on SPY (3 states, 1,180 days from 2021-10)
+
+![Filtered HMM regime states on SPY realized vol](regime_states.png)
+
+Three states emerge, cleanly vol-ordered — **calm (mean rv 10.9%, 43% of days) /
+elevated (17.2%, 35%) / turbulent (22.8%, 22%)**. Honest reporting per the
+brief: a *distinct* "crash" state did **not** separate out (state 2 is
+"turbulent" at 23%, not a 40%+ crash cluster) — the data over this window
+supports calm/elevated/turbulent, not calm/high/crash. The classification tracks
+the tape: the April 2025 selloff (rv 0.49) is 21/21 days turbulent; the 2023–24
+grind is mostly calm. The states also **flip-flop between adjacent regimes** —
+which is exactly the turnover problem QR3.3's anti-whipsaw dwell time addresses.
+
+**Verified (the done-when):** 8 pytest cases — the future-append invariance
+(states + filtered probs bit-identical on the overlap), the forward filter
+ignoring t+1, filtered genuinely differing from a smoothed pass on overlapping
+regimes, recovery of a calm→turbulent→calm world (checked only where the model
+has seen both regimes — causal detection *lags* onset, honestly), vol-ordered
+labels, normalized probabilities, and seed determinism.
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/regime/regime_hmm.py   # reads regime_features.parquet (~9s)
+venv/bin/python -m pytest tests/python/test_regime_hmm.py -q
+```
+
+Outputs: `data/regime/regime_states.parquet` (date, state, p_state_0..K-1),
+`data/regime/regime_hmm_manifest.json`, and the committed plot above.
+
+## QR3.3 — Anti-whipsaw — *next*
 
 ## QR3.4 — Integrate with the A5 λ — *pending*

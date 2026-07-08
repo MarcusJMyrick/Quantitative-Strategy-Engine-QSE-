@@ -45,6 +45,32 @@ toxicity/execution-timing signal, not an "OFI predicts price" alpha — see
 ./build/run_tests --gtest_filter='OFITest.*'
 ```
 
-## QR1.2 — VPIN engine — *next*
+## QR1.2 — VPIN engine ✅
 
-## QR1.3 — Toxicity filter in `OrderManager` — *pending*
+[`include/qse/microstructure/VPINCalculator.h`](../../../include/qse/microstructure/VPINCalculator.h)
+(header-only; verified by `tests/cpp/VPINTest.cpp`, 9 gtests). Volume-synchronized
+Probability of Informed Trading (Easley-López de Prado-O'Hara 2012) — toxicity
+of order flow measured in *volume* time:
+
+1. **Equal-volume buckets** — trades accumulate into buckets of exactly
+   `bucket_volume` shares; a large trade is split across buckets.
+2. **Bulk-volume classification** — the price change between consecutive bucket
+   closes is standardized and pushed through the normal CDF: `V_buy = V·Φ(ΔP/σ)`,
+   `V_sell = V − V_buy`.
+3. **VPIN** = mean over the last `num_buckets` buckets of `|V_buy − V_sell| / V`
+   = mean of `|2·Φ(ΔP/σ) − 1|`.
+
+σ (the volatility of bucketed price changes) is estimated causally as the
+expanding sample std of ΔP, or a `fixed_sigma` may be supplied. Balanced flow
+(ΔP ≈ 0) → VPIN ≈ 0; one-sided flow (large |ΔP|/σ) → VPIN ≈ 1. `Φ` uses `erfc`
+for tail accuracy; the static `buy_fraction` / `order_imbalance` are exposed for
+reuse.
+
+**Verified (the done-when):** VPIN on a synthetic volume series with a known
+buy/sell split — alternating ±1σ closes give VPIN = `|2Φ(1) − 1|` ≈ 0.683 exactly
+(fixed σ) and within tolerance under the estimated-σ path. Plus: normal-CDF
+values, buy-fraction/imbalance (incl. σ ≤ 0 → balanced), equal-volume bucketing
+with trade splitting, balanced-flow → 0, one-sided-flow → ~1, not-ready-until-n,
+and reset.
+
+## QR1.3 — Toxicity filter in `OrderManager` — *next*

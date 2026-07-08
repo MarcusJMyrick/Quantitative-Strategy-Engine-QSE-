@@ -169,6 +169,7 @@ add_executable(run_tests
     tests/cpp/MeanVarianceTest.cpp
     tests/cpp/RegimeLambdaTest.cpp
     tests/cpp/OFITest.cpp
+    tests/cpp/VPINTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp

@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 + QR-P3 complete; QR-P4 underway (QR-Data settled + QR1.1 OFI engine, 2026-07-08): OFI/VPIN as execution filter on L1 depth, not price alpha. Next: QR1.2 VPIN engine |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 + QR-P3 complete; QR-P4 underway (QR-Data + QR1.1 OFI + QR1.2 VPIN, 2026-07-08): microstructure toxicity signals as execution filters on L1 depth, not price alpha. Next: QR1.3 toxicity filter in OrderManager |
 
 ---
 
@@ -729,12 +729,20 @@ and the A/B audit decides whether it earns its place.*
   eviction, first-snapshot-no-event, and reset. 270/270 ctest;
   clang-format/black/flake8 clean. Research doc: docs/research/execution/.
 
-#### QR1.2 VPIN engine
-- Equal-**volume** buckets; bulk-volume classification (standardized price
-  change through the normal CDF splits each bucket into buy/sell volume);
-  `VPIN = mean over n buckets of |V_buy − V_sell| / V`.
-- **Done when:** a `gtest` computes VPIN on a synthetic volume series with
-  known buy/sell split within tolerance.
+#### QR1.2 ✅ VPIN engine (done 2026-07-08)
+- Landed as `include/qse/microstructure/VPINCalculator.h` (header-only):
+  Easley-López de Prado-O'Hara VPIN in volume time — equal-volume buckets (a
+  large trade split across buckets) → bulk-volume classification (`V_buy =
+  V·Φ(ΔP/σ)` via the normal CDF, `Φ` from `erfc` for tail accuracy) → `VPIN =
+  mean over n buckets of |V_buy − V_sell|/V = mean|2Φ(ΔP/σ)−1|`. σ estimated
+  causally as the expanding std of ΔP, or a `fixed_sigma` for determinism.
+  Balanced flow → VPIN ≈ 0, one-sided → ≈ 1.
+- **Done when — verified:** 9 `VPINTest` gtests — VPIN on a synthetic volume
+  series with a **known buy/sell split** (alternating ±1σ closes → VPIN =
+  |2Φ(1)−1| ≈ 0.683 exactly with fixed σ, and within tolerance under estimated
+  σ). Plus normal-CDF values, buy-fraction/imbalance (incl. σ≤0 → balanced),
+  equal-volume bucketing + trade splitting, balanced→0, one-sided→~1,
+  not-ready-until-n, reset. 279/279 ctest; clang-format/black/flake8 clean.
 
 #### QR1.3 Toxicity filter in `OrderManager`
 - `OrderManager` reads OFI/VPIN state and **delays crossing the spread**

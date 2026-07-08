@@ -663,7 +663,7 @@ path is REST polling at hundreds of ms. As an execution-timing filter in
   §1 (which now also consolidates the project's other honest caveats).
 - **15.1 OFI engine ✅ (QR1.1, done 2026-07-08).** Order-flow imbalance from conditional bid/ask
   size changes per tick interval, gtest-verified on a hand-built sequence.
-- **15.2 VPIN engine (QR1.2).** Equal-volume buckets, bulk-volume
+- **15.2 VPIN engine ✅ (QR1.2, done 2026-07-08).** Equal-volume buckets, bulk-volume
   classification through the normal CDF, rolling mean of the buy/sell volume
   imbalance.
 - **15.3 Toxicity filter in `OrderManager` (QR1.3).** Delay crossing the

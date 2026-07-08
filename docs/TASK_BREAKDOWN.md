@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 + QR-P3 complete; QR-P4 started 2026-07-08 with QR-Data (depth-data fork settled: L1-reconstructed → OFI/VPIN as execution filter, not price alpha; thesis limitations §1). Next: QR1.1 OFI engine |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 + QR-P3 complete; QR-P4 underway (QR-Data settled + QR1.1 OFI engine, 2026-07-08): OFI/VPIN as execution filter on L1 depth, not price alpha. Next: QR1.2 VPIN engine |
 
 ---
 
@@ -714,12 +714,20 @@ and the A/B audit decides whether it earns its place.*
   consolidates the previously-scattered caveats: reconstructed depth, IEX-partial
   feed, survivorship, dividend gaps, regime coverage, provisional Sharpes).
 
-#### QR1.1 OFI engine
-- Per tick interval, `OFI_t = ΔV_bid,t − ΔV_ask,t` with the conditional
-  bid/ask size changes from the original spec (add to size on favorable price
-  move, subtract prior size on adverse move, else the delta).
-- **Done when:** a `gtest` reproduces OFI on a hand-built tick sequence with
-  known level changes.
+#### QR1.1 ✅ OFI engine (done 2026-07-08)
+- Landed as `include/qse/microstructure/OFICalculator.h` (header-only): the
+  Cont-Kukanov-Stoikov Order Flow Imbalance on L1 quotes. Per event
+  `OFI = ΔV_bid − ΔV_ask` with the conditional contributions — bid up → +new
+  size, bid down → −prior size, flat → Δ (symmetric on the ask: up → +prior
+  size, down → −new size). Sizes cast to double before differencing so the
+  unsigned `Volume` (uint64) never underflows. Keeps a rolling-window sum for
+  the live `OrderManager` filter (QR1.3); `event_ofi(...)` is a pure static.
+- **Done when — verified:** 11 `OFITest` gtests — a hand-built tick sequence
+  with known level changes reproduces the per-event OFI and the running sum;
+  each of the six price-move cases (bid/ask × up/down/flat) in isolation, plus
+  shrinking-size (no unsigned underflow), a combined bullish event, rolling
+  eviction, first-snapshot-no-event, and reset. 270/270 ctest;
+  clang-format/black/flake8 clean. Research doc: docs/research/execution/.
 
 #### QR1.2 VPIN engine
 - Equal-**volume** buckets; bulk-volume classification (standardized price

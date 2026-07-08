@@ -591,7 +591,7 @@ strategy that survives correction for having tried 400 variants."
 - **13.2 Combinatorial paths ✅ (QR2.2, done 2026-07-07).** N blocks, k test → C(N,k) splits,
   recombined into C(N−1,k−1) complete out-of-sample equity curves — a
   *distribution* of Sharpes, not a point estimate.
-- **13.3 Trial registry (QR2.3).** Every backtest variation logs params
+- **13.3 Trial registry ✅ (QR2.3, done 2026-07-07).** Every backtest variation logs params
   **and its return series**; the DSR is only meaningful if trial count and
   dispersion are real.
 - **13.4 PSR → DSR (QR2.4).** The Probabilistic Sharpe Ratio (accounts for

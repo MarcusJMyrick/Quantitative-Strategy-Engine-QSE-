@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3
 
 ---
 
@@ -550,13 +550,18 @@ first.*
   the real QR4 series (n=1,432, N=6, k=2, 1% embargo): 15 splits, 5 paths, every
   bar tested 5×, mean train 933/1,432. black/flake8 clean.
 
-#### QR2.3 Trial registry
-- Every backtest variation (each s-score threshold set, window length, factor
-  count, etc.) logs its params **and its return series** to a registry, so
-  the variance of Sharpe across trials is computable. This is infrastructure
-  — the DSR is only meaningful if trial count and dispersion are real.
-- **Done when:** running a parameter sweep populates a registry directory; a
-  loader reconstructs `{params → return series}` for all trials.
+#### QR2.3 ✅ Trial registry (done 2026-07-07)
+- Landed as `scripts/research/validation/trial_registry.py`: every configuration
+  tried logs its params **and** its return series under `root/` as
+  `<id>.params.json` + `<id>.returns.parquet`. `trial_id` is a content hash of
+  the canonical params, so re-logging identical params is **idempotent** (never
+  inflates the count — a phantom trial would over-deflate the DSR). `run_sweep`
+  drives a param grid; `load_all` / `sharpes()` reconstruct `{params → returns}`
+  and `{id → Sharpe}` — the dispersion input QR2.4 needs.
+- **Done when — verified:** 7 pytest cases — a 6-point sweep populates the
+  registry and the loader reconstructs every trial's params + return series
+  exactly (datetime index round-trips through parquet); identical params keep
+  the count at 1; distinct params are distinct. black/flake8 clean.
 
 #### QR2.4 PSR → DSR
 - **PSR** (Probabilistic Sharpe Ratio), the building block:

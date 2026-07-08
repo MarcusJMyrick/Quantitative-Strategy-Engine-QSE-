@@ -60,10 +60,25 @@ bites at block boundaries under multi-bar labels. On the real QR4 series
 (n=1,432, N=6, k=2, 1% embargo): 15 splits, 5 paths, every bar tested exactly
 5×, mean training set 933/1,432 bars after purge+embargo.
 
-## QR2.3 — Trial registry — *next*
+## QR2.3 — Trial registry ✅
 
-## QR2.3 — Trial registry — *pending*
+[`scripts/research/validation/trial_registry.py`](../../../scripts/research/validation/trial_registry.py)
+(verified by `tests/python/test_trial_registry.py`, 7 cases). The DSR is only
+honest if the trial count and Sharpe dispersion are *real*, so every
+configuration tried logs its params **and** its realized return series. Each
+trial is stored self-describingly under `root/`: `<id>.params.json` (params +
+n + a convenience Sharpe) and `<id>.returns.parquet` (the series, index
+preserved). `trial_id` is a content hash of the canonical params, so re-logging
+the same configuration is **idempotent** — it overwrites in place rather than
+inflating the count, which matters because a phantom trial would *over*-deflate
+the DSR. `run_sweep` iterates a param grid and logs each; `load_all` and
+`sharpes()` reconstruct `{params → returns}` and `{id → Sharpe}` for QR2.4.
 
-## QR2.4 — PSR → Deflated Sharpe — *pending*
+**Verified (the done-when):** a 6-point parameter sweep populates the registry
+directory, and the loader reconstructs every trial's params and return series
+exactly (datetime index round-trips through parquet). Re-logging identical
+params keeps the count at 1; distinct params are distinct trials.
+
+## QR2.4 — PSR → Deflated Sharpe — *next*
 
 ## QR2.5 — Wire QR4 through it (DSR on the tearsheet) — *pending*

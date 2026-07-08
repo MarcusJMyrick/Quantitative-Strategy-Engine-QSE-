@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1 + QR-P2 + QR-P3 complete** 2026-07-08. Regime overlay: causal HMM (calm/elevated/turbulent) → debounce (81→28 switches) → A5 λ [0,5,50], turbulent regime provably lowers variance + gross. Next: QR-P4 OFI/VPIN |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 + QR-P3 complete; QR-P4 started 2026-07-08 with QR-Data (depth-data fork settled: L1-reconstructed → OFI/VPIN as execution filter, not price alpha; thesis limitations §1). Next: QR1.1 OFI engine |
 
 ---
 
@@ -695,14 +695,24 @@ REST polling at hundreds of ms — the signal is gone before we act. As a
 toxicity filter in `OrderManager` it plays straight to the systems strength,
 and the A/B audit decides whether it earns its place.*
 
-#### QR-Data Settle the depth-data fork *first*
-- Decide before building: stay on **L1-reconstructed** depth (honest result:
-  *"an approximate toxicity filter improves fills in simulation"* — valid,
-  but not "OFI predicts price"), or source real MBO/depth (**Databento MBO**,
-  **IEX DEEP**) for a genuine OFI result. Document the choice as a stated
-  limitation either way.
-- **Done when:** the data decision + its honesty caveat is written into the
-  thesis limitations section.
+#### QR-Data ✅ Settle the depth-data fork *first* (done 2026-07-08)
+- **Decision: stay on L1-reconstructed depth.** Rationale — (1) data reality:
+  the only inputs are L1 trade prints + daily OHLCV, no quote/depth feed, and
+  the engine walks *reconstructed* depth (validated in aggregate against the A4
+  square-root impact law); (2) latency reality: even with real MBO the OFI edge
+  decays in seconds while the fill path is REST at 100s of ms, so OFI-as-alpha
+  isn't executable here regardless; (3) cost/scope: real MBO (Databento/IEX
+  DEEP) is a paid, heavy ingestion dependency out of scope for an
+  execution-realism thesis.
+- **Consequence (the caveat):** QR-P4 scopes OFI/VPIN as an execution-timing /
+  toxicity filter in `OrderManager`, judged only by whether it improves fills
+  in the A/B audit — **not** a standalone alpha. We can claim *"an approximate
+  toxicity filter on L1 depth does/doesn't improve simulated fills"*, not *"OFI
+  predicts returns."* Databento/IEX DEEP recorded as future work.
+- **Done when — verified:** the decision + its honesty caveat are written into
+  the thesis limitations section, `docs/thesis/limitations.md` §1 (which also
+  consolidates the previously-scattered caveats: reconstructed depth, IEX-partial
+  feed, survivorship, dividend gaps, regime coverage, provisional Sharpes).
 
 #### QR1.1 OFI engine
 - Per tick interval, `OFI_t = ΔV_bid,t − ΔV_ask,t` with the conditional

@@ -653,11 +653,14 @@ faithful OFI needs real L2/L3 depth updates and this system's depth is
 path is REST polling at hundreds of ms. As an execution-timing filter in
 `OrderManager`, it plays straight to the systems strength.
 
-- **15.0 The depth-data fork, settled first (QR-Data).** Stay on
-  L1-reconstructed depth (honest result: "an approximate toxicity filter
-  improves fills in simulation") or source real MBO/depth (Databento MBO,
-  IEX DEEP) for a genuine OFI result — the choice and its honesty caveat go
-  into the thesis limitations section either way.
+- **15.0 The depth-data fork, settled first ✅ (QR-Data, done 2026-07-08).**
+  **Decided: stay on L1-reconstructed depth** — the only inputs are L1 trade
+  prints + daily OHLCV (no quote/depth feed), the OFI edge decays in seconds
+  vs a 100s-of-ms REST fill path, and real MBO is out of scope. Consequence:
+  OFI/VPIN are scoped as an execution-timing / toxicity filter judged by fill
+  improvement in the A/B audit, **not** a standalone "OFI predicts price"
+  alpha. The decision and caveat are written into `docs/thesis/limitations.md`
+  §1 (which now also consolidates the project's other honest caveats).
 - **15.1 OFI engine (QR1.1).** Order-flow imbalance from conditional bid/ask
   size changes per tick interval, gtest-verified on a hand-built sequence.
 - **15.2 VPIN engine (QR1.2).** Equal-volume buckets, bulk-volume

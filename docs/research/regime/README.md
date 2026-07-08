@@ -162,4 +162,50 @@ venv/bin/python -m pytest tests/python/test_regime_debounce.py -q
 Outputs: `data/regime/regime_committed.parquet` (QR3.2 columns + `committed_state`),
 `data/regime/regime_debounce_manifest.json`, and the committed plot above.
 
-## QR3.4 — Integrate with the A5 λ — *next*
+## QR3.4 — Integrate with the A5 λ ✅
+
+[`include/qse/factor/RegimeLambda.h`](../../../include/qse/factor/RegimeLambda.h)
+(verified by `tests/cpp/RegimeLambdaTest.cpp`, 5 gtests). The overlay's payoff:
+the committed regime (QR3.3) selects the A5 mean-variance **λ**. `RegimeLambda`
+loads a YAML `regime_lambda` sequence (indexed by state) and its `apply(config,
+state)` returns a `PortfolioBuilder` config with `risk_aversion` set to that
+regime's λ — a turbulent regime gets a larger λ, so `−λ/2·wᵀΣw` dominates and the
+optimizer moves to a minimum-variance / lower-gross posture. The map is in
+[`config/regime_lambda.yaml`](../../../config/regime_lambda.yaml)
+(`[0, 5, 50]` for calm/elevated/turbulent — starting-point knobs QR-P2 protects).
+
+**Verified (the done-when):** the gtest injects a regime change via the YAML map
+and confirms the C++ engine reacts — switching calm (λ=0) → turbulent (λ=50)
+**lowers the optimized portfolio's variance** (and tilts toward the low-vol
+names), and on a factor-exposed book **scales gross exposure down** via the
+market-variance channel. Plus: YAML load + state mapping (with clamping), reject
+empty/negative, and `apply` changing only λ.
+
+### The regime overlay end to end
+
+![SPY equity curve colored by committed HMM regime](spy_regime_equity.png)
+
+The notebook [`regime_overlay.ipynb`](regime_overlay.ipynb) plots the SPY equity
+curve colored by committed regime → the λ the overlay applies. Turbulent days
+(λ=50, red) cluster in the drawdowns — the 2022 bear bottom and the April 2025
+selloff — which is exactly where the overlay pushes the book toward minimum
+variance. Regime occupancy over 1,180 days: calm 44% (525 days, λ=0) / elevated
+33% (385, λ=5) / turbulent 23% (270, λ=50).
+
+**This is risk control, not alpha** — the honest expectation for a regime model
+(QR-P3's whole framing): it won't add return, it de-risks into turbulence to cut
+drawdown, lifting Sharpe by shrinking the denominator.
+
+### Reproduce
+
+```bash
+./build/run_tests --gtest_filter='RegimeLambdaTest.*'
+jupyter nbconvert --to notebook --execute docs/research/regime/regime_overlay.ipynb  # (F2 tooling)
+```
+
+## QR-P3 complete
+
+Features (QR3.1) → causal filtered HMM (QR3.2) → debounced committed regime
+(QR3.3) → A5 λ (QR3.4). Regime models treated as risk control, an unsupervised
+ML model wired into a live risk parameter, and the look-ahead trap avoided at
+every step.

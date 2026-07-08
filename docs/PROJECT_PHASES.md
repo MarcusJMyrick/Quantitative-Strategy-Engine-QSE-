@@ -615,7 +615,7 @@ avoid it. This is the section a skeptical PM checks first.
 track reports (including the QR-P4/P5 layers still to come) can now be deflated
 for the search that produced it.
 
-## Phase 14 — Risk Architecture: HMM Regime Overlay ⏳ (QR-P3)
+## Phase 14 — Risk Architecture: HMM Regime Overlay ✅ (QR-P3)
 
 **Goal:** detect volatility regime shifts and de-risk into them — the overlay
 scales the A5 risk-aversion λ toward minimum-variance when the market turns.
@@ -635,7 +635,7 @@ gain, correctly attributed.
   does not change the state at t.
 - **14.3 Anti-whipsaw ✅ (QR3.3, done 2026-07-08).** Minimum dwell time / hysteresis so λ only
   moves on persistent state changes.
-- **14.4 Integration with A5 λ (QR3.4).** State → λ mapping in YAML; a gtest
+- **14.4 Integration with A5 λ ✅ (QR3.4, done 2026-07-08).** State → λ mapping in YAML; a gtest
   confirms a state change forces the C++ engine toward min-variance / lower
   gross; a notebook plots the SPY equity curve colored by regime.
 
@@ -736,6 +736,6 @@ question, judged under CPCV like everything else.
 | QR4 vs reversal/momentum baselines | ✅ momentum 0.84 > stat arb 0.69 > reversal −0.71 net of costs | docs/research/statarb |
 | DSR of chosen QR4 config | ✅ DSR 0.61, deflated for N=12 trials (cost-free) | docs/research/statarb/qr4_dsr_summary.md |
 | CPCV multiple-testing penalty | ✅ 100 noise variants: PSR(0) 0.99 → DSR 0.47 | docs/research/validation |
-| HMM drawdown reduction | max-DD down in high-vol states | docs/research/regime |
+| HMM regime overlay | ✅ causal filtered HMM (calm/elevated/turbulent) → debounce (81→28 switches) → A5 λ; turbulent regime provably lowers portfolio variance + gross (gtest) | docs/research/regime |
 | OFI/VPIN filter | measurable slippage reduction vs blind market order | ab_audit |
 | Meta-layer | meta-on vs meta-off DSR under Engine B | docs/research/statarb |

@@ -1,0 +1,22 @@
+# QR3.4 — regime → A5 risk-aversion λ map.
+#
+# Indexed by the committed regime state from the QR3.2 HMM + QR3.3 debounce
+# (0 = calm … K-1 = turbulent, sorted by realized vol). A more turbulent regime
+# selects a larger λ, so PortfolioBuilder's mean-variance term -λ/2·wᵀΣw pulls
+# the book toward a minimum-variance / lower-gross posture. Consumed by
+# qse::RegimeLambda (include/qse/factor/RegimeLambda.h).
+#
+# Convention: λ non-decreasing in state. Values are starting points — like the
+# QR4 s-score bands, they are search knobs QR-P2's Deflated Sharpe must protect.
+regime_lambda: [0.0, 5.0, 50.0]   # calm / elevated / turbulent
+
+# The base portfolio-optimizer config the regime λ is applied on top of.
+portfolio_optimizer:
+    gamma: 0.01
+    gross_cap: 2.0
+    beta_target: 0.0
+    beta_tolerance: 1.0e-6
+    max_iterations: 1000
+    convergence_tol: 1.0e-6
+    risk_aversion: 0.0       # overwritten per-bar by regime_lambda[committed_state]
+    market_variance: 0.04    # σ_m² ≈ (20%)²

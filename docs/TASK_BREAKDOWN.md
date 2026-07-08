@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**)
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 complete; QR-P3 underway (QR3.1 features + QR3.2 causal HMM + QR3.3 anti-whipsaw, 2026-07-08). SPY regimes calm/elevated/turbulent (no distinct crash state), filtered + expanding-window; debounce cuts 81→28 switches. Next: QR3.4 integrate with A5 λ |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1 + QR-P2 + QR-P3 complete** 2026-07-08. Regime overlay: causal HMM (calm/elevated/turbulent) → debounce (81→28 switches) → A5 λ [0,5,50], turbulent regime provably lowers variance + gross. Next: QR-P4 OFI/VPIN |
 
 ---
 
@@ -663,13 +663,28 @@ Sharpe by shrinking the denominator. Risk management, correctly attributed.*
   transitions, probability-floor hysteresis, streaming causality (prefix vs full
   agree), and switch reduction on noisy input. black/flake8 clean.
 
-#### QR3.4 Integrate with A5 `λ`
-- Map state → `λ` in the YAML config (high-vol/crash → larger `λ` →
-  PortfolioBuilder drives toward min-variance weights and lower gross).
-- **Done when:** a `gtest` confirms a state-change YAML injection forces the
-  C++ engine to scale down gross exposure / shift to a minimum-variance
-  posture; a Jupyter notebook plots the SPY equity curve colored by HMM
-  state.
+#### QR3.4 ✅ Integrate with A5 `λ` (done 2026-07-08)
+- Landed as `include/qse/factor/RegimeLambda.h` (header-only) + sample
+  `config/regime_lambda.yaml`. The committed regime (QR3.3) selects the A5 λ:
+  `RegimeLambda` loads a YAML `regime_lambda` sequence (state → λ) and its
+  `apply(config, state)` returns a `PortfolioBuilder` config with
+  `risk_aversion` set to that regime's λ, so a turbulent regime → larger λ →
+  `−λ/2·wᵀΣw` dominates → min-variance / lower-gross posture. Map `[0, 5, 50]`
+  (calm/elevated/turbulent).
+- **Done when — verified both halves:** 5 gtest `RegimeLambdaTest` cases — a
+  state-change YAML injection forces the engine to **lower portfolio variance**
+  (calm λ=0 → turbulent λ=50) *and* **scale gross down** on a factor-exposed
+  book (market-variance channel); plus YAML load/state-mapping with clamping,
+  reject empty/negative, apply-changes-only-λ. AND a Jupyter notebook
+  `docs/research/regime/regime_overlay.ipynb` plots the SPY equity curve colored
+  by committed HMM regime (turbulent days cluster in the 2022/2025 drawdowns —
+  exactly where the overlay de-risks). 259/259 ctest; clang-format/black/flake8
+  clean.
+
+**QR-P3 (Phase 14) complete** — features → causal filtered HMM → debounced
+committed regime → A5 λ. Regime treated as risk control (its real job), an
+unsupervised ML model wired into a live risk parameter, look-ahead avoided
+throughout.
 
 ### QR-P4 — Execution Intelligence: OFI / VPIN (QR1)
 

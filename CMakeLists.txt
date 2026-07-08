@@ -167,6 +167,7 @@ add_executable(run_tests
     tests/cpp/AlpacaExecutionHandlerTest.cpp
     tests/cpp/LiveEngineTest.cpp
     tests/cpp/MeanVarianceTest.cpp
+    tests/cpp/RegimeLambdaTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp

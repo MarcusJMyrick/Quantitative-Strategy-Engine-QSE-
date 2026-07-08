@@ -1,0 +1,15 @@
+{
+  "generated": "2026-07-08",
+  "min_dwell": 10,
+  "min_prob": 0.0,
+  "rows": 1180,
+  "raw_switches": 81,
+  "committed_switches": 28,
+  "switch_reduction_pct": 65.4,
+  "committed_occupancy": {
+    "0": 0.4449,
+    "1": 0.3263,
+    "2": 0.2288
+  },
+  "as_of_alignment": "committed_state[t] uses only raw states/probs at bars <= t (streaming confirmation); no future data. Consumers act at >= t+1."
+}

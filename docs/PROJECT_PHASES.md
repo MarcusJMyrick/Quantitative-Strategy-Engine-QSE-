@@ -633,7 +633,7 @@ gain, correctly attributed.
   see the whole series and are a look-ahead bug that silently inflates most
   published regime backtests. Verified by a test that appending future data
   does not change the state at t.
-- **14.3 Anti-whipsaw (QR3.3).** Minimum dwell time / hysteresis so λ only
+- **14.3 Anti-whipsaw ✅ (QR3.3, done 2026-07-08).** Minimum dwell time / hysteresis so λ only
   moves on persistent state changes.
 - **14.4 Integration with A5 λ (QR3.4).** State → λ mapping in YAML; a gtest
   confirms a state change forces the C++ engine toward min-variance / lower

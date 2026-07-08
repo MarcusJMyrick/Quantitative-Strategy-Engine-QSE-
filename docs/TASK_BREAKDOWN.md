@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 complete; QR-P3 underway (QR3.1 features + QR3.2 causal Gaussian HMM, 2026-07-08). SPY regimes: calm/elevated/turbulent (no distinct crash state); filtered + expanding-window, no look-ahead. Next: QR3.3 anti-whipsaw |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 complete; QR-P3 underway (QR3.1 features + QR3.2 causal HMM + QR3.3 anti-whipsaw, 2026-07-08). SPY regimes calm/elevated/turbulent (no distinct crash state), filtered + expanding-window; debounce cuts 81→28 switches. Next: QR3.4 integrate with A5 λ |
 
 ---
 
@@ -646,11 +646,22 @@ Sharpe by shrinking the denominator. Risk management, correctly attributed.*
   detection lags onset), vol-ordered labels, normalized probs, seed determinism.
   black/flake8 clean.
 
-#### QR3.3 Anti-whipsaw
-- Regimes flip-flopping cause turnover. Add a minimum dwell time / hysteresis
-  so `λ` only moves on a persistent state change.
-- **Done when:** a test shows a one-bar state blip does *not* trigger a `λ`
-  change; a sustained change does.
+#### QR3.3 ✅ Anti-whipsaw (done 2026-07-08)
+- Landed as `scripts/research/regime/regime_debounce.py`: an N-bar confirmation
+  (minimum dwell) with an optional filtered-probability floor (hysteresis). A
+  raw state becomes the **committed regime** only after persisting `min_dwell`
+  consecutive bars, each with filtered prob ≥ `min_prob`; a blip never confirms,
+  a sustained change does (lagging by min_dwell−1). Strictly streaming/causal —
+  `committed[t]` uses only bars ≤ t. Adds `committed_state` to the QR3.2 frame.
+- Result on SPY (min_dwell=10 ≈ 2 weeks): raw **81 switches → committed 28
+  (65% fewer)** over 1,180 days, occupancy preserved (44/33/23%); the genuine
+  regime edges survive. Smooth trade-off: dwell 5/10/21 → 37/65/89% fewer
+  switches. Committed plot + manifest.
+- **Done when — verified:** 12 pytest cases — a one-bar blip does **not** switch
+  the committed regime, a sustained change **does** (at exactly the dwell). Plus
+  alternating blips never confirm, min_dwell=1 identity, direct multi-state
+  transitions, probability-floor hysteresis, streaming causality (prefix vs full
+  agree), and switch reduction on noisy input. black/flake8 clean.
 
 #### QR3.4 Integrate with A5 `λ`
 - Map state → `λ` in the YAML config (high-vol/crash → larger `λ` →

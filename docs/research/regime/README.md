@@ -117,6 +117,49 @@ venv/bin/python -m pytest tests/python/test_regime_hmm.py -q
 Outputs: `data/regime/regime_states.parquet` (date, state, p_state_0..K-1),
 `data/regime/regime_hmm_manifest.json`, and the committed plot above.
 
-## QR3.3 — Anti-whipsaw — *next*
+## QR3.3 — Anti-whipsaw ✅
 
-## QR3.4 — Integrate with the A5 λ — *pending*
+[`scripts/research/regime/regime_debounce.py`](../../../scripts/research/regime/regime_debounce.py)
+(verified by `tests/python/test_regime_debounce.py`, 12 cases). The QR3.2 states
+flip-flop between adjacent regimes; feeding that straight into the A5 λ (QR3.4)
+would churn the book on noise. The debounce turns the raw state into a
+**committed regime** that only moves on a *persistent* shift.
+
+**The rule:** an N-bar confirmation (minimum dwell) with an optional filtered-
+probability floor (hysteresis). A new raw state becomes the committed regime
+only after it has been the argmax for `min_dwell` consecutive bars, each with
+filtered probability ≥ `min_prob`. A one-bar blip never reaches the count, so it
+cannot move λ; a sustained change does, after a `min_dwell`-bar lag — the
+deliberate cost of not whipsawing. Strictly **streaming/causal**:
+`committed[t]` uses only bars ≤ t, so appending future data never rewrites the
+past (tested).
+
+### Result on SPY (min_dwell = 10 ≈ 2 weeks)
+
+![Raw filtered state vs debounced committed regime](regime_debounce.png)
+
+The raw filtered state switches **81 times** over 1,180 days (~every 15 days —
+whipsawy); the committed regime switches **28 times (65% fewer)** while
+preserving occupancy (calm 44% / elevated 33% / turbulent 23%) and the genuine
+regime edges (2022 turbulence, the 2023 calming, the April 2025 turbulent
+block). The dwell/switch trade-off is smooth: min_dwell 5 → 37% fewer, 10 →
+65%, 21 → 89%.
+
+**Verified (the done-when):** a one-bar blip does **not** switch the committed
+regime, while a sustained change **does** (committing exactly when the run
+reaches `min_dwell`, lagging by min_dwell−1). Plus: alternating blips never
+confirm, min_dwell=1 is the identity, direct multi-state transitions, the
+probability-floor hysteresis (low-confidence bars don't confirm), streaming
+causality (prefix vs full agree), and the switch reduction on noisy input.
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/regime/regime_debounce.py --min-dwell 10
+venv/bin/python -m pytest tests/python/test_regime_debounce.py -q
+```
+
+Outputs: `data/regime/regime_committed.parquet` (QR3.2 columns + `committed_state`),
+`data/regime/regime_debounce_manifest.json`, and the committed plot above.
+
+## QR3.4 — Integrate with the A5 λ — *next*

@@ -692,7 +692,7 @@ predicting direction**, which is why it survives where return-prediction ML
 doesn't. Deliberately last: it is only trustworthy under purging/embargo, so
 it is gated behind Phase 13 by design.
 
-- **16.1 Triple-barrier labels (QR5.1).** Profit-take / stop / time-limit
+- **16.1 Triple-barrier labels ✅ (QR5.1, done 2026-07-09).** Profit-take / stop / time-limit
   barriers per entry signal; the meta-label is whether the primary bet would
   have been profitable.
 - **16.2 Sample uniqueness (QR5.2).** Overlapping label windows violate IID —

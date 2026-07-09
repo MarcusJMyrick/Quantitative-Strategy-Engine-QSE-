@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**)
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). Next: QR-P5 meta-labeling (the ML capstone) |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). QR-P5 started with QR5.1 triple-barrier labels (748 QR4 entries, ~50% win balance). Next: QR5.2 sample uniqueness |
 
 ---
 
@@ -776,13 +776,25 @@ predicting direction. Gated behind QR-P2 by design: it is only trustworthy
 under purging/embargo, reuses QR-P2's CPCV directly, and is judged by the
 same DSR.*
 
-#### QR5.1 Triple-barrier labels
-- For each QR4 entry signal, set an upper barrier (profit-take), lower
-  barrier (stop), and vertical barrier (time limit). Label = which is hit
-  first, framed as meta-labels: **1** if the primary (s-score) bet would have
-  been profitable, **0** otherwise.
-- **Done when:** `pytest` verifies barrier-touch labeling on hand-built price
-  paths (up-first, down-first, timeout).
+#### QR5.1 ✅ Triple-barrier labels (done 2026-07-09)
+- Landed as `scripts/research/meta/triple_barrier.py` (López de Prado, AFML
+  ch. 3): per QR4 entry (t0, price p0, side s) three barriers on the return in
+  the bet's direction `signed = s·(p/p0−1)` — profit-take (`signed ≥ pt` → label
+  1), stop (`signed ≤ −sl` → label 0), vertical (neither within `max_holding` →
+  label by sign at the horizon); first touch wins. The touch time t1 is the
+  observation's **information window** `[t0, t1]`, emitted as `t0_idx`/`t1_idx`
+  (via `label_windows`) so QR2.1 purge/embargo and QR5.2 sample uniqueness
+  consume it directly. `extract_entry_events` pulls opens + long↔short flips
+  from the QR4.5 positions.
+- Real-data check: 748 QR4 entries labeled (pt=sl=3%, 10-bar horizon) →
+  332 pt / 331 sl / 85 time, meta-label balance **0.497** (~50% wins), median
+  3-bar holding (matches the OU half-life). The near-even win rate is exactly
+  the motivation for meta-labeling. Committed distribution plot.
+- **Done when — verified:** 12 pytest cases — barrier-touch labeling on
+  hand-built paths (up-first → win, down-first → loss, timeout by sign), plus
+  short side, first-touch precedence, exact-threshold touch, horizon clamping,
+  invalid-param guards, entry-event extraction, and the info-window handoff.
+  black/flake8 clean.
 
 #### QR5.2 Sample uniqueness
 - Overlapping label windows violate IID. Weight samples by average uniqueness

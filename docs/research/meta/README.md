@@ -57,7 +57,39 @@ feeds it.
 venv/bin/python -m pytest tests/python/test_triple_barrier.py -q
 ```
 
-## QR5.2 — Sample uniqueness — *next*
+## QR5.2 — Sample uniqueness ✅
+
+[`scripts/research/meta/sample_uniqueness.py`](../../../scripts/research/meta/sample_uniqueness.py)
+(verified by `tests/python/test_sample_uniqueness.py`, 12 cases). The QR5.1
+label windows overlap — two entries a day apart, each held ten bars, share nine
+bars of outcome — so their labels are not IID and clusters of redundant samples
+would dominate training. The fix (López de Prado, AFML ch. 4):
+
+- **concurrency** `c_t` = number of label windows active at bar t
+- **average uniqueness** `ū_i` = mean over event i's span of `1/c_t` ∈ (0, 1] —
+  an isolated event has ū = 1; one buried in a cluster of k concurrent events
+  has ū ≈ 1/k
+
+`sample_weights` uses ū (optionally scaled by |return|, AFML's return
+attribution) as the classifier `sample_weight`, normalized to average 1.
+`sequential_bootstrap` is the complement — draw samples favoring those least
+overlapping with what's already drawn, for a more-diverse bootstrap.
+`weights_for_labels` wraps a QR5.1 labels frame, computing uniqueness within
+each name (cross-name same-time overlap is on different residual paths, so not
+concurrent).
+
+**On the real labels:** the 748 QR4 entries are mostly non-overlapping (mean
+uniqueness 0.984 → effective N ≈ 736/748, weights 0.44–1.02), so here it's a
+modest but principled correction — the s-score entries are sparse per name.
+
+**Verified (the done-when):** heavily-overlapping samples get lower weight than
+isolated ones (a triple-overlap cluster → ū = 1/3 each vs an isolated ū = 1).
+Plus concurrency counts, the unit-interval bound, identical/partial overlap,
+return-attribution scaling, normalization, the sequential bootstrap
+over-sampling the unique event (>25% vs uniform's 17%), and a regression for
+duplicate-index pooled frames.
+
+## QR5.3 — Meta-model under purged CV — *next*
 
 ## QR5.3 — Meta-model under purged CV — *pending*
 

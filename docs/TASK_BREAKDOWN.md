@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1 → QR5.2
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). QR-P5 started with QR5.1 triple-barrier labels (748 QR4 entries, ~50% win balance). Next: QR5.2 sample uniqueness |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). QR-P5 underway (QR5.1 triple-barrier labels + QR5.2 sample uniqueness, 2026-07-09): 748 QR4 entries, ~50% win balance, mostly unique (eff. N 736). Next: QR5.3 meta-model under purged CV |
 
 ---
 
@@ -796,12 +796,21 @@ same DSR.*
   invalid-param guards, entry-event extraction, and the info-window handoff.
   black/flake8 clean.
 
-#### QR5.2 Sample uniqueness
-- Overlapping label windows violate IID. Weight samples by average uniqueness
-  (concurrency-adjusted) and/or sequential bootstrap so overlapping events
-  don't dominate training.
-- **Done when:** a test shows heavily-overlapping samples receive lower
-  weight than isolated ones.
+#### QR5.2 ✅ Sample uniqueness (done 2026-07-09)
+- Landed as `scripts/research/meta/sample_uniqueness.py` (AFML ch. 4): from the
+  QR5.1 `[t0_idx, t1_idx]` windows — `concurrency` (windows active per bar),
+  `average_uniqueness` (mean of 1/c_t over an event's span ∈ (0,1]),
+  `sample_weights` (ū, optionally |return|-scaled, normalized to mean 1) as the
+  classifier weight, and `sequential_bootstrap` (draw favoring the least-
+  overlapping). `weights_for_labels` wraps the labels frame per name.
+- Real labels: the 748 entries are mostly non-overlapping (mean uniqueness
+  0.984 → effective N ≈ 736/748) — a modest but principled correction here.
+- **Done when — verified:** 12 pytest cases — heavily-overlapping samples get
+  lower weight than isolated ones (triple-overlap ū=1/3 vs isolated ū=1); plus
+  concurrency, the unit-interval bound, identical/partial overlap,
+  return-attribution scaling, normalization, sequential bootstrap over-sampling
+  the unique event, and a duplicate-index regression (a bug found on the pooled
+  multi-name frame). black/flake8 clean.
 
 #### QR5.3 Meta-model under purged CV
 - Train a classifier (start simple — logistic / gradient-boosted trees,

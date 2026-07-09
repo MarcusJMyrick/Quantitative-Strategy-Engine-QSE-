@@ -695,7 +695,7 @@ it is gated behind Phase 13 by design.
 - **16.1 Triple-barrier labels ✅ (QR5.1, done 2026-07-09).** Profit-take / stop / time-limit
   barriers per entry signal; the meta-label is whether the primary bet would
   have been profitable.
-- **16.2 Sample uniqueness (QR5.2).** Overlapping label windows violate IID —
+- **16.2 Sample uniqueness ✅ (QR5.2, done 2026-07-09).** Overlapping label windows violate IID —
   weight samples by average uniqueness / sequential bootstrap.
 - **16.3 Meta-model under purged CV (QR5.3).** Simple classifier (logistic /
   gradient-boosted trees, not a deep net) predicting P(profitable), validated

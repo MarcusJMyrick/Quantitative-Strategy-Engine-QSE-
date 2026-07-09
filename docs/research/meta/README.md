@@ -89,7 +89,50 @@ return-attribution scaling, normalization, the sequential bootstrap
 over-sampling the unique event (>25% vs uniform's 17%), and a regression for
 duplicate-index pooled frames.
 
-## QR5.3 — Meta-model under purged CV — *next*
+## QR5.3 — Meta-model under purged CV ✅
+
+[`scripts/research/meta/meta_model.py`](../../../scripts/research/meta/meta_model.py)
++ [`build_meta_dataset.py`](../../../scripts/research/meta/build_meta_dataset.py)
+(verified by `tests/python/test_meta_model.py`, 11 cases). The track converges
+here: a classifier predicts **P(the primary bet is profitable)** from features
+that never encode the direction of returns — `abs_sscore`, `sscore`, `kappa`,
+regime (QR3.3), trailing vol (21/5), a daily order-flow proxy (`vol_ratio`), and
+day-of-week — trained on the QR5.1 labels, weighted by QR5.2 uniqueness, and
+validated **only** through purged CPCV.
+
+**The harness** composes the QR2 machinery on the *events'* windows:
+`purged_cpcv_splits` orders events by entry time, partitions them into N groups,
+takes every k-subset as a test fold (C(N,k) splits), and purges (QR2.1 — drop
+train events whose `[t0, t1]` overlaps a test window) + embargoes on the bar axis
+(QR2.1's own embargo assumes obs-index == bar-index, false for custom windows, so
+the bar-space embargo lives in `meta_model`). The classifier is a dependency-free
+weighted logistic regression (gradient-boosted trees are a drop-in upgrade).
+
+**On the real data — an honest null (a preview of QR5.5's DSR verdict):** 743
+meta-labeled events × 8 features, label balance 0.498. Under purged CPCV (6
+groups, k=2 → 15 splits, 3,715 out-of-sample predictions) the meta-model's CV
+accuracy is **0.500 vs a 0.502 majority baseline** — *no predictive edge*. These
+daily features don't tell winning QR4 bets from losing ones when validated
+leak-free. That is exactly the point of building the guardrails: a naive
+(leaking) CV might have shown a flattering number; purged CPCV keeps it honest.
+
+**Verified (the done-when):** the model trains through the purged CPCV harness,
+and **no train/test fold overlaps** — the event sets are disjoint *and* no train
+event's information window overlaps a test event's (brute-forced across
+(N,k) ∈ {(6,2),(8,3),(5,2)}), with the correct split count, every event tested
+C(N−1,k−1) times, the bar-embargo dropping post-test entries, and end-to-end
+training that predicts every test event deterministically. Plus the logistic
+regression itself (learns a separable pattern, weighted fit shifts the boundary,
+probabilities in [0,1]).
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/meta/build_meta_dataset.py   # dataset + purged-CV metrics
+venv/bin/python -m pytest tests/python/test_meta_model.py -q
+```
+
+## QR5.4 — Probability → size / gate — *next*
 
 ## QR5.3 — Meta-model under purged CV — *pending*
 

@@ -697,7 +697,7 @@ it is gated behind Phase 13 by design.
   have been profitable.
 - **16.2 Sample uniqueness ✅ (QR5.2, done 2026-07-09).** Overlapping label windows violate IID —
   weight samples by average uniqueness / sequential bootstrap.
-- **16.3 Meta-model under purged CV (QR5.3).** Simple classifier (logistic /
+- **16.3 Meta-model under purged CV ✅ (QR5.3, done 2026-07-09).** Simple classifier (logistic /
   gradient-boosted trees, not a deep net) predicting P(profitable), validated
   only through Phase 13's CPCV.
 - **16.4 Probability → size / gate (QR5.4).** P(profitable) mapped to bet

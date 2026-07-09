@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1 → QR5.2
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1 → QR5.2 → QR5.3
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). QR-P5 underway (QR5.1 triple-barrier labels + QR5.2 sample uniqueness, 2026-07-09): 748 QR4 entries, ~50% win balance, mostly unique (eff. N 736). Next: QR5.3 meta-model under purged CV |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). QR-P5 underway (QR5.1–5.3, 2026-07-09): meta-model on 743 QR4 entries under purged CPCV -> CV accuracy 0.500 vs 0.502 baseline (honest null; leak-free). Next: QR5.4 probability -> size/gate |
 
 ---
 
@@ -812,13 +812,25 @@ same DSR.*
   the unique event, and a duplicate-index regression (a bug found on the pooled
   multi-name frame). black/flake8 clean.
 
-#### QR5.3 Meta-model under purged CV
-- Train a classifier (start simple — logistic / gradient-boosted trees,
-  **not** a deep net) on features `{s-score magnitude, regime state (QR3),
-  VPIN/OFI (QR1), spread, recent vol, time-of-day}` to predict
-  `P(profitable)`. Validate **only** through QR-P2's CPCV — no leakage.
-- **Done when:** the model trains through the purged CV harness; a `pytest`
-  confirms no train/test overlap in any fold.
+#### QR5.3 ✅ Meta-model under purged CV (done 2026-07-09)
+- Landed as `scripts/research/meta/meta_model.py` + `build_meta_dataset.py`: a
+  dependency-free weighted logistic regression predicting `P(profitable)` from
+  `{abs_sscore, sscore, kappa, regime (QR3), vol_21, vol_5, vol_ratio, dow}`
+  (VPIN/OFI aren't available per-name at daily frequency — the daily volume
+  ratio stands in; noted in limitations §1), trained on QR5.1 labels weighted by
+  QR5.2 uniqueness. `purged_cpcv_splits` composes QR2 on the events' windows —
+  time-ordered groups, C(N,k) folds, QR2.1 purge + a bar-space embargo (QR2.1's
+  own embargo assumes obs-index==bar-index, false for custom windows).
+- **Honest null (preview of QR5.5's DSR verdict):** 743 events × 8 features,
+  balance 0.498; under purged CPCV (6 groups, k=2 → 15 splits, 3,715 OOS preds)
+  CV accuracy **0.500 vs 0.502 majority baseline** — no edge. The point of the
+  guardrails: a leaking CV might have flattered it; purged CPCV keeps it honest.
+- **Done when — verified:** 11 pytest cases — the model trains through the
+  harness and **no train/test fold overlaps** (disjoint event sets *and* no
+  train window overlaps a test window, across (N,k) ∈ {(6,2),(8,3),(5,2)}), with
+  correct split counts, every event tested C(N−1,k−1) times, bar-embargo, and
+  deterministic end-to-end training; plus the logistic regression itself.
+  black/flake8 clean.
 
 #### QR5.4 Probability → size / gate
 - Map `P(profitable)` to bet size (or a gate: skip trades below a probability

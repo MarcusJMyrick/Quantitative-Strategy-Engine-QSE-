@@ -264,7 +264,36 @@ bool OrderManager::cancel_order(const OrderId& order_id) {
     return true;
 }
 
+void OrderManager::enable_toxicity_filter(Volume vpin_bucket_volume, std::size_t vpin_num_buckets,
+                                          double vpin_threshold) {
+    toxicity_filter_enabled_ = true;
+    toxicity_threshold_ = vpin_threshold;
+    vpin_.emplace(vpin_bucket_volume, vpin_num_buckets);
+    ofi_.emplace();
+}
+
+double OrderManager::current_vpin() const {
+    return vpin_ ? vpin_->vpin() : std::numeric_limits<double>::quiet_NaN();
+}
+
+double OrderManager::current_ofi() const {
+    return ofi_ ? ofi_->rolling_ofi() : 0.0;
+}
+
+bool OrderManager::is_toxic() const {
+    return vpin_ && vpin_->ready() && vpin_->vpin() > toxicity_threshold_;
+}
+
 void OrderManager::process_tick(const Tick& tick) {
+    // QR1.3: feed the running toxicity signals from the tick stream (additive;
+    // the fill path below is unchanged)
+    if (toxicity_filter_enabled_) {
+        if (tick.volume > 0 && tick.price > 0) {
+            vpin_->on_trade(tick.price, tick.volume);
+        }
+        ofi_->update(tick);
+    }
+
     // Update the order book first
     if (use_full_depth_) {
         // The tick's trade consumes the FIFO queue at its price (advancing

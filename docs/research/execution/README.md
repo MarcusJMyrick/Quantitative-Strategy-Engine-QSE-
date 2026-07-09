@@ -73,4 +73,56 @@ values, buy-fraction/imbalance (incl. σ ≤ 0 → balanced), equal-volume bucke
 with trade splitting, balanced-flow → 0, one-sided-flow → ~1, not-ready-until-n,
 and reset.
 
-## QR1.3 — Toxicity filter in `OrderManager` — *next*
+## QR1.3 — Toxicity filter in `OrderManager` ✅
+
+`OrderManager` now reads the running OFI/VPIN toxicity signal from its own tick
+stream (`enable_toxicity_filter` → fed in `process_tick` → `current_vpin()`,
+`current_ofi()`, `is_toxic()`; additive, no change to the fill path), and
+[`ToxicityFilter`](../../../include/qse/microstructure/ToxicityFilter.h) is the
+decision policy: **rest passive (delay crossing) only when flow is toxic (VPIN >
+threshold) AND directionally favorable** (a buy wants net selling, OFI < 0, to
+come hit its bid). Gating on direction *and* toxicity is deliberate — resting
+into same-direction toxic flow would just miss the fill.
+
+**The A/B audit decides.** `toxicity_audit` (tool) + `toxicity_audit.py`
+(analysis) run a schedule of AAPL orders two ways on the same tick stream —
+blind market orders vs the VPIN+OFI-gated passive policy (rest passive when
+toxic-favorable, wait up to W ticks for a passive fill, else fall back to
+crossing) — and measure per-order slippage vs the arrival mid.
+
+![Toxicity filter vs blind market orders](toxicity_audit.png)
+
+**Result — a robust negative (the honest finding):** on 1,893 orders the filter
+*increases* average slippage (0.01168 vs blind's 0.01000). The decomposition
+([summary](toxicity_audit_summary.md)): of the 34 rested orders, 27 (79%) fill
+passively and capture the spread (−$0.01 each), but the 7 that don't fall back
+after the toxic flow has **run away** — average slip **+$0.54**, a catastrophic
+adverse-selection tail that swamps the captures. The pattern holds across every
+threshold (0.45–0.7) and horizon (10–40 ticks) tested. The microstructure
+lesson: on 1-minute AAPL, high VPIN predicts *continued* adverse movement, so
+resting passive into it is the wrong move — you only get filled when the flow
+reverses. **The filter does not earn its place on this data.** (Any win from
+sweeping the config would itself need DSR deflation — QR-P2.)
+
+**Verified:** 7 `ToxicityFilterTest` gtests — the decision policy (benign →
+cross, toxic+favorable → rest, toxic+adverse → cross, strict threshold) and
+`OrderManager` flagging one-sided flow toxic / flat flow benign / disabled by
+default — plus 4 pytest cases on the analysis (reduction sign, passive-vs-
+fallback decomposition, verdict text).
+
+### Reproduce
+
+```bash
+./build/run_tests --gtest_filter='ToxicityFilterTest.*'
+./build/toxicity_audit                                  # blind vs filtered on AAPL ticks
+venv/bin/python scripts/analysis/toxicity_audit.py      # summary + plot
+venv/bin/python -m pytest tests/python/test_toxicity_audit.py -q
+```
+
+## QR-P4 complete
+
+QR-Data (L1 decision) → QR1.1 OFI → QR1.2 VPIN → QR1.3 toxicity filter. The
+microstructure literacy is real (OFI, VPIN, bulk-volume classification, a
+VPIN+OFI execution gate wired into `OrderManager`), and — faithful to the whole
+track — the honest result is that a naive toxicity filter on L1-reconstructed
+depth **does not** improve fills. The audit decided, and it decided against.

@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**)
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — QR-P1 + QR-P2 + QR-P3 complete; QR-P4 underway (QR-Data + QR1.1 OFI + QR1.2 VPIN, 2026-07-08): microstructure toxicity signals as execution filters on L1 depth, not price alpha. Next: QR1.3 toxicity filter in OrderManager |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). Next: QR-P5 meta-labeling (the ML capstone) |
 
 ---
 
@@ -744,13 +744,27 @@ and the A/B audit decides whether it earns its place.*
   equal-volume bucketing + trade splitting, balanced→0, one-sided→~1,
   not-ready-until-n, reset. 279/279 ctest; clang-format/black/flake8 clean.
 
-#### QR1.3 Toxicity filter in `OrderManager`
-- `OrderManager` reads OFI/VPIN state and **delays crossing the spread**
-  (rests passive / waits) when localized VPIN flags toxic flow, instead of
-  firing a blind market order.
-- **Done when:** the A/B audit shows a **measurable slippage reduction** vs
-  the blind-market-order baseline on the same signals/data (the filter earns
-  its place or it doesn't — the audit decides).
+#### QR1.3 ✅ Toxicity filter in `OrderManager` (done 2026-07-08)
+- Landed as `include/qse/microstructure/ToxicityFilter.h` (the VPIN+OFI decision
+  policy) + an additive `OrderManager` hook: `enable_toxicity_filter` feeds a
+  running VPIN/OFI from `process_tick` and exposes `current_vpin()`,
+  `current_ofi()`, `is_toxic()` (no change to the fill path). The filter rests
+  passive (delays crossing) only when flow is toxic **and** directionally
+  favorable (buy wants OFI<0). The A/B experiment is the `toxicity_audit` tool +
+  `scripts/analysis/toxicity_audit.py`: blind market orders vs the gated
+  passive-then-fallback policy on the AAPL tick stream.
+- **Done when — the audit decided, and it decided AGAINST (an honest negative):**
+  on 1,893 orders the filter *increases* slippage (0.01168 vs blind 0.01000).
+  Decomposition: 27/34 rested orders capture the spread (−$0.01), but the 7 that
+  don't fall back after the toxic flow **ran away** (avg +$0.54 — the adverse tail)
+  and swamp the captures; robust across thresholds 0.45–0.7 and horizons 10–40.
+  The lesson: high VPIN predicts *continued* adverse movement, so resting passive
+  into it is the wrong move. The microstructure literacy is proven; the naive
+  filter does not earn its place on L1 data (any config-swept win needs QR-P2
+  deflation). 286/286 ctest (7 `ToxicityFilterTest`), 4 pytest; gates clean.
+
+**QR-P4 (Phase 15) complete** — QR-Data → OFI → VPIN → toxicity filter, with an
+honest negative result the audit produced.
 
 ### QR-P5 — Learned Meta-Layer: meta-labeling (QR5) 🎓
 

@@ -643,7 +643,7 @@ gain, correctly attributed.
 unsupervised ML model integrated into a live risk parameter, and the
 look-ahead trap avoided.
 
-## Phase 15 — Execution Intelligence: OFI / VPIN ⏳ (QR-P4)
+## Phase 15 — Execution Intelligence: OFI / VPIN ✅ (QR-P4)
 
 **Goal:** use microstructure features to *time entries* and avoid crossing
 the spread into toxic, one-sided flow — measured by whether it improves fills
@@ -666,10 +666,16 @@ path is REST polling at hundreds of ms. As an execution-timing filter in
 - **15.2 VPIN engine ✅ (QR1.2, done 2026-07-08).** Equal-volume buckets, bulk-volume
   classification through the normal CDF, rolling mean of the buy/sell volume
   imbalance.
-- **15.3 Toxicity filter in `OrderManager` (QR1.3).** Delay crossing the
-  spread when localized VPIN flags toxic flow. The A/B audit decides: the
-  filter must show a **measurable slippage reduction** vs blind market
-  orders on the same signals/data, or it doesn't ship.
+- **15.3 Toxicity filter in `OrderManager` ✅ (QR1.3, done 2026-07-08).**
+  `OrderManager` reads a running OFI/VPIN toxicity signal from its tick stream;
+  the `ToxicityFilter` rests passive (delays crossing) only when flow is toxic
+  *and* directionally favorable. The `toxicity_audit` tool ran the gated policy
+  vs blind market orders on the AAPL stream — **and the audit decided against
+  it.** The filter *raises* average slippage (0.0117 vs blind 0.0100): 27/34
+  rested orders capture the spread, but the 7 fallbacks get picked off after the
+  toxic flow runs away (avg +$0.54), swamping the captures — robust across every
+  threshold/horizon. An honest negative: high VPIN predicts *continued* adverse
+  movement, so resting passive into it is the wrong move.
 
 **Proves:** microstructure literacy applied where it actually pays for
 retail-grade data — execution timing — and honesty about what
@@ -740,5 +746,5 @@ question, judged under CPCV like everything else.
 | DSR of chosen QR4 config | ✅ DSR 0.61, deflated for N=12 trials (cost-free) | docs/research/statarb/qr4_dsr_summary.md |
 | CPCV multiple-testing penalty | ✅ 100 noise variants: PSR(0) 0.99 → DSR 0.47 | docs/research/validation |
 | HMM regime overlay | ✅ causal filtered HMM (calm/elevated/turbulent) → debounce (81→28 switches) → A5 λ; turbulent regime provably lowers portfolio variance + gross (gtest) | docs/research/regime |
-| OFI/VPIN filter | measurable slippage reduction vs blind market order | ab_audit |
+| OFI/VPIN filter | ❌ honest negative: filter *raises* slippage (0.0117 vs 0.0100) — adverse selection on fallback (avg +$0.54) swamps the spread capture, robust across configs | docs/research/execution |
 | Meta-layer | meta-on vs meta-off DSR under Engine B | docs/research/statarb |

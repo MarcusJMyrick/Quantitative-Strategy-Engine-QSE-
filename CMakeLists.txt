@@ -170,6 +170,7 @@ add_executable(run_tests
     tests/cpp/RegimeLambdaTest.cpp
     tests/cpp/OFITest.cpp
     tests/cpp/VPINTest.cpp
+    tests/cpp/ToxicityFilterTest.cpp
     tests/cpp/DataGapsTest.cpp
     tests/cpp/PriceLevelTest.cpp
     tests/cpp/QueuePositionTest.cpp
@@ -224,6 +225,9 @@ target_link_libraries(ab_audit PRIVATE qse)
 
 add_executable(statarb_audit src/tools/statarb_audit.cpp)
 target_link_libraries(statarb_audit PRIVATE qse)
+
+add_executable(toxicity_audit src/tools/toxicity_audit.cpp)
+target_link_libraries(toxicity_audit PRIVATE qse)
 
 add_executable(arena_bench src/tools/arena_bench.cpp)
 target_link_libraries(arena_bench PRIVATE qse)

@@ -5,6 +5,8 @@
 #include "qse/data/OrderBook.h"
 #include "qse/data/OrderBookFullDepth.h"
 #include "qse/core/Config.h"
+#include "qse/microstructure/OFICalculator.h"
+#include "qse/microstructure/VPINCalculator.h"
 
 #include <string>
 #include <vector>
@@ -67,6 +69,18 @@ public:
     void set_use_full_depth(bool enabled) { use_full_depth_ = enabled; }
     bool use_full_depth() const { return use_full_depth_; }
 
+    // --- QR1.3: microstructure toxicity state -------------------------------
+    // OrderManager consumes the tick stream through process_tick, so it is the
+    // natural home for the running OFI/VPIN toxicity signal that an execution
+    // policy (ToxicityFilter) reads to decide whether to cross the spread now
+    // or rest passive. Additive: does not alter the fill path.
+    void enable_toxicity_filter(Volume vpin_bucket_volume, std::size_t vpin_num_buckets,
+                                double vpin_threshold);
+    bool toxicity_filter_enabled() const { return toxicity_filter_enabled_; }
+    double current_vpin() const; ///< NaN until the VPIN window fills
+    double current_ofi() const;  ///< rolling OFI over the window
+    bool is_toxic() const;       ///< VPIN ready and above the threshold
+
     // Access (creating if needed) the full-depth book for a symbol, so
     // callers and tests can seed multi-level liquidity directly.
     OrderBookFullDepth& depth_book(const std::string& symbol) { return depth_books_[symbol]; }
@@ -102,6 +116,12 @@ private:
 
     // --- NEW: Fill callback for strategy notifications ---
     FillCallback fill_callback_;
+
+    // --- QR1.3: toxicity signal state (fed by process_tick) ---
+    bool toxicity_filter_enabled_ = false;
+    double toxicity_threshold_ = 0.4;
+    std::optional<VPINCalculator> vpin_;
+    std::optional<OFICalculator> ofi_;
 
     // Helper methods
     OrderId generate_order_id();

@@ -211,7 +211,7 @@ flowchart LR
     end
     subgraph research [Research track QR]
         SA["Eigen stat arb<br/>+ momentum / reversal"]
-        REG["HMM regime → A5 λ"]
+        REG["HMM regime to A5 lambda"]
         META["Meta-labeling layer"]
         VAL["CPCV + Deflated Sharpe<br/>+ MDA (the judge)"]
     end
@@ -231,7 +231,7 @@ flowchart LR
     STRAT --> OM --> BOOK --> LOGS --> TEAR --> RES
     STRAT --> EXE
     SA -->|weight files| STRAT
-    REG -->|λ| STRAT
+    REG -->|lambda| STRAT
     META -->|sized weights| STRAT
     LOGS --> VAL --> RES
 ```

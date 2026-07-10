@@ -1,0 +1,11 @@
+# Alpaca paper smoke test — live re-run
+when: 2026-07-09 23:43:06 ET
+account: status ACTIVE cash 99687.24
+market open: False
+----- ./build/alpaca_smoke --paper -----
+Submitting 1-share AAPL buy limit @ $1.00 (day)...
+  accepted, order id: fd4ebe77-9fe6-4976-8eb0-abb4980eaac9
+  status: 0 (0=PENDING expected), qty 1 @ $1
+Cancelling...
+  status: 3 (3=CANCELLED expected)
+Smoke test complete - verify both events in the Alpaca dashboard

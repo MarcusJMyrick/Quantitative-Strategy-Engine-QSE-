@@ -391,7 +391,11 @@ templated on the results ledger) — never hardcoded to the current SMA results.
   (metrics + equity / drawdown / rolling-Sharpe charts). Executes clean via
   `nbconvert --execute` from a fresh clone — with a committed-sample fallback so
   it completes even where the C++ toolchain can't build.
-- **11.3 One-pager (F3).** Single PDF: architecture, key results, repo link.
+- **11.3 One-pager ✅ (F3, done 2026-07-09).** A single print-ready PDF
+  ([`docs/QSE_one_pager.pdf`](QSE_one_pager.pdf), built by
+  [`scripts/analysis/onepager.py`](../scripts/analysis/onepager.py)): drawn
+  architecture pipeline, a two-column key-results table across every track (with
+  the honest negatives), the embedded flagship A/B figure, and the repo link.
 - **11.4 Thesis write-up (F4).** 25–40 pages in `docs/thesis/`: introduction,
   related work (impact laws, queue models), system architecture (Phases 1–8),
   methodology (Phases 5, 9), results (impact exponents, phantom profit,

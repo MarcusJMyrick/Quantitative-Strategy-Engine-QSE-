@@ -428,6 +428,9 @@ config/                  YAML strategy configs + real corporate-actions history
 
 ## Documentation
 
+- **[One-pager (PDF)](docs/QSE_one_pager.pdf)** — the whole project on a single
+  printable page: architecture, key results across every track, and the repo
+  link (regenerate with `python scripts/analysis/onepager.py`)
 - **[PROJECT_PHASES.md](docs/PROJECT_PHASES.md)** — the whitepaper: all phases
   in detail (execution engine 1–11, research track 12–16) with the design
   rationale for every component

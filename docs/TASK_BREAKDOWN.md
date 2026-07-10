@@ -5,7 +5,7 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** F3 → F4 (**Track QR complete** — QR-P1 → QR-P5 all done 2026-07-09; **F2 notebook walkthrough done** 2026-07-09)
+**Remaining work, recommended order:** F4 thesis write-up (**Track QR complete** — QR-P1 → QR-P5 all done 2026-07-09; **F1 README, F2 notebook, F3 one-pager all done** 2026-07-09)
 (QR leads: it is the large majority of the remaining effort, and F2/F3 are results showcases — built
 after QR they tell the sharpened survives-or-doesn't story instead of presenting the pre-QR system
 while the thesis tells the QR story. F2/F3 have no upstream dependency and are cheap, so they *may*
@@ -929,9 +929,21 @@ same DSR.*
   forced fallback (binary hidden + `cmake` off `PATH`). The committed notebook
   carries no baked-in outputs; engine artifacts stay gitignored.
 
-### F3. PDF one-pager
-- Architecture + key results + repo link.
-- **Done when:** the PDF exists in `docs/` and renders correctly.
+### F3. ✅ PDF one-pager (done 2026-07-09)
+- Landed as [`scripts/analysis/onepager.py`](../scripts/analysis/onepager.py) →
+  committed [`docs/QSE_one_pager.pdf`](QSE_one_pager.pdf). A single print-ready
+  page built with matplotlib's PDF backend (same as the tearsheet — no new
+  deps): a drawn architecture pipeline (Data → C++ engine w/ the full-depth book
+  highlighted → Analysis, with live + research-track annotations), a two-column
+  **key-results** table spanning every track (phantom profit, impact exponent,
+  arena/SPSC, determinism, live paper, and the research negatives — stat arb,
+  DSR, regime, toxicity, meta-labeling, HRP), the embedded flagship A/B slippage
+  figure, and the repo link in the header + footer.
+- **Done when — verified:** `docs/QSE_one_pager.pdf` exists and renders — a valid
+  `%PDF-1.4`, exactly **one page**, visually checked (rasterized) for clean
+  layout with no clipping or overlap. 3 pytest cases (valid single-page PDF,
+  graceful placeholder when the figure is missing, the committed artifact is
+  present + valid). black/flake8 clean.
 
 ### F4. Thesis write-up 🎓
 - Suggested research question: **"How much does market-microstructure realism

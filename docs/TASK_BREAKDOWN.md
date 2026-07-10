@@ -5,14 +5,14 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** Track QR (QR-P1 → QR-P2 → QR-P3 → QR-P4 → QR-P5) → F2 → F3 → F4
+**Remaining work, recommended order:** F2 → F3 → F4 (**Track QR complete** — QR-P1 → QR-P5 all done 2026-07-09)
 (QR leads: it is the large majority of the remaining effort, and F2/F3 are results showcases — built
 after QR they tell the sharpened survives-or-doesn't story instead of presenting the pre-QR system
 while the thesis tells the QR story. F2/F3 have no upstream dependency and are cheap, so they *may*
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1 → QR5.2 → QR5.3 → QR5.4
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1 → QR5.2 → QR5.3 → QR5.4 → QR5.5 (**QR-P5 complete → Track QR complete**)
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). QR-P5 underway (QR5.1–5.4, 2026-07-09): meta-model on 743 QR4 entries under purged CPCV -> CV accuracy 0.500 vs 0.502 baseline (honest null; leak-free); QR5.4 P->size/gate re-emits the engine weight-file format, meta-off reproduces the raw QR4.5 book, gate/size at floor 0.5 cut 1,338->301 active days. Next: QR5.5 judge it (Engine B + DSR + MDA) |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | ✅ **Complete** (QR-P1–P5, 2026-07-09). Headline findings, all honest: QR-P1 stat arb 0.69 net Sharpe under Engine B ≈ cheap 12-1 momentum (0.84). QR-P4 VPIN+OFI toxicity filter *raises* slippage (adverse selection swamps spread capture). QR-P5 meta-labeling **rejected on the evidence** — under Engine B gating/sizing craters net Sharpe (0.69→0.17), no deflated edge (meta_on DSR 0.771 < meta_off 0.943), and MDA shows no engineered feature carries leak-free signal (0.500 vs 0.502 CV). The lasting deliverables are the reusable guardrails (CPCV, DSR, purged MDA) that make the negatives *findings*. |
 
 ---
 
@@ -852,13 +852,29 @@ same DSR.*
   confidence, sizes propagate over the held run, dollar-neutrality holds for
   fractional sizes. black/flake8 clean; `weights_meta_*` output gitignored.
 
-#### QR5.5 Judge it like everything else
-- Run meta-labeled QR4 through `ab_audit` (Engine B) and report **DSR** — did
-  the learned layer improve net-of-cost, deflated Sharpe, or just add trials
-  to overfit against?
-- **Done when:** the tearsheet compares meta-on vs meta-off under Engine B
-  with DSR for both; feature importance via **MDA under purged CV** ranks
-  which features actually carried information.
+#### QR5.5 ✅ Judge it like everything else (done 2026-07-09)
+- Landed as `scripts/research/meta/judge_meta.py` (+ `mda_importance` in
+  `meta_model.py`); full result in `docs/research/meta/qr5_judge_summary.md`.
+  Three leak-free lenses on the meta-layer:
+  - **Engine B:** the QR5.4 meta-sized weight dirs run through the *same*
+    `statarb_audit` full-depth fill model as QR4.7. `meta_off` reproduces the raw
+    QR4.5 book (lands on QR4.7's stat_arb numbers — a cross-check); gate/size at
+    floor 0.5 **crater** net Sharpe (50×: **0.69 → 0.17 / 0.16**) — ~82% fewer
+    trades, none better-selected, so the book's diversification collapses.
+  - **DSR for both:** deflating a 13-config meta search (mode × floor, cost-free
+    paper PnL, as QR2.5), meta_off DSR **0.943** vs best meta-on (`gate@0.52`)
+    **0.771** — no meta config's deflated Sharpe beats doing nothing.
+  - **MDA under purged CV:** pooled purged-CV accuracy 0.500 vs 0.502 baseline;
+    the only feature with positive importance is `sscore` (the primary signal's
+    own sign, rediscovered), while every engineered meta feature (abs_sscore,
+    regime, vols, kappa, vol_ratio) has ≤ 0 importance.
+- **Verdict — honest null:** meta-labeling adds nothing here and naive
+  application subtracts. The guardrails make that a *finding*, not a guess.
+- **Done when — verified:** 6 pytest cases — depth-curve → net-return/Sharpe
+  table (ranks modes, skips missing sizes), the meta-search family (off + mode ×
+  floor grid), the deflated verdict (DSR for both, best-meta selection), and MDA
+  (ranks an informative feature above noise; noise-only ≈ 0). black/flake8 clean;
+  `results/meta_audit/` gitignored, summary + PNG committed.
 
 ### QR-X (optional) — Hierarchical Risk Parity
 - Same intellectual spirit, small scope, reuses existing infrastructure: HRP

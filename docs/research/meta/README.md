@@ -172,4 +172,61 @@ venv/bin/python scripts/research/meta/meta_sizing.py --mode size --floor 0.5
 venv/bin/python -m pytest tests/python/test_meta_sizing.py -q
 ```
 
-## QR5.5 — Judge it (Engine B + DSR + MDA) — *next*
+## QR5.5 — Judge it (Engine B + DSR + MDA) ✅ — QR-P5 complete
+
+[`scripts/research/meta/judge_meta.py`](../../../scripts/research/meta/judge_meta.py)
+(verified by `tests/python/test_judge_meta.py`, 6 cases; full result in
+[`qr5_judge_summary.md`](qr5_judge_summary.md)). The capstone turns the same
+truth serum on the learned layer itself — three leak-free lenses:
+
+![The meta-layer, judged](qr5_judge.png)
+
+**Lens 1 — under Engine B.** The QR5.4 meta-sized books run through the *same*
+full-depth fill model as QR4.7. `meta_off` reproduces the raw QR4.5 book, so it
+lands on QR4.7's stat_arb numbers (cross-check). Net Sharpe at 50× size:
+
+| | meta_off | meta_gate | meta_size |
+|---|---|---|---|
+| Net Sharpe (Engine B) | **0.69** | 0.17 | 0.16 |
+
+Gating/sizing on the meta-model **destroys** risk-adjusted return — it keeps ~18%
+of the trades (1,419 vs 7,747 rebalances) but the survivors are not
+better-selected (QR5.3: 0.500 CV), so the 15-name book's diversification
+collapses with no compensating skill and the Sharpe craters.
+
+**Lens 2 — DSR for both.** Sweeping 13 meta configs (mode × floor) on the
+cost-free paper PnL and deflating against that search (as in QR2.5; the Engine B
+haircut applies on top): meta_off DSR **0.943** vs the best meta-on config
+(`gate@0.52`) DSR **0.771**. The meta search cannot produce a config whose
+deflated Sharpe beats doing nothing.
+
+**Lens 3 — MDA under purged CV.** The model sits on the coin-flip (pooled
+purged-CV accuracy 0.500 vs 0.502 baseline). MDA sharpens *why*: the only feature
+with positive importance is `sscore` — the primary signal's own sign, which the
+meta-model merely rediscovers — while every **engineered** meta feature
+(`abs_sscore` conviction, `regime`, the vols, `kappa`, the order-flow proxy) has
+≤ 0 importance. No meta feature carries leak-free information about which QR4 bets
+pay.
+
+**Verdict.** Meta-labeling, honestly validated, **adds nothing here**, and applied
+naively it *subtracts* (Engine-B Sharpe 0.69 → 0.17). That is the intended payoff
+of the whole track: the guardrails (purged CPCV, DSR, MDA) let the project state
+a clean negative with conviction instead of shipping an overfit story — the one
+defensible ML addition was worth building precisely so it could be *rejected* on
+the evidence.
+
+### Reproduce
+
+```bash
+# (re)run the Engine A/B audit on each meta weight dir, then judge:
+venv/bin/python scripts/research/meta/judge_meta.py --run-engine-b
+venv/bin/python -m pytest tests/python/test_judge_meta.py -q
+```
+
+---
+
+**QR-P5 (meta-labeling) complete**, and with it **all of Track QR (QR-P1 → P5)**.
+The learned layer was built to the same standard as everything else and judged by
+it — the honest finding is that it does not survive. The lasting deliverables are
+the reusable guardrails (triple-barrier labels, sample uniqueness, purged CPCV,
+DSR, MDA) that made the judgment trustworthy.

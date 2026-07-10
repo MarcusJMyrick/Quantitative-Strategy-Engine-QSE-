@@ -170,3 +170,62 @@ def train_cpcv(
         model = LogisticRegression(seed=seed, **model_kwargs).fit(X[train], y[train], sw)
         results.append({"split": sid, "test": test, "proba": model.predict_proba(X[test])})
     return results
+
+
+# ---------------------------------------------------------------------------
+# Mean-Decrease-Accuracy feature importance (López de Prado, AFML ch. 8)
+# ---------------------------------------------------------------------------
+
+
+def mda_importance(
+    X: np.ndarray,
+    y: np.ndarray,
+    splits: list[tuple[np.ndarray, np.ndarray]],
+    feature_names: list[str],
+    sample_weight: np.ndarray | None = None,
+    n_repeats: int = 5,
+    seed: int = 0,
+    **model_kwargs,
+) -> list[dict]:
+    """MDA importance under the (already purged) CPCV splits. For each split,
+    fit on its purged train set, score out-of-sample accuracy on the test set,
+    then permute one feature column *in the test set* and re-score; feature j's
+    importance is the mean accuracy drop (baseline − permuted) over splits and
+    `n_repeats` shuffles. Permuting a feature that carried out-of-sample signal
+    hurts accuracy (importance > 0); a noise feature moves it ~0 (or negative).
+    Because the score is computed on purged test folds, this ranks *leak-free*
+    information — the honest read on which features actually mattered.
+
+    Returns [{feature, importance, std, t_stat}] sorted by importance desc."""
+    X = np.asarray(X, dtype=float)
+    y = np.asarray(y, dtype=float)
+    rng = np.random.default_rng(seed)
+    drops: dict[int, list[float]] = {j: [] for j in range(X.shape[1])}
+    for train, test in splits:
+        if len(test) == 0 or len(train) == 0:
+            continue
+        sw = None if sample_weight is None else np.asarray(sample_weight)[train]
+        model = LogisticRegression(seed=seed, **model_kwargs).fit(X[train], y[train], sw)
+        base = float(((model.predict_proba(X[test]) > 0.5) == y[test]).mean())
+        Xt = X[test]
+        for j in range(X.shape[1]):
+            for _ in range(n_repeats):
+                Xp = Xt.copy()
+                Xp[:, j] = rng.permutation(Xp[:, j])
+                acc = float(((model.predict_proba(Xp) > 0.5) == y[test]).mean())
+                drops[j].append(base - acc)
+
+    rows = []
+    for j, name in enumerate(feature_names):
+        d = np.asarray(drops[j], dtype=float)
+        mean = float(d.mean()) if len(d) else 0.0
+        std = float(d.std(ddof=1)) if len(d) > 1 else 0.0
+        rows.append(
+            {
+                "feature": name,
+                "importance": mean,
+                "std": std,
+                "t_stat": (mean / (std / np.sqrt(len(d))) if std > 0 and len(d) else 0.0),
+            }
+        )
+    return sorted(rows, key=lambda r: r["importance"], reverse=True)

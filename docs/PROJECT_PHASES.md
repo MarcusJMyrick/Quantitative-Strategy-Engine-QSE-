@@ -681,7 +681,7 @@ path is REST polling at hundreds of ms. As an execution-timing filter in
 retail-grade data — execution timing — and honesty about what
 L1-reconstructed depth can and can't support.
 
-## Phase 16 — Learned Meta-Layer: Meta-Labeling ⏳ (QR-P5) 🎓
+## Phase 16 — Learned Meta-Layer: Meta-Labeling ✅ (QR-P5) 🎓
 
 **Goal:** the ML capstone that consumes the other four phases. The primary
 model (Phase 12's s-score) still decides the *side*; a classifier decides
@@ -706,14 +706,25 @@ it is gated behind Phase 13 by design.
   the raw QR4.5 book bit-for-bit** (the baseline); gate/size at floor 0.5 cut the
   book from 1,338 to 301 active days. Whether that helps net-of-cost is QR5.5's
   DSR verdict.
-- **16.5 Judged like everything else (QR5.5).** Meta-on vs meta-off under
-  Engine B with DSR for both; feature importance via MDA under purged CV
-  ranks which features actually carried information.
+- **16.5 Judged like everything else ✅ (QR5.5, done 2026-07-09).** Three
+  leak-free lenses on the meta-layer (`scripts/research/meta/judge_meta.py`,
+  [summary](research/meta/qr5_judge_summary.md)). **(1) Under Engine B:**
+  gating/sizing on the meta-model *craters* net Sharpe — 0.69 (meta_off, = the
+  raw QR4.5 book) → 0.17 (gate) / 0.16 (size) at 50× — because it drops ~82% of
+  the trades without selecting better ones, collapsing the book's
+  diversification. **(2) DSR for both:** deflated against a 13-config meta search,
+  meta_off DSR 0.943 vs the best meta-on 0.771 — no config beats doing nothing.
+  **(3) MDA under purged CV:** the model sits on the coin-flip (0.500 vs 0.502),
+  and the only feature with positive importance is the primary signal's own sign;
+  every engineered meta feature has ≤ 0 importance. **Verdict — an honest null:**
+  meta-labeling adds nothing here and naive application subtracts. The guardrails
+  are what make that a *finding* rather than a guess.
 
 **Proves:** the mature use of ML in quant — meta-labeling, triple-barrier,
 sample uniqueness, purged feature importance — with the discipline to gate it
-behind the same statistical guardrails as everything else. A "clearly read
-AFML and applied it correctly" signal, which is rare.
+behind the same statistical guardrails as everything else, *and to report the
+negative result the guardrails produce*. A "clearly read AFML and applied it
+correctly" signal, which is rare. **This completes Track QR (QR-P1 → QR-P5).**
 
 ### Optional extension — Hierarchical Risk Parity
 

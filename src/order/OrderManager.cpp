@@ -286,8 +286,10 @@ bool OrderManager::is_toxic() const {
 
 void OrderManager::process_tick(const Tick& tick) {
     // QR1.3: feed the running toxicity signals from the tick stream (additive;
-    // the fill path below is unchanged)
-    if (toxicity_filter_enabled_) {
+    // the fill path below is unchanged). enable_toxicity_filter() engages both
+    // optionals together, so checking them here is equivalent to the flag and
+    // keeps the optional access provably guarded.
+    if (toxicity_filter_enabled_ && vpin_ && ofi_) {
         if (tick.volume > 0 && tick.price > 0) {
             vpin_->on_trade(tick.price, tick.volume);
         }

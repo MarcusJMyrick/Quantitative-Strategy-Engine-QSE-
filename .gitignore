@@ -54,6 +54,8 @@ temp_*.csv
 !data/universe/*.csv
 # market proxy for the QR3 regime features (committed for offline rebuild)
 !data/regime/SPY.csv
+# committed sample engine run — the F2 notebook's fallback when the engine can't build
+!notebooks/sample/*.csv
 # ...but prices.csv is a regenerable QR4.1 artifact (build_universe emits it), not a source
 data/universe/prices.csv
 # Regenerable QR2.5 trial registry (params.json + returns.parquet per swept config)

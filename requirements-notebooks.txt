@@ -1,0 +1,7 @@
+# Notebook walkthrough (F2) — extends requirements.txt for the Jupyter tearsheet.
+# Install both:  pip install -r requirements.txt -r requirements-notebooks.txt
+-r requirements.txt
+matplotlib>=3.7
+jupyter>=1.0
+nbconvert>=7.0
+ipykernel>=6.0

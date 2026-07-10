@@ -5,7 +5,7 @@ bottom within a track; tracks are mostly independent of each other. The narrativ
 to this checklist — full phase descriptions including completed work — is
 [PROJECT_PHASES.md](PROJECT_PHASES.md).
 
-**Remaining work, recommended order:** F2 → F3 → F4 (**Track QR complete** — QR-P1 → QR-P5 all done 2026-07-09)
+**Remaining work, recommended order:** F3 → F4 (**Track QR complete** — QR-P1 → QR-P5 all done 2026-07-09; **F2 notebook walkthrough done** 2026-07-09)
 (QR leads: it is the large majority of the remaining effort, and F2/F3 are results showcases — built
 after QR they tell the sharpened survives-or-doesn't story instead of presenting the pre-QR system
 while the thesis tells the QR story. F2/F3 have no upstream dependency and are cheap, so they *may*
@@ -912,9 +912,22 @@ same DSR.*
 - Done-when satisfied: a reader can build and run a backtest (and reproduce
   every research artifact) using only the README.
 
-### F2. Jupyter walkthrough
-- Notebook: run C++ engine via subprocess → load results → inline tearsheet.
-- **Done when:** `jupyter nbconvert --execute` succeeds from a fresh clone.
+### F2. ✅ Jupyter walkthrough (done 2026-07-09)
+- Landed as [`notebooks/qse_walkthrough.ipynb`](../notebooks/qse_walkthrough.ipynb)
+  + `requirements-notebooks.txt`. Detects the repo root from wherever nbconvert
+  runs, **builds (if needed) and runs `strategy_engine` via `subprocess`**
+  (SMA 20/50 over the bundled AAPL ticks), loads its `equity_curve.csv` /
+  `tradelog.csv` with the project's own `scripts/analysis/tearsheet.py`, and
+  renders an inline tearsheet — metrics table (return, CAGR, Sharpe, max DD,
+  Calmar, turnover) + charts (equity, underwater drawdown, rolling Sharpe).
+- **Robust from a fresh clone:** if the C++ toolchain can't build the engine in
+  the execution environment, the run-engine cell **falls back to a committed
+  sample run** (`notebooks/sample/`, produced by this same engine) so the
+  notebook always completes.
+- **Done when — verified:** `jupyter nbconvert --to notebook --execute` exits 0
+  on **both** paths — the real engine (19,184 equity points, 456 fills) and the
+  forced fallback (binary hidden + `cmake` off `PATH`). The committed notebook
+  carries no baked-in outputs; engine artifacts stay gitignored.
 
 ### F3. PDF one-pager
 - Architecture + key results + repo link.

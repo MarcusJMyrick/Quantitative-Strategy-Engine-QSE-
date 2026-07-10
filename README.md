@@ -322,6 +322,18 @@ That single run executes the SMA 20/50 backtest over the bundled AAPL
 minute-tick data and writes `equity_curve.csv`, `tradelog.csv`, and a 3-page
 performance `tearsheet.pdf` into `./out/`.
 
+### Notebook walkthrough (the whole loop in one place)
+
+```bash
+./venv/bin/pip install -r requirements-notebooks.txt
+./venv/bin/jupyter nbconvert --to notebook --execute notebooks/qse_walkthrough.ipynb
+```
+
+[`notebooks/qse_walkthrough.ipynb`](notebooks/qse_walkthrough.ipynb) runs the C++
+engine via `subprocess`, loads its output, and renders an inline tearsheet —
+executing top-to-bottom from a fresh clone (with a committed-sample fallback if
+the engine can't be built in the execution environment).
+
 ### Native build (macOS / Linux)
 
 ```bash

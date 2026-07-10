@@ -384,9 +384,13 @@ templated on the results ledger) — never hardcoded to the current SMA results.
   table with every measured number, the A/B audit as the flagship section
   with committed figures, Mermaid architecture, engineering-quality evidence,
   and three quickstart paths (Docker, native, reproduce-the-research).
-- **11.2 Notebook walkthrough (F2).** Jupyter demo: run the C++ engine,
-  load results, render the tearsheet inline — executes clean via
-  `nbconvert --execute`.
+- **11.2 Notebook walkthrough ✅ (F2, done 2026-07-09).**
+  [`notebooks/qse_walkthrough.ipynb`](../notebooks/qse_walkthrough.ipynb): runs
+  `strategy_engine` via `subprocess` (building it if needed), loads its output
+  with the project's `tearsheet.py`, and renders an inline tearsheet
+  (metrics + equity / drawdown / rolling-Sharpe charts). Executes clean via
+  `nbconvert --execute` from a fresh clone — with a committed-sample fallback so
+  it completes even where the C++ toolchain can't build.
 - **11.3 One-pager (F3).** Single PDF: architecture, key results, repo link.
 - **11.4 Thesis write-up (F4).** 25–40 pages in `docs/thesis/`: introduction,
   related work (impact laws, queue models), system architecture (Phases 1–8),

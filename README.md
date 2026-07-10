@@ -13,14 +13,17 @@ displayed liquidity — and then **measures the difference**. The engine is
 paired with the low-latency machinery real trading systems use (arena
 allocation, lock-free queues), a **live paper-trading mode** that runs the
 same strategy code against a real venue, and the software discipline both
-demand (254 C++ / 158 Python tests, three CI gates, cross-platform
+demand (302 C++ / 258 Python tests, three CI gates, cross-platform
 determinism).
 
-On top of the execution engine sits a **quantitative-research track** (in
-progress): an eigenportfolio statistical-arbitrage pipeline built under one
-rule — a strategy is *viable* only if it survives the realistic fill engine
-**and** clears a Sharpe ratio deflated for the number of configurations
-tried. Everything else is a candidate, not a result.
+On top of the execution engine sits a **complete quantitative-research track**
+built under one rule — a strategy is *viable* only if it survives the realistic
+fill engine **and** clears a Sharpe deflated for the number of configurations
+tried. Under that bar the track's flagship strategies produce **honest
+negatives** — cheap momentum beats elaborate stat arb, a toxicity filter *raises*
+slippage, meta-labeling adds nothing, and hierarchical risk parity is beaten by
+1/N. The deliverable is the machinery that lets those negatives be *stated with
+confidence* instead of buried under an overfit backtest.
 
 ---
 
@@ -32,14 +35,16 @@ tried. Everything else is a candidate, not a result.
 | Execution cost grows **superlinearly** with order size | 1.8¢ → 4.6¢ → 7.2¢ per share at 1k/5k/25k | same |
 | Simulated market impact matches theory | fitted exponent **b = 0.569** vs square-root law 0.5 (R² = 0.999); linear-impact profile b = 1.017 vs 1.0 | [impact study](docs/research/microstructure/results_summary.md) |
 | Arena allocator vs `new`/`delete` | **3.5 ns vs 57–70 ns per allocation (16–20×)**; 2.4× on the order-book workload | [benchmark 04](docs/benchmarks/04_arena_allocator.md) |
-| Lock-free SPSC ring vs locked queue (producer push, working consumer) | p99 **42 ns vs 16,334 ns (389×)**; worst case 71 µs vs **1.15 ms**; ThreadSanitizer-clean | [benchmark 05](docs/benchmarks/05_spsc_ring_buffer.md) |
-| Tick replay throughput | 19,184 ticks in **24 ms** (~800k ticks/s) | `strategy_engine` |
+| Lock-free SPSC ring vs locked queue (tail latency) | p99 **42 ns vs 16,334 ns (389×)**; worst case 71 µs vs **1.15 ms**; ThreadSanitizer-clean | [benchmark 05](docs/benchmarks/05_spsc_ring_buffer.md) |
 | Cross-platform determinism | Docker (GCC/x86-64) reproduces native (clang/arm64) metrics **exactly** — Sharpe −2.404, 456 trades | [Dockerfile](Dockerfile) |
-| **Live paper trading verified end-to-end** | 15-min market-hours session: 5 crossover signals → 5 real fills → **5/5 orders reconciled** local == venue | `live_engine` (Alpaca REST → lock-free ring → strategy → venue) |
-| Mean-variance optimizer traces a textbook efficient frontier | alpha 0.32 → 0.003, portfolio σ 0.35 → 0.002 across a 20-point λ-sweep | [factor research](docs/research/factor/) |
-| Market factor structure via random-matrix theory | market eigenvalue clears the Marchenko-Pastur noise edge (λ+ = 2.25) in **100% of 1,432 rolling windows** (median 47% of variance); MP retains 1–2 factors while "explain 55%" wobbles 1–4 | [stat-arb research](docs/research/statarb/README.md) |
-| Stat arb vs baselines under Engine B | **credible negative:** cheap 12-1 momentum (net Sharpe **0.84**) beats the eigen stat arb (**0.69**) once realistic fills are charged — the stat arb's 16% turnover bleeds 17–25% phantom cost | [stat-arb research](docs/research/statarb/README.md) |
-| Deflated Sharpe catches multiple-testing | 100 noise strategies: luckiest shows **PSR(0) = 0.99** but **DSR = 0.47**; QR4's best swept config **DSR = 0.61** deflated against 12 trials | [validation research](docs/research/validation/README.md) |
+| **Live paper trading verified end-to-end** | 15-min session: 5 crossover signals → 5 real fills → **5/5 orders reconciled** local == venue | `live_engine` (Alpaca REST → lock-free ring → strategy → venue) |
+| Market factor structure via random-matrix theory | market eigenvalue clears the Marchenko-Pastur noise edge (λ+ = 2.25) in **100% of 1,432 rolling windows**; MP retains 1–2 factors while "explain 55%" wobbles 1–4 | [stat-arb research](docs/research/statarb/README.md) |
+| **Stat arb vs baselines under Engine B** | **credible negative:** cheap 12-1 momentum (net Sharpe **0.84**) beats the eigen stat arb (**0.69**) once realistic fills are charged | [stat-arb research](docs/research/statarb/README.md) |
+| Deflated Sharpe catches multiple-testing | 100 noise strategies: luckiest shows **PSR(0) = 0.99** but **DSR = 0.47**; QR4's best swept config **DSR = 0.61** vs 12 trials | [validation research](docs/research/validation/README.md) |
+| Regime overlay is risk control, not alpha | causal Gaussian HMM labels **calm 44% / elevated 33% / turbulent 23%** of days; turbulent clusters in the 2022 bear + Apr-2025 selloff → drives A5 λ 0→50 (min-variance posture) | [regime research](docs/research/regime/README.md) |
+| **Toxicity filter *raises* slippage** | **robust negative:** VPIN+OFI passive-rest gate = **0.01168 vs blind 0.01000** — 7 fallbacks avg **+$0.54** (adverse-selection tail) swamp 27 spread captures | [execution research](docs/research/execution/README.md) |
+| **Meta-labeling adds nothing** | under Engine B gating craters Sharpe **0.69 → 0.17**; DSR meta-off **0.94** > meta-on **0.77**; MDA: no engineered feature beats 0.500-vs-0.502 CV | [meta research](docs/research/meta/README.md) |
+| **HRP vs MVO out-of-sample** | MVO collapses (Sharpe **−0.35**, 3.8× churn — Σ⁻¹ instability); HRP repairs it (**0.65**) but **1/N still wins (0.90)** | [portfolio research](docs/research/portfolio/README.md) |
 
 ---
 
@@ -81,88 +86,109 @@ empirical market studies consistently report:
 
 The A/B audit above is exactly why "profitable in a paper account" means
 nothing: paper fills are near-mid, instant, and infinitely deep. So the
-research track (Track QR, in progress) holds every strategy to a harder bar —
+research track (**Track QR, complete**) holds every strategy to a harder bar —
 **survive Engine B's realistic fills *and* clear a Sharpe deflated for the
 number of configurations tried** (CPCV + Deflated Sharpe Ratio, the
-López de Prado machinery). The honest headline it aims for is not "a money
-printer" but *"after realistic fills and a search-deflated Sharpe, this
-survives / does not survive"* — and a defensible negative is a result.
+López de Prado machinery). The honest headline it targets is not "a money
+printer" but *"after realistic fills and a search-deflated Sharpe, this survives
+/ does not survive"* — **and a defensible negative is a result.** Under that bar,
+it delivers five of them.
 
-The flagship strategy is **Avellaneda-Lee eigenportfolio stat arb**: rolling
-PCA on a 15-name large-cap tech universe, mean-reverting OU residuals,
-dollar-neutral s-score trading. Built so far:
+### QR-P1 — Eigenportfolio statistical arbitrage, and its honest verdict
 
-- **Universe (QR4.1):** raw daily bars back-adjusted through the audited
-  corporate-actions pipeline (the AAPL 4:1 split day reads +3.4% adjusted vs
-  the −75% crash in raw data), every repair counted, and a test-enforced
-  **as-of contract** — appending future data leaves every emitted row
-  bit-identical. 1,432 × 15 standardized matrix, zero NaNs.
-- **Factor extraction (QR4.2):** rolling 60-day PCA with the retained-factor
-  count set by **random-matrix theory**, not by hand: eigenvalues below the
-  Marchenko-Pastur noise edge `λ+ = (1+√(N/T))² = 2.25` are indistinguishable
-  from noise and dropped. The market mode clears the edge in every window; a
-  second factor is real only episodically — and the popular
-  "explain 55% of variance" rule retains 1–4 factors over the same sample,
-  which is precisely the arbitrariness the cutoff removes.
+**Avellaneda-Lee stat arb**: rolling 60-day PCA on a 15-name large-cap tech
+universe with the retained-factor count set by **random-matrix theory** — not by
+hand — dropping eigenvalues below the Marchenko-Pastur noise edge
+`λ+ = (1+√(N/T))² = 2.25`. The market mode clears the edge in every window; the
+popular "explain 55% of variance" rule retains 1–4 factors over the same sample,
+which is precisely the arbitrariness the cutoff removes.
 
 ![Rolling eigenvalue spectrum vs the Marchenko-Pastur noise edge](docs/research/statarb/eigen_spectrum.png)
 
-- **Idiosyncratic residuals (QR4.3):** each name's return is regressed on the
-  retained factors; the residual is the idiosyncratic part and its cumulative
-  sum is the mean-reverting process the strategy trades. Factors explain a
-  median **50.9%** of each name's daily variance — the other half is tradeable
-  residual — and the residuals come out orthogonal to their factors to
-  **7×10⁻¹⁵**, the correctness guarantee the next stage relies on.
-- **OU fit → s-score (QR4.4):** each residual is fit to a mean-reverting
-  Ornstein-Uhlenbeck process, with a speed filter that discards names too slow
-  to revert within the window. The resulting s-score is genuinely
-  standardized — pooled **mean 0.01, std 0.95** — an end-to-end calibration
-  check on the whole PCA → residual → OU chain, with a median mean-reversion
-  half-life of **5.8 days**.
-
-![Pooled s-score distribution and the speed filter](docs/research/statarb/ou_sscore.png)
-
-- **Signals → dollar-neutral book (QR4.5):** a hysteresis state machine turns
-  s-scores into positions and writes a dollar-neutral daily book in the exact
-  `weights_YYYYMMDD.csv` format the C++ engine already loads — **1,431 files,
-  net to 10⁻¹⁶**, dated one day after the signal (no look-ahead). The
-  Python→C++ handoff is locked by a gtest that loads one of these books
-  through the real `WeightsLoader`.
-- **Cheap baselines (QR4.6):** cross-sectional reversal and 12-1 momentum,
-  built in the same harness (same dollar-neutral weight files) so the
-  comparison is honest. The **cost-free** floor is already telling: stat arb
-  **0.97** only *ties* plain momentum **0.99**, while both clear reversal
-  **−0.28**.
-
-- **Survive Engine B (QR4.7):** all three run through the real full-depth book
-  at 1×/10×/50× size. The result is a **credible negative** — under realistic
-  fills, cheap **momentum (net Sharpe 0.84) beats the elaborate stat arb
-  (0.69)**, because the stat arb turns over 16% of its book daily (17–25%
-  phantom cost) against momentum's 4% (~6%). Reversal loses outright.
+Idiosyncratic residuals (orthogonal to their factors to 7×10⁻¹⁵) become
+mean-reverting OU processes with a median **5.8-day half-life**; a hysteresis
+state machine turns the s-scores into a dollar-neutral daily book in the exact
+`weights_YYYYMMDD.csv` format the C++ engine loads (**1,431 files, net to 10⁻¹⁶**,
+lagged one day — no look-ahead). Run through the real full-depth book against
+cheap baselines:
 
 ![Net-of-cost Sharpe and phantom profit by size](docs/research/statarb/statarb_ab_audit.png)
 
-**That is the QR-P1 payoff, and the honest one:** after realistic fills, the
-sophisticated machinery does not earn its complexity over a one-line rule —
-a far more defensible finding than a Sharpe-2 backtest.
+**The QR-P1 payoff is a credible negative:** under realistic fills, cheap **12-1
+momentum (net Sharpe 0.84) beats the elaborate stat arb (0.69)** — the stat arb
+turns over 16% of its book daily (17–25% phantom cost) against momentum's 4%.
+After honest fills, the sophisticated machinery does not earn its complexity over
+a one-line rule — far more defensible than a Sharpe-2 backtest.
 
-- **The truth serum (QR-P2):** the credibility layer that judges all of the
-  above — purging + embargo, **Combinatorial Purged CV**, a trial registry, and
-  the **Deflated Sharpe Ratio** (Bailey & López de Prado). Its calibration test
-  is stark: 100 pure-noise strategies, the luckiest with **PSR(0) = 0.99**
-  (looks like near-certain skill) but **DSR = 0.47** once deflated for the
-  search. Wired through QR4, the band/window sweep's best config has a cost-free
-  Sharpe of 0.92 but a **DSR of 0.61** deflated against 12 trials — it clears
-  chance only modestly, and *before* the Engine B haircut.
+### QR-P2 — The truth serum (CPCV + Deflated Sharpe)
+
+The credibility layer that judges everything else: purging + embargo,
+**Combinatorial Purged CV**, a trial registry, and the **Deflated Sharpe Ratio**
+(Bailey & López de Prado). Its calibration test is stark — 100 pure-noise
+strategies, the luckiest with **PSR(0) = 0.99** (near-certain skill) but
+**DSR = 0.47** once deflated for the search. Wired through QR4, the band/window
+sweep's best config has a cost-free Sharpe of 0.92 but a **DSR of 0.61** against
+12 trials — clearing chance only modestly, and *before* the Engine B haircut.
 
 ![100 noise strategies: PSR looks great, DSR deflates to chance](docs/research/validation/dsr_deflation.png)
 
-So the track's verdict on its own flagship is deliberately unglamorous and
-**defensible**: a market-neutral stat arb whose paper edge barely survives
-correction for search and is beaten by cheap momentum once fills are charged.
-That honest "does not clearly survive" — backed by realistic fills *and* a
-search-deflated Sharpe — is the entire point of building the guardrails first.
-Full plan: [Track QR in TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
+### QR-P3 — Regime overlay (risk control, not alpha)
+
+A causal, diagonal-covariance **Gaussian HMM** (hand-rolled numpy, filtered
+forward pass, expanding-window refit — never peeks ahead) clusters trailing SPY
+volatility features into **calm / elevated / turbulent** states, anti-whipsaw
+debounced, then maps the committed regime to the A5 mean-variance **λ**
+(`[0, 5, 50]`). Turbulent days (23% of the sample) cluster in the 2022 bear and
+the April-2025 selloff — exactly where λ=50 pushes the optimizer toward a
+minimum-variance, lower-gross posture. The design goal is honest: **cut
+drawdown**, lifting Sharpe by shrinking the denominator, not by forecasting
+returns.
+
+### QR-P4 — Execution intelligence, and a robust negative
+
+**OFI** (Cont-Kukanov order-flow imbalance) and **VPIN** (Easley-López de
+Prado-O'Hara) toxicity signals feed a passive-rest policy in `OrderManager`: delay
+crossing the spread only when flow is toxic *and* directionally favorable.
+**The A/B audit rejects it** — on 1,893 orders the filter *increases* average
+slippage (**0.01168 vs blind 0.01000**). Of 34 rested orders, 27 capture the
+spread (−$0.01 each), but the 7 that don't fall back after the toxic flow has run
+away — avg **+$0.54**, an adverse-selection tail that swamps the captures. The
+lesson (robust across every configuration swept): on 1-minute AAPL, high VPIN
+predicts *continued* adverse movement, so resting into it is the wrong move.
+
+### QR-P5 — The learned meta-layer, judged and rejected
+
+The one defensible ML addition: López de Prado **meta-labeling** — a classifier
+sizes/gates the primary bet without ever predicting return direction, trained on
+triple-barrier labels with sample-uniqueness weights and validated **only**
+through purged CPCV. Then the same truth serum is turned on it:
+
+![The meta-layer, judged](docs/research/meta/qr5_judge.png)
+
+- **Under Engine B:** gating on the meta-model **craters** net Sharpe
+  (0.69 → 0.17) — it drops ~82% of trades without selecting better ones.
+- **DSR for both:** meta-off **0.94** vs the best meta-on config **0.77** — no
+  configuration beats doing nothing.
+- **MDA under purged CV:** the model sits on the coin-flip (0.500 vs 0.502) and
+  no *engineered* feature carries leak-free signal.
+
+**An honest null**: meta-labeling adds nothing here, and naive application
+subtracts. The guardrails make that a *finding* rather than a guess.
+
+### QR-X — Hierarchical Risk Parity vs mean-variance
+
+The optional allocation extension. Walk-forward on the QR4 universe, judged under
+CPCV: **MVO collapses** out-of-sample (Sharpe −0.35, 3.8× the turnover — the
+`Σ⁻¹` instability on a near-singular 15-name covariance), **HRP repairs it** (0.65
+at 3.8× less churn — clustering buys robustness while forecasting nothing), **but
+even HRP does not beat 1/N** (0.90, zero turnover). Hierarchical clustering earns
+its keep as risk control, not alpha.
+
+> **The track's thesis, proven five times over:** building the guardrails first
+> is what lets the project report *"does not survive"* with conviction. A
+> defensible negative, backed by realistic fills and a search-deflated Sharpe, is
+> the entire point. Full narrative: [PROJECT_PHASES.md](docs/PROJECT_PHASES.md)
+> Phases 12–16; execution log: [TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
 
 ---
 
@@ -179,23 +205,35 @@ flowchart LR
         RING["SPSC lock-free ring<br/>(network thread hand-off)"]
         BB["BarBuilder"]
         STRAT["Strategies<br/>SMA / Pairs / Multi-factor"]
+        TOX["OFI / VPIN<br/>toxicity signals"]
         OM["OrderManager"]
         BOOK["Full-depth order book<br/>FIFO queues - VWAP walks<br/>queue-position limit fills<br/>arena-backed containers"]
     end
+    subgraph research [Research track QR]
+        SA["Eigen stat arb<br/>+ momentum / reversal"]
+        REG["HMM regime → A5 λ"]
+        META["Meta-labeling layer"]
+        VAL["CPCV + Deflated Sharpe<br/>+ MDA (the judge)"]
+    end
     subgraph live [Live mode]
-        FEED["Alpaca REST quote feed<br/>(producer thread)"]
-        EXE["IExecutionHandler<br/>Simulated / Alpaca paper venue<br/>(order + fill reconciliation)"]
+        FEED["Alpaca REST quote feed"]
+        EXE["IExecutionHandler<br/>Simulated / Alpaca paper venue"]
     end
     subgraph out [Analysis layer]
         LOGS["equity + tradelog CSVs"]
-        TEAR["tearsheet.py<br/>(Sharpe, Calmar, turnover,<br/>alpha/beta, PDF)"]
-        RES["research artifacts<br/>(impact study, A/B audit,<br/>stat-arb universe + PCA)"]
+        TEAR["tearsheet.py<br/>(Sharpe, Calmar, turnover, PDF)"]
+        RES["research artifacts<br/>(A/B audits, DSR, regime, meta)"]
     end
     PY --> CSV --> BB --> STRAT
     ZMQ --> RING --> STRAT
     FEED --> RING
+    TOX --> OM
     STRAT --> OM --> BOOK --> LOGS --> TEAR --> RES
     STRAT --> EXE
+    SA -->|weight files| STRAT
+    REG -->|λ| STRAT
+    META -->|sized weights| STRAT
+    LOGS --> VAL --> RES
 ```
 
 **The microstructure core** (the thesis differentiator):
@@ -203,83 +241,69 @@ flowchart LR
   lookups, market orders that walk levels and return `(filled, VWAP)`,
   per-order fill attribution so strategy orders consumed as makers get credited
 - **Queue-position-aware limit fills** — limit orders join the back of the
-  queue at their level; trade prints consume the FIFO ahead of them before
-  they fill; displayed L1 liquidity is conservatively modeled as always ahead
+  queue; trade prints consume the FIFO ahead of them before they fill
 - Both fill models live behind one config flag, which is what makes the A/B
   audit a controlled experiment
 
-**The quant stack** (beyond the microstructure work): a full cross-sectional
-factor pipeline — `UniverseFilter → MultiFactorCalculator →
-CrossSectionalRegression → ICMonitor → AlphaBlender → RiskModel →
-PortfolioBuilder → FactorExecutionEngine` — plus pairs trading and
-SMA-crossover strategies, all YAML-configured and unit-tested.
-`PortfolioBuilder` is a constrained QP (net/gross exposure, beta neutrality)
-with a true **mean-variance objective**: `−λ/2·wᵀΣw` applied as an O(n)
-single-factor covariance operator, where λ = 0 reproduces pure
-alpha-maximization bit-for-bit and the λ-sweep traces a textbook
-[efficient frontier](docs/research/factor/).
+**The quant stack:** a full cross-sectional factor pipeline — `UniverseFilter →
+MultiFactorCalculator → CrossSectionalRegression → ICMonitor → AlphaBlender →
+RiskModel → PortfolioBuilder → FactorExecutionEngine` — plus the Track-QR
+research layer (eigen stat arb, HMM regime overlay, OFI/VPIN toxicity signals,
+meta-labeling, and the CPCV/DSR/MDA validation harness that judges them all).
+`PortfolioBuilder` is a constrained QP (net/gross exposure, beta neutrality) with
+a true **mean-variance objective** `−λ/2·wᵀΣw`, where λ = 0 reproduces pure
+alpha-maximization bit-for-bit — and QR-P3's regime overlay drives that λ.
 
 **The live layer** (same strategy code, real venue): a venue-agnostic
-`IExecutionHandler` contract with two implementations — the simulated engine
-behind it, and `AlpacaExecutionHandler` over the paper REST API (HTTP behind
-an injectable seam, so CI tests the full order lifecycle with zero network).
-`live_engine` wires Alpaca quote polling → the lock-free ring → BarBuilder →
-strategy → venue, logs every order and fill locally, and reconciles per-order
-fill quantities against the venue at session end. Verified in a live
-market-hours session: 5 signals, 5 fills, 5/5 reconciled.
+`IExecutionHandler` with two implementations — the simulated engine and
+`AlpacaExecutionHandler` over the paper REST API (HTTP behind an injectable seam,
+so CI tests the full order lifecycle with zero network). `live_engine` wires
+Alpaca quote polling → the lock-free ring → BarBuilder → strategy → venue,
+reconciling per-order fills against the venue at session end. Verified live: 5
+signals, 5 fills, 5/5 reconciled.
 
 **The low-latency layer:**
 - [`qse::Arena`](include/qse/core/Arena.h) — fixed-capacity bump allocator
-  exposed as a `std::pmr::memory_resource`; one contiguous block up front, a
-  pointer bump per allocation, O(1) wholesale reset, instrumented
-  (high-water mark, allocation counts). The order book's containers are
-  pmr-backed, so a book built on an arena packs its nodes contiguously for
-  cache locality. Measured: **16–20× faster allocation**, 2.4× on the real
-  book-building workload.
+  exposed as a `std::pmr::memory_resource`; the order book's pmr-backed
+  containers pack nodes contiguously for cache locality. Measured: **16–20×
+  faster allocation**, 2.4× on the real book-building workload.
 - [`qse::SPSCRingBuffer`](include/qse/core/SPSCRingBuffer.h) — lock-free
-  single-producer/single-consumer ring with `alignas(64)` on both indices
-  *and* each side's cached view of the opposite index (false-sharing defense),
-  acquire/release hand-off, and a batched `consume_all` drain.
-  [`LiveTickPipeline`](include/qse/messaging/LiveTickPipeline.h) wires it
-  between the ZeroMQ network thread and the strategy thread with visible
-  drop-counting backpressure. The benchmark reports the honest result:
-  throughput parity with a mutexed queue in chase mode (both are bound by the
+  single-producer/single-consumer ring with `alignas(64)` false-sharing defense,
+  acquire/release hand-off, batched drain. The benchmark reports the honest
+  result: throughput parity with a mutexed queue in chase mode (both bound by the
   same cache-line round-trip) — the win is **tail latency**, where the locked
-  design's p99 is 389× worse and its worst case tops a millisecond
-  (lock-holder preemption). Market-data hand-off is a tail-latency problem.
+  design's p99 is 389× worse and its worst case tops a millisecond (lock-holder
+  preemption). Market-data hand-off is a tail-latency problem.
 
 ---
 
 ## Engineering quality
 
-- **254 C++ tests** (GoogleTest, includes two 10M-item lock-free stress tests
-  with strict ordering + checksum) and **158 Python tests** (pytest, metrics
-  asserted against hand-computed values — including the stat-arb research
-  layer, where a causality test proves appending future data leaves every
-  emitted row bit-identical, the Marchenko-Pastur cutoff is verified to
-  retain 0 factors on pure noise and exactly the planted factor otherwise,
-  idiosyncratic residuals are checked orthogonal to their factors to machine
-  precision, the OU estimator recovers known (κ, m, σ) from a simulated
-  mean-reverting path, the generated dollar-neutral weight files — for the
-  stat arb and both baselines alike — are loaded back through the real C++
-  `WeightsLoader` to lock the handoff, and the validation layer proves purging
-  leaves no train/test overlap, CPCV yields the right split/path counts, and
-  100 noise strategies collapse the Deflated Sharpe from PSR 0.99 to 0.47)
+- **302 C++ tests** (GoogleTest, incl. two 10M-item lock-free stress tests with
+  strict ordering + checksum) and **258 Python tests** (pytest, metrics asserted
+  against hand-computed values) — including the full research layer: a causality
+  test proves appending future data leaves every emitted row bit-identical, the
+  Marchenko-Pastur cutoff retains 0 factors on pure noise and exactly the planted
+  factor otherwise, the OU estimator recovers known (κ, m, σ), the generated
+  weight files load back through the real C++ `WeightsLoader`, CPCV is proven to
+  leave no train/test overlap, the HMM refit is proven causal, and the meta-layer
+  is proven to reproduce the raw book bit-for-bit when off
 - **Three CI gates on every push:** build + full test suite, `clang-format`/
   `black`/`flake8`, and a `clang-tidy` static-analysis gate
-  (warnings-as-errors) — all tool versions pip-pinned so local == CI
+  (warnings-as-errors) — all tool versions pinned so local == CI
 - **Two compilers, two standards, two Arrow versions:** every push builds on
-  Apple clang (C++17, Arrow 20) and GCC 13 (C++20, Arrow 24), which has
-  caught real portability bugs including API deprecations invisible locally
+  Apple clang (C++17, Arrow 20) and GCC 13 (C++20, Arrow 24), which has caught
+  real portability bugs invisible locally
 - **ThreadSanitizer** certifies the lock-free ring race-free over 10M items
-  on both consumer paths
 - **Determinism as a feature:** the Docker image reproduces native results
   exactly, and every research artifact is reproducible run-to-run
-- **The gates caught real bugs**, including undefined behavior (a missing
-  return on `WeightsLoader`'s success path), 17 silently ignored Arrow
-  `Status` returns, an equity-recording path that had never been wired (every
-  historical equity CSV was header-only), and three `failbit` hacks that
-  silenced stdout in every binary
+- **The gates caught real bugs**, including undefined behavior (a missing return
+  on `WeightsLoader`'s success path), 17 silently ignored Arrow `Status` returns,
+  an equity-recording path that had never been wired (every historical equity CSV
+  was header-only), a `clang-tidy` unchecked-`std::optional` access on the
+  VPIN/OFI toxicity path, a `.gitignore` inline-comment bug that silently kept a
+  committed data file ignored, and an HMM refit that ran in 171 s until it was
+  restructured to a causal segmented pass (~9 s)
 
 ---
 
@@ -305,7 +329,7 @@ performance `tearsheet.pdf` into `./out/`.
 git clone --recurse-submodules <repository-url>
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j8
-cd build && ctest              # 254 tests
+cd build && ctest              # 302 tests
 ./strategy_engine              # sample backtest (from repo root)
 ```
 
@@ -316,31 +340,50 @@ set -a; source .env; set +a    # APCA_API_KEY_ID / APCA_API_SECRET_KEY (paper)
 ./build/live_engine --paper --minutes 10   # quote feed → strategy → venue → reconcile
 ```
 
-Runs the same strategy code path as the backtest against the Alpaca paper
-venue, logging orders/fills locally and reconciling them against the venue at
-session end. Guarded to paper-only; refuses to start without `--paper` and
-credentials.
+Runs the same strategy code path as the backtest against the Alpaca paper venue,
+logging orders/fills locally and reconciling them at session end. Guarded to
+paper-only; refuses to start without `--paper` and credentials.
 
 ### Reproduce the research
 
 ```bash
 python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
-./venv/bin/python scripts/analysis/impact_study.py          # impact exponents
-./venv/bin/python scripts/analysis/slippage_audit.py        # phantom-profit audit
-./venv/bin/python scripts/analysis/tearsheet.py --equity equity_curve.csv \
-    --tradelog tradelog.csv --benchmark data/raw_AAPL.csv --out tearsheet.pdf
-./venv/bin/python scripts/research/statarb/build_universe.py  # stat-arb returns matrix
-./venv/bin/python scripts/research/statarb/rolling_pca.py     # rolling PCA + MP cutoff
-./venv/bin/python scripts/research/statarb/residuals.py       # idiosyncratic residuals
-./venv/bin/python scripts/research/statarb/ou_sscore.py       # OU fit + s-score
-./venv/bin/python scripts/research/statarb/signals.py         # dollar-neutral weight files
-./venv/bin/python scripts/research/statarb/baselines.py       # reversal + momentum baselines
-./build/statarb_audit --name stat_arb --weights-dir data/universe/weights   # Engine A/B audit
-./venv/bin/python scripts/analysis/statarb_audit.py           # net Sharpe + phantom summary
-./venv/bin/python scripts/research/validation/deflated_sharpe.py  # DSR multiple-testing demo
-./venv/bin/python scripts/research/statarb/deflate_qr4.py     # QR4 sweep + Deflated Sharpe
-./build/arena_bench && ./build/spsc_bench                   # latency benchmarks
-./build/spsc_tsan_stress                                    # TSan certification
+
+# Microstructure: impact exponents + phantom-profit A/B audit
+./venv/bin/python scripts/analysis/impact_study.py
+./venv/bin/python scripts/analysis/slippage_audit.py
+
+# QR-P1 stat arb: universe → PCA → residuals → OU s-score → weights → baselines
+./venv/bin/python scripts/research/statarb/build_universe.py
+./venv/bin/python scripts/research/statarb/rolling_pca.py
+./venv/bin/python scripts/research/statarb/residuals.py
+./venv/bin/python scripts/research/statarb/ou_sscore.py
+./venv/bin/python scripts/research/statarb/signals.py
+./venv/bin/python scripts/research/statarb/baselines.py
+./build/statarb_audit --name stat_arb --weights-dir data/universe/weights  # Engine A/B
+./venv/bin/python scripts/analysis/statarb_audit.py
+
+# QR-P2 validation: DSR multiple-testing demo + QR4 sweep deflation
+./venv/bin/python scripts/research/validation/deflated_sharpe.py
+./venv/bin/python scripts/research/statarb/deflate_qr4.py
+
+# QR-P3 regime: causal features → HMM → committed regime → A5 λ
+./venv/bin/python scripts/research/regime/regime_features.py
+./venv/bin/python scripts/research/regime/regime_hmm.py
+
+# QR-P4 execution: OFI/VPIN toxicity A/B audit
+./build/toxicity_audit && ./venv/bin/python scripts/analysis/toxicity_audit.py
+
+# QR-P5 meta-labeling: dataset → sizing → judge (Engine B + DSR + MDA)
+./venv/bin/python scripts/research/meta/build_meta_dataset.py
+./venv/bin/python scripts/research/meta/meta_sizing.py --mode gate
+./venv/bin/python scripts/research/meta/judge_meta.py --run-engine-b
+
+# QR-X portfolio: MVO vs HRP out-of-sample under CPCV
+./venv/bin/python scripts/research/portfolio/compare_allocators.py
+
+# Latency benchmarks + TSan certification
+./build/arena_bench && ./build/spsc_bench && ./build/spsc_tsan_stress
 ```
 
 ---
@@ -349,16 +392,22 @@ python3 -m venv venv && ./venv/bin/pip install -r requirements.txt
 
 ```
 include/qse/, src/       C++17/20 engine: core, data, order, strategy, factor,
-                         messaging, exe, live + tools (impact_sweep, ab_audit,
-                         statarb_audit, live_engine, alpaca_smoke, benches)
-tests/cpp/               254 GoogleTest cases incl. mocks and stress tests
-scripts/analysis/        tearsheet, impact study, slippage audit
+                         messaging, exe, live, microstructure (OFI/VPIN)
+                         + tools (impact_sweep, ab_audit, statarb_audit,
+                         toxicity_audit, live_engine, benches)
+tests/cpp/               302 GoogleTest cases incl. mocks and stress tests
+tests/python/            258 pytest cases with hand-computed expected values
+scripts/analysis/        tearsheet, impact study, slippage + toxicity audits
 scripts/data/            download/process pipeline, forward-fill, corporate actions
-scripts/research/statarb/ eigenportfolio stat arb: universe, PCA, residuals, OU
-                         s-score, dollar-neutral weights, reversal/momentum baselines, DSR wiring
-scripts/research/validation/ CPCV truth serum: purge/embargo, CPCV, trial registry, Deflated Sharpe
-tests/python/            158 pytest cases with hand-computed expected values
-docs/research/           committed research artifacts (microstructure, factor, statarb, validation)
+scripts/research/statarb/    QR-P1 eigen stat arb: universe, PCA, residuals, OU,
+                             weights, reversal/momentum baselines, DSR wiring
+scripts/research/validation/ QR-P2 truth serum: purge/embargo, CPCV, registry, DSR
+scripts/research/regime/     QR-P3 regime: causal features, Gaussian HMM, debounce
+scripts/research/meta/       QR-P5 meta-labeling: triple-barrier, uniqueness,
+                             meta-model, sizing, judge (Engine B + DSR + MDA)
+scripts/research/portfolio/  QR-X allocators: MVO / HRP / IVP + walk-forward compare
+docs/research/           committed research artifacts (microstructure, factor,
+                         statarb, validation, regime, execution, meta, portfolio)
 docs/benchmarks/         benchmark write-ups with reproduction commands
 docs/PROJECT_PHASES.md   full narrative: every phase, design rationale, results
 docs/TASK_BREAKDOWN.md   execution checklist with per-task done-when criteria
@@ -367,27 +416,29 @@ config/                  YAML strategy configs + real corporate-actions history
 
 ## Documentation
 
-- **[PROJECT_PHASES.md](docs/PROJECT_PHASES.md)** — the whitepaper: all
-  phases in detail (execution engine 1–11, research track 12–16), including
-  the design rationale for every component above
-- **[TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md)** — the engineering log:
-  testable chunks, each with an explicit done-when criterion and its outcome
+- **[PROJECT_PHASES.md](docs/PROJECT_PHASES.md)** — the whitepaper: all phases
+  in detail (execution engine 1–11, research track 12–16) with the design
+  rationale for every component
+- **[TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md)** — the engineering log: testable
+  chunks, each with an explicit done-when criterion and its outcome
 - **[Benchmarks](docs/benchmarks/)** · **Research:
   [microstructure](docs/research/microstructure/) ·
   [factor](docs/research/factor/) ·
-  [stat arb](docs/research/statarb/README.md) ·
-  [validation (CPCV/DSR)](docs/research/validation/README.md)**
+  [stat arb (QR-P1)](docs/research/statarb/README.md) ·
+  [validation / CPCV+DSR (QR-P2)](docs/research/validation/README.md) ·
+  [regime (QR-P3)](docs/research/regime/README.md) ·
+  [execution / OFI+VPIN (QR-P4)](docs/research/execution/README.md) ·
+  [meta-labeling (QR-P5)](docs/research/meta/README.md) ·
+  [portfolio / HRP (QR-X)](docs/research/portfolio/README.md)**
 
 ## Status
 
-**Complete:** microstructure engine, factor stack (incl. mean-variance
-optimizer), data-quality pipeline, research artifacts, low-latency layer,
-CI/format/lint gates, Docker, and **live Alpaca paper-trading** (verified
-end-to-end in a market-hours session).
+**Complete:** the microstructure engine, factor stack (incl. mean-variance
+optimizer), data-quality pipeline, low-latency layer, CI/format/lint gates,
+Docker, **live Alpaca paper-trading** (verified end-to-end), and the entire
+**quantitative-research track (Track QR: QR-P1 → QR-P5 + the QR-X HRP
+extension)** — every strategy judged under Engine B fills and a search-deflated
+Sharpe, with the honest negatives reported plainly.
 
-**In progress:** the quantitative-research track (Track QR) — the
-eigenportfolio stat-arb universe and rolling PCA are done; next are OU
-residual modeling, dollar-neutral signals, and the CPCV/Deflated-Sharpe
-validation layer that judges them. The thesis write-up follows once those
-land. The full plan and its state live in
-[TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).
+**Next:** the thesis write-up (Track F) that packages these results. The full
+plan and its state live in [TASK_BREAKDOWN.md](docs/TASK_BREAKDOWN.md).

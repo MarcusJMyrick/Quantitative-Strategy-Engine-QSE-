@@ -132,10 +132,44 @@ venv/bin/python scripts/research/meta/build_meta_dataset.py   # dataset + purged
 venv/bin/python -m pytest tests/python/test_meta_model.py -q
 ```
 
-## QR5.4 — Probability → size / gate — *next*
+## QR5.4 — Probability → size / gate ✅
 
-## QR5.3 — Meta-model under purged CV — *pending*
+[`scripts/research/meta/meta_sizing.py`](../../../scripts/research/meta/meta_sizing.py)
+(verified by `tests/python/test_meta_sizing.py`, 8 cases). The meta-model's
+P(profitable) becomes the *size* of each bet, re-emitted in the same
+`weights_YYYYMMDD.csv` format the C++ engine consumes — a drop-in the QR5.5 A/B
+audit toggles:
 
-## QR5.4 — Probability → size / gate — *pending*
+- **off** — size 1 for every bet → **reproduces the raw QR4.5 book exactly**
+  (the A/B baseline)
+- **gate** — size 1 if P ≥ floor else 0 → skip low-confidence bets
+- **size** — `clip((P − floor)/(1 − floor), 0, 1)` → confidence-weighted ramp
 
-## QR5.5 — Judge it (Engine B + DSR + MDA) — *pending*
+The meta-decision is made at entry and held for the position's life, so a
+per-event size propagates over its whole run in the QR4.5 position frame. The
+fractional positions are made dollar-neutral by allocating each side in
+proportion to its sizes — which **collapses to QR4.5's equal weighting when all
+sizes are 1**, so meta-off is provably the baseline. The leak-free P per event
+is the pooled purged-CPCV out-of-sample prediction (QR5.3).
+
+**On the real book:** off → 1,338 active days (= the raw QR4.5 book); gate/size
+at floor 0.5 → **301 active days** (77% fewer). Since the meta-model has no CV
+edge (QR5.3), the gate at 0.5 is effectively dropping ~half the bets at
+random — whether that helps or hurts net-of-cost is what QR5.5 measures.
+
+**Verified (the done-when):** the meta-layer emits the same weight-file format
+(header + `symbol,weight`, |w| ≤ 10, net ~0), and the mode flag toggles sizing —
+**meta-off is bit-equal to the raw QR4.5 `weights_from_positions`** book; gate
+skips sub-floor bets; size scales by confidence; sizes propagate over the held
+run; and dollar-neutrality holds for fractional sizes.
+
+### Reproduce
+
+```bash
+venv/bin/python scripts/research/meta/meta_sizing.py --mode off    # = QR4.5 baseline
+venv/bin/python scripts/research/meta/meta_sizing.py --mode gate --floor 0.5
+venv/bin/python scripts/research/meta/meta_sizing.py --mode size --floor 0.5
+venv/bin/python -m pytest tests/python/test_meta_sizing.py -q
+```
+
+## QR5.5 — Judge it (Engine B + DSR + MDA) — *next*

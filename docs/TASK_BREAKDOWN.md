@@ -12,7 +12,7 @@ while the thesis tells the QR story. F2/F3 have no upstream dependency and are c
 be pulled forward at any point — but only if built strategy-agnostic (notebook loops over whatever
 strategies exist; one-pager templated on the results ledger), never hardcoded to the current SMA
 results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR results directly.)
-**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1 → QR5.2 → QR5.3
+**Completed so far:** A1 → C1 → C4 → A2 → A3 → A4 → B3 → H1 → B1 → B2 → D1 → C2 → C3 → G1 → G2 → F1 → E1 → E2 → E3 → A5 → QR4.1 → QR4.2 → QR4.3 → QR4.4 → QR4.5 → QR4.6 → QR4.7 (**QR-P1 complete**) → QR2.1 → QR2.2 → QR2.3 → QR2.4 → QR2.5 (**QR-P2 complete**) → QR3.1 → QR3.2 → QR3.3 → QR3.4 (**QR-P3 complete**) → QR-Data → QR1.1 → QR1.2 → QR1.3 (**QR-P4 complete**) → QR5.1 → QR5.2 → QR5.3 → QR5.4
 
 ---
 
@@ -32,7 +32,7 @@ results, or they get rebuilt after QR anyway. F4 stays last: it consumes the QR 
 | Docker | ✅ D1 done 2026-07-05 — multi-stage image, container run bit-identical to native |
 | G Low-latency engineering (arena, SPSC) | ✅ Track G complete 2026-07-06 — arena 16–20× alloc speedup; ring p99 42ns vs 16µs locked |
 | H A/B slippage audit | ✅ Done 2026-07-05 — phantom profit $8k/$105k/$814k at 1k/5k/25k shares |
-| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). QR-P5 underway (QR5.1–5.3, 2026-07-09): meta-model on 743 QR4 entries under purged CPCV -> CV accuracy 0.500 vs 0.502 baseline (honest null; leak-free). Next: QR5.4 probability -> size/gate |
+| QR Quantitative research (stat arb, CPCV/DSR, regime, OFI/VPIN, meta-labeling) | 🔄 In progress — **QR-P1–P4 complete** 2026-07-08. QR-P4 finding: VPIN+OFI toxicity filter *raises* slippage (0.0117 vs blind 0.0100) — adverse selection swamps spread capture, robust across configs (honest negative). QR-P5 underway (QR5.1–5.4, 2026-07-09): meta-model on 743 QR4 entries under purged CPCV -> CV accuracy 0.500 vs 0.502 baseline (honest null; leak-free); QR5.4 P->size/gate re-emits the engine weight-file format, meta-off reproduces the raw QR4.5 book, gate/size at floor 0.5 cut 1,338->301 active days. Next: QR5.5 judge it (Engine B + DSR + MDA) |
 
 ---
 
@@ -832,11 +832,25 @@ same DSR.*
   deterministic end-to-end training; plus the logistic regression itself.
   black/flake8 clean.
 
-#### QR5.4 Probability → size / gate
-- Map `P(profitable)` to bet size (or a gate: skip trades below a probability
-  floor). Feed sized/gated signals into the A5 PortfolioBuilder path.
-- **Done when:** the meta-layer produces the same weight-file format the
-  engine consumes; a config flag toggles meta-sizing on/off for A/B.
+#### QR5.4 ✅ Probability → size / gate (done 2026-07-09)
+- Landed as `scripts/research/meta/meta_sizing.py`: the QR5.3 pooled purged-CPCV
+  OOS `P(profitable)` per event becomes the bet *size*, re-emitted in the same
+  `weights_YYYYMMDD.csv` format the C++ engine consumes (QR4.5). Three modes the
+  QR5.5 A/B audit toggles — **off** (size 1 → reproduces the raw QR4.5 book
+  exactly), **gate** (1 if P ≥ floor else 0), **size** (`clip((P−floor)/(1−floor),
+  0, 1)`). Size is decided at entry and propagated over the position's held run;
+  fractional positions are dollar-neutralized by allocating each side ∝ its sizes,
+  which collapses to QR4.5's equal weighting when sizes are all 1 — so meta-off is
+  provably the baseline.
+- **On the real book:** off → 1,338 active days (= raw QR4.5); gate/size at floor
+  0.5 → 301 active days (77% fewer), all net ~1e-16, 1,431 weight files each.
+  Since QR5.3 found no CV edge, the gate at 0.5 drops ~half the bets ~at random —
+  QR5.5's DSR judges whether that helps net-of-cost.
+- **Done when — verified:** 8 pytest cases — same weight-file format
+  (header + `symbol,weight`, |w| ≤ 10, net ~0), **meta-off bit-equal to the raw
+  QR4.5 `weights_from_positions` book**, gate skips sub-floor bets, size scales by
+  confidence, sizes propagate over the held run, dollar-neutrality holds for
+  fractional sizes. black/flake8 clean; `weights_meta_*` output gitignored.
 
 #### QR5.5 Judge it like everything else
 - Run meta-labeled QR4 through `ab_audit` (Engine B) and report **DSR** — did

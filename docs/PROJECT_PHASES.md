@@ -700,9 +700,12 @@ it is gated behind Phase 13 by design.
 - **16.3 Meta-model under purged CV ✅ (QR5.3, done 2026-07-09).** Simple classifier (logistic /
   gradient-boosted trees, not a deep net) predicting P(profitable), validated
   only through Phase 13's CPCV.
-- **16.4 Probability → size / gate (QR5.4).** P(profitable) mapped to bet
-  size or a skip-gate, feeding the A5 PortfolioBuilder path in the same
-  weight-file format, toggleable for A/B.
+- **16.4 Probability → size / gate ✅ (QR5.4, done 2026-07-09).** P(profitable)
+  mapped to bet size (or a skip-gate), re-emitted in the same weight-file format
+  the engine consumes, toggleable off/gate/size for A/B — **meta-off reproduces
+  the raw QR4.5 book bit-for-bit** (the baseline); gate/size at floor 0.5 cut the
+  book from 1,338 to 301 active days. Whether that helps net-of-cost is QR5.5's
+  DSR verdict.
 - **16.5 Judged like everything else (QR5.5).** Meta-on vs meta-off under
   Engine B with DSR for both; feature importance via MDA under purged CV
   ranks which features actually carried information.

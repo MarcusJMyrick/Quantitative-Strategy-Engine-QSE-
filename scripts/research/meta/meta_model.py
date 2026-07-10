@@ -139,6 +139,18 @@ def purged_cpcv_splits(
     return splits
 
 
+def pooled_oos_proba(results: list[dict], n_events: int) -> np.ndarray:
+    """One out-of-sample P per event: the mean over the CPCV splits that tested
+    it (each event is tested C(N−1,k−1) times). NaN if never tested."""
+    total = np.zeros(n_events)
+    count = np.zeros(n_events)
+    for r in results:
+        total[r["test"]] += r["proba"]
+        count[r["test"]] += 1
+    with np.errstate(invalid="ignore", divide="ignore"):
+        return np.where(count > 0, total / count, np.nan)
+
+
 def train_cpcv(
     X: np.ndarray,
     y: np.ndarray,

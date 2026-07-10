@@ -726,13 +726,20 @@ behind the same statistical guardrails as everything else, *and to report the
 negative result the guardrails produce*. A "clearly read AFML and applied it
 correctly" signal, which is rare. **This completes Track QR (QR-P1 → QR-P5).**
 
-### Optional extension — Hierarchical Risk Parity
+### Optional extension — Hierarchical Risk Parity ✅ (QR-X, done 2026-07-09)
 
 Same intellectual spirit, small scope: HRP clusters the correlation matrix
 and allocates by recursive bisection, avoiding the unstable matrix inversion
 mean-variance needs for near-singular covariance. **A5 MVO vs HRP
-out-of-sample** on the Phase 12 universe is a clean, self-contained research
-question, judged under CPCV like everything else.
+out-of-sample** on the Phase 12 universe, judged under CPCV
+([summary](research/portfolio/hrp_vs_mvo_summary.md),
+`scripts/research/portfolio/`). An honest three-part result: **MVO collapses**
+out-of-sample (Sharpe −0.35, 3.8× HRP's turnover — the inversion blows up on the
+near-singular Σ of 15 co-moving tech names), **HRP repairs it** (0.65 Sharpe at
+3.8× less churn — clustering buys robustness while predicting nothing), **but
+even HRP doesn't beat 1/N** (0.90, zero turnover; DeMiguel–Garlappi–Uppal). The
+value of the ML-adjacent step is risk control, not alpha — and CPCV lets the
+project state the HRP < 1/N negative with confidence.
 
 ---
 
